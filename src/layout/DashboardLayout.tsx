@@ -5,6 +5,7 @@ import { API_BASE_URL, clearAuthTokens, getAccessToken } from "../api/client";
 import { notificationsAPI } from "../api/notifications";
 import { DashboardAside } from "../components/dashboardlayout/DashboardAside";
 import { DashboardHeader } from "../components/dashboardlayout/DashboardHeader";
+import { LoadingState } from "../components/shared/UI";
 import { AuthContext, type AuthUser } from "../context/AuthContext";
 import { extractApiError, normalizeCollection } from "../utils/formatters";
 
@@ -33,7 +34,7 @@ export function DashboardLayout() {
   const [loading, setLoading] = useState(true);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
   const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
-  const [error, setError] = useState("");
+  const [notificationError, setNotificationError] = useState("");
   const socketRef = useRef<WebSocket | null>(null);
   const navigate = useNavigate();
 
@@ -55,7 +56,7 @@ export function DashboardLayout() {
         }
 
         setUser(profile);
-        setError("");
+        setNotificationError("");
       } catch {
         if (mounted) {
           clearAuthTokens();
@@ -84,7 +85,9 @@ export function DashboardLayout() {
         const response = await notificationsAPI.list();
         if (mounted) setNotifications(normalizeCollection<Notification>(response.data));
       } catch (err) {
-        if (mounted) setError(extractApiError(err, "بارگذاری اعلان‌ها انجام نشد."));
+        if (mounted) {
+          setNotificationError(extractApiError(err, "بارگذاری اعلان ها انجام نشد."));
+        }
       } finally {
         if (mounted) setLoadingNotifications(false);
       }
@@ -117,12 +120,12 @@ export function DashboardLayout() {
           ...current.filter((item) => item.id !== notification.id),
         ]);
       } catch {
-        setError("داده اعلان بلادرنگ قابل خواندن نبود.");
+        setNotificationError("داده اعلان بلادرنگ قابل خواندن نبود.");
       }
     };
 
     socket.onerror = () => {
-      setError("ارتباط بلادرنگ اعلان‌ها برقرار نشد.");
+      setNotificationError("ارتباط بلادرنگ اعلان ها برقرار نشد.");
     };
 
     return () => {
@@ -140,7 +143,7 @@ export function DashboardLayout() {
         current.map((item) => (item.id === notificationId ? updated : item)),
       );
     } catch (err) {
-      setError(extractApiError(err, "به‌روزرسانی اعلان انجام نشد."));
+      setNotificationError(extractApiError(err, "به روزرسانی اعلان انجام نشد."));
     }
   }
 
@@ -155,7 +158,7 @@ export function DashboardLayout() {
         ),
       );
     } catch (err) {
-      setError(extractApiError(err, "خواندن همه اعلان‌ها انجام نشد."));
+      setNotificationError(extractApiError(err, "خواندن همه اعلان ها انجام نشد."));
     }
   }
 
@@ -169,10 +172,7 @@ export function DashboardLayout() {
 
   return (
     <AuthContext.Provider value={contextValue}>
-      <div
-        className="min-h-screen"
-        dir="rtl"
-      >
+      <div className="min-h-screen" dir="rtl">
         <DashboardAside permissions={visiblePermissions} />
 
         <div className="min-h-screen lg:mr-72">
@@ -182,23 +182,18 @@ export function DashboardLayout() {
             unreadCount={unreadCount}
             panelOpen={notificationPanelOpen}
             loadingNotifications={loadingNotifications}
+            notificationError={notificationError}
             onToggleNotifications={() =>
               setNotificationPanelOpen((current) => !current)
             }
+            onDismissNotificationError={() => setNotificationError("")}
             onMarkRead={handleMarkRead}
             onMarkAllRead={handleMarkAllRead}
           />
-
           <main className="p-6">
-            {error ? (
-              <div className="mb-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
-                {error}
-              </div>
-            ) : null}
-
             {loading ? (
-              <div className="rounded-3xl bg-white p-10 text-center text-sm text-slate-500 shadow-sm ring-1 ring-sky-100">
-                در حال بارگذاری...
+              <div className="w-full min-h-full">
+                <LoadingState message="در حال آماده سازی داشبورد..." />
               </div>
             ) : (
               <Outlet />

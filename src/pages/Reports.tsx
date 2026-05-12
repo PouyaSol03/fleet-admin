@@ -1,4 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+﻿// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { useEffect, useMemo, useState } from 'react';
 import { missionsAPI } from '../api/missions';
@@ -10,7 +10,7 @@ import { extractApiError, formatDate, formatNumber, normalizeCollection } from '
 import {
   AccessDenied,
   Badge,
-  DangerButton,
+  ConfirmationModal,
   DataTable,
   ErrorAlert,
   Field,
@@ -18,6 +18,7 @@ import {
   Modal,
   PageHeader,
   PrimaryButton,
+  RowActionMenu,
   SecondaryButton,
   SectionCard,
   Select,
@@ -38,6 +39,27 @@ const emptyForm = {
   description: '',
 };
 
+function RiskDriverCard({ row }) {
+  return (
+    <div
+      className="relative flex min-h-[100px] items-center justify-between overflow-hidden rounded-[15px] border border-[#D9D9D9] bg-white px-4 py-2"
+      style={{ boxShadow: '2px 2px 7px 0px rgba(0, 0, 0, 0.08)' }}
+    >
+      <div className="absolute -left-3 -top-4 h-[50px] w-[50px] rounded-full bg-[#A3000033] blur-[18px]" />
+      <div className="relative min-w-0 text-right">
+        <p className="text-2xl font-medium text-[#222222]">{row.driver__name || 'راننده'}</p>
+        <p className="mt-3 text-xs font-medium text-[#7D7D7D]">
+          {formatNumber(row.total_distance)} کیلومتر تخلف
+        </p>
+      </div>
+      <div className="relative text-left">
+        <p className="text-4xl font-normal text-black">{formatNumber(row.offense_count)}</p>
+        <p className="text-xs font-medium text-[#A30000]">تخلف</p>
+      </div>
+    </div>
+  );
+}
+
 export default function Reports() {
   const { user } = useAuth();
   const [data, setData] = useState(null);
@@ -52,6 +74,8 @@ export default function Reports() {
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
   const canView = hasPermission(user, 'reports.operational.view');
 
@@ -112,13 +136,21 @@ export default function Reports() {
     setModalOpen(true);
   };
 
-  const handleDelete = async (row) => {
-    if (!window.confirm(`تخلف ${row.missionTitle || row.id} حذف شود؟`)) return;
+  const handleDelete = (row) => {
+    setDeleteTarget(row);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteSubmitting(true);
     try {
-      await reportsAPI.deleteOffense(row.id);
+      await reportsAPI.deleteOffense(deleteTarget.id);
+      setDeleteTarget(null);
       await loadData();
     } catch (err) {
       setError(extractApiError(err, 'حذف تخلف انجام نشد.'));
+    } finally {
+      setDeleteSubmitting(false);
     }
   };
 
@@ -197,18 +229,20 @@ export default function Reports() {
     { key: 'offenseTime', title: 'زمان', render: (value) => formatDate(value, true) },
     {
       key: 'actions',
-      title: 'عملیات',
+      title: 'اقدام',
       render: (_, row) => (
-        <div className="flex flex-wrap gap-2">
-          <SecondaryButton type="button" onClick={() => openEditModal(row)}>ویرایش</SecondaryButton>
-          <DangerButton type="button" onClick={() => handleDelete(row)}>حذف</DangerButton>
-        </div>
+        <RowActionMenu
+          items={[
+            { label: 'ویرایش', tone: 'edit', onClick: () => openEditModal(row) },
+            { label: 'حذف', tone: 'delete', onClick: () => handleDelete(row) },
+          ]}
+        />
       ),
     },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="flex w-full flex-col items-center gap-2">
       <PageHeader
         title="گزارش عملکرد و تخلف"
         description="نمای تحلیلی از تخلفات رانندگی، ماموریت ها و عملکرد ناوگان"
@@ -253,38 +287,42 @@ export default function Reports() {
 
       {loading ? <p className="text-sm text-slate-500">در حال بارگذاری...</p> : (
         <>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <StatCard label="کل ماموریت ها" value={formatNumber(summary?.totalMissions)} tone="blue" />
-            <StatCard label="کل تخلفات" value={formatNumber(summary?.totalOffenses)} tone="rose" />
-            <StatCard label="مسافت تخلف" value={formatNumber(summary?.totalDistanceKm)} tone="amber" />
-            <StatCard label="رانندگان درگیر" value={formatNumber(summary?.uniqueDrivers)} tone="emerald" />
+          <div className="grid w-full gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <StatCard label="کل ماموریت ها" value={formatNumber(summary?.totalMissions)} tone="blue" helper="در بازه گزارش" />
+            <StatCard label="کل تخلفات" value={formatNumber(summary?.totalOffenses)} tone="rose" helper="ثبت شده" />
+            <StatCard label="مسافت تخلف" value={formatNumber(summary?.totalDistanceKm)} tone="amber" helper="کیلومتر" />
+            <StatCard label="رانندگان درگیر" value={formatNumber(summary?.uniqueDrivers)} tone="emerald" helper="راننده" />
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-            <SectionCard title="رانندگان پرریسک">
-              {topDrivers.length ? (
-                <div className="space-y-3">
-                  {topDrivers.map((row) => (
-                    <div key={row.driver_id} className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-                      <div>
-                        <p className="font-semibold text-slate-900">{row.driver__name}</p>
-                        <p className="text-xs text-slate-500">{formatNumber(row.total_distance)} کیلومتر تخلف</p>
-                      </div>
-                      <Badge tone="red">{formatNumber(row.offense_count)} تخلف</Badge>
-                    </div>
-                  ))}
-                </div>
-              ) : <p className="text-sm text-slate-500">موردی برای نمایش وجود ندارد.</p>}
-            </SectionCard>
-
-            <SectionCard title="شدت تخلفات">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <StatCard label="کم" value={formatNumber(summary?.severity?.low)} tone="emerald" />
-                <StatCard label="متوسط" value={formatNumber(summary?.severity?.medium)} tone="amber" />
-                <StatCard label="زیاد" value={formatNumber(summary?.severity?.high)} tone="rose" />
-                <StatCard label="بحرانی" value={formatNumber(summary?.severity?.critical)} tone="purple" />
+          <div className="grid w-full gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+            <section className="w-full">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-base font-bold text-[#222222]">رانندگان پرریسک</h2>
+                <Badge tone="red">{formatNumber(topDrivers.length)} مورد</Badge>
               </div>
-            </SectionCard>
+              {topDrivers.length ? (
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-1">
+                  {topDrivers.map((row) => <RiskDriverCard key={row.driver_id} row={row} />)}
+                </div>
+              ) : (
+                <div className="rounded-[15px] border border-dashed border-[#D9D9D9] bg-white px-4 py-8 text-center text-sm text-[#7D7D7D]">
+                  موردی برای نمایش وجود ندارد.
+                </div>
+              )}
+            </section>
+
+            <section className="w-full">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-base font-bold text-[#222222]">شدت تخلفات</h2>
+                <span className="text-xs font-medium text-[#7D7D7D]">بر اساس سطح ریسک</span>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <StatCard label="کم" value={formatNumber(summary?.severity?.low)} tone="emerald" helper="کم خطر" />
+                <StatCard label="متوسط" value={formatNumber(summary?.severity?.medium)} tone="amber" helper="نیازمند بررسی" />
+                <StatCard label="زیاد" value={formatNumber(summary?.severity?.high)} tone="rose" helper="پرخطر" />
+                <StatCard label="بحرانی" value={formatNumber(summary?.severity?.critical)} tone="purple" helper="فوری" />
+              </div>
+            </section>
           </div>
 
           <SectionCard title="جمع بندی ماموریت ها">
@@ -364,6 +402,15 @@ export default function Reports() {
           </div>
         </form>
       </Modal>
+
+      <ConfirmationModal
+        open={Boolean(deleteTarget)}
+        mode="delete"
+        message={`آیا از حذف تخلف ${deleteTarget?.missionTitle || deleteTarget?.id || ''} اطمینان دارید؟`}
+        loading={deleteSubmitting}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }

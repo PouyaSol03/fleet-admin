@@ -1,4 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+﻿// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { useEffect, useMemo, useState } from 'react';
 import { missionsAPI } from '../api/missions';
@@ -10,7 +10,7 @@ import { extractApiError, formatDate, normalizeCollection, toBooleanLabel } from
 import {
   AccessDenied,
   Badge,
-  DangerButton,
+  ConfirmationModal,
   DataTable,
   ErrorAlert,
   Field,
@@ -18,6 +18,7 @@ import {
   Modal,
   PageHeader,
   PrimaryButton,
+  RowActionMenu,
   SecondaryButton,
   Select,
   SectionCard,
@@ -69,6 +70,8 @@ export default function Missions() {
   const [formData, setFormData] = useState(emptyForm);
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
   const canView = hasPermission(user, 'missions.view');
   const canCreate = hasPermission(user, 'missions.create');
@@ -140,13 +143,21 @@ export default function Missions() {
     setModalOpen(true);
   };
 
-  const handleDelete = async (row) => {
-    if (!window.confirm(`ماموریت ${row.title} حذف شود؟`)) return;
+  const handleDelete = (row) => {
+    setDeleteTarget(row);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteSubmitting(true);
     try {
-      await missionsAPI.delete(row.id);
+      await missionsAPI.delete(deleteTarget.id);
+      setDeleteTarget(null);
       await loadData();
     } catch (err) {
       setError(extractApiError(err, 'حذف ماموریت انجام نشد.'));
+    } finally {
+      setDeleteSubmitting(false);
     }
   };
 
@@ -222,18 +233,20 @@ export default function Missions() {
     { key: 'status', title: 'وضعیت', render: (value) => <Badge tone={statusTone[value]}>{statusLabel[value] || value}</Badge> },
     {
       key: 'actions',
-      title: 'عملیات',
+      title: 'اقدام',
       render: (_, row) => (
-        <div className="flex flex-wrap gap-2">
-          {canUpdate ? <SecondaryButton type="button" onClick={() => openEditModal(row)}>ویرایش</SecondaryButton> : null}
-          {canDelete ? <DangerButton type="button" onClick={() => handleDelete(row)}>حذف</DangerButton> : null}
-        </div>
+        <RowActionMenu
+          items={[
+            canUpdate && { label: 'ویرایش', tone: 'edit', onClick: () => openEditModal(row) },
+            canDelete && { label: 'حذف', tone: 'delete', onClick: () => handleDelete(row) },
+          ]}
+        />
       ),
     },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="flex w-full flex-col items-center gap-2">
       <PageHeader title="ماموریت ها" description="مدیریت ماموریت ها با چند مبدا، چند مقصد و مسافران تخصیص یافته" action={canCreate ? <PrimaryButton type="button" onClick={openCreateModal}>ماموریت جدید</PrimaryButton> : null} />
       <ErrorAlert message={error} />
       <SectionCard title="فیلتر وضعیت">
@@ -331,6 +344,15 @@ export default function Missions() {
           </div>
         </form>
       </Modal>
+
+      <ConfirmationModal
+        open={Boolean(deleteTarget)}
+        mode="delete"
+        message={`آیا از حذف ماموریت ${deleteTarget?.title || ''} اطمینان دارید؟`}
+        loading={deleteSubmitting}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }

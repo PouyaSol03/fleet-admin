@@ -14,10 +14,13 @@
     "@fullcalendar/daygrid": "^6.1.20",
     "@fullcalendar/interaction": "^6.1.20",
     "@fullcalendar/react": "^6.1.20",
+    "@fullcalendar/timegrid": "^6.1.20",
     "@tailwindcss/vite": "^4.3.0",
     "react": "^19.2.5",
+    "react-date-object": "^2.1.9",
     "react-dom": "^19.2.5",
     "react-icons": "^5.6.0",
+    "react-multi-date-picker": "^4.5.2",
     "react-router": "^7.15.0",
     "tailwindcss": "^4.3.0"
   },

@@ -1,4 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+﻿// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { useEffect, useState } from 'react';
 import { vehiclesAPI } from '../api/vehicles';
@@ -160,7 +160,7 @@ export default function Tracking() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="flex w-full flex-col items-center gap-2">
       <PageHeader
         title="ردیابی خودروها"
         description="تنظیم اتصال Traccar، همگام‌سازی داده‌ها و بررسی وضعیت لحظه‌ای خودروها"

@@ -1,8 +1,9 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+﻿// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { useEffect, useMemo, useState } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
+import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import faLocale from '@fullcalendar/core/locales/fa';
 import { missionsAPI } from '../api/missions';
@@ -22,6 +23,7 @@ import {
   SectionCard,
   Select,
   SecondaryButton,
+  StatCard,
 } from '../components/shared/UI';
 
 const statusLabel = {
@@ -94,10 +96,12 @@ export default function MissionCalendar() {
         id: String(mission.id),
         title: mission.title || `ماموریت #${mission.id}`,
         start: formatDateOnly(mission.startDate),
+        end: mission.endDate ? shiftDate(formatDateOnly(mission.endDate), 1) : undefined,
         allDay: true,
         extendedProps: {
           status: mission.status,
           driverName: mission.driverName || 'بدون راننده',
+          vehicleModel: mission.vehicleModel || 'بدون خودرو',
         },
       })),
     [missions],
@@ -169,6 +173,23 @@ export default function MissionCalendar() {
   const handleEventClassNames = (arg) => {
     const status = arg.event.extendedProps.status;
     return ['fc-mission-event', statusClassName[status] || 'fc-mission-planned'];
+  };
+
+  const renderEventContent = (eventInfo) => {
+    const status = eventInfo.event.extendedProps.status;
+    const driverName = eventInfo.event.extendedProps.driverName;
+    const vehicleModel = eventInfo.event.extendedProps.vehicleModel;
+
+    return (
+      <div className="mission-calendar-event-content">
+        <div className="mission-calendar-event-title">{eventInfo.event.title}</div>
+        <div className="mission-calendar-event-meta">
+          <span>{driverName}</span>
+          <span>{statusLabel[status] || status || '-'}</span>
+        </div>
+        <div className="mission-calendar-event-vehicle">{vehicleModel}</div>
+      </div>
+    );
   };
 
   const saveMission = async () => {
@@ -278,7 +299,7 @@ export default function MissionCalendar() {
   if (!canView) return <AccessDenied />;
 
   return (
-    <div className="space-y-6">
+    <div className="flex w-full flex-col items-center gap-2">
       <PageHeader
         title="تقویم ماموریت"
         description="ماموریت را بکشید و روی روز جدید رها کنید. برای کپی از Ctrl/Cmd + Drag استفاده کنید."
@@ -286,12 +307,19 @@ export default function MissionCalendar() {
 
       <ErrorAlert message={error} />
 
+      <div className="grid w-full gap-4 md:grid-cols-4">
+        <StatCard label="ماموریت ها" value={events.length} tone="blue" helper="در بازه نمایش" />
+        <StatCard label="برنامه ریزی" value={missions.filter((item) => item.status === 'planned').length} tone="amber" helper="آینده" />
+        <StatCard label="فعال" value={missions.filter((item) => item.status === 'active').length} tone="emerald" helper="در جریان" />
+        <StatCard label="لغو شده" value={missions.filter((item) => item.status === 'canceled').length} tone="rose" helper="نیازمند بررسی" />
+      </div>
+
       <SectionCard subtitle={`${events.length} ماموریت در بازه نمایش`}>
         {loading && !events.length ? <LoadingState message="در حال بارگذاری تقویم ماموریت..." /> : null}
         {actionLoading ? <LoadingState message="در حال اعمال تغییرات ماموریت..." /> : null}
-        <div dir="rtl">
+        <div className="mission-calendar-board" dir="rtl">
           <FullCalendar
-            plugins={[dayGridPlugin, interactionPlugin]}
+            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
             initialView="dayGridMonth"
             locale={faLocale}
             direction="rtl"
@@ -304,14 +332,21 @@ export default function MissionCalendar() {
             datesSet={handleDatesSet}
             eventDrop={handleEventDrop}
             events={events}
+            eventContent={renderEventContent}
             eventClick={handleEventClick}
             eventClassNames={handleEventClassNames}
+            views={{
+              dayGridMonth: { dayMaxEvents: 3 },
+              timeGridWeek: { dayMaxEvents: 8 },
+              timeGridDay: { dayMaxEvents: 12 },
+            }}
             headerToolbar={{
               right: 'prev,next today',
               center: 'title',
-              left: '',
+              left: 'dayGridMonth,timeGridWeek,timeGridDay',
             }}
-            buttonText={{ today: 'امروز' }}
+            buttonText={{ today: 'امروز', month: 'ماه', week: 'هفته', day: 'روز' }}
+            nowIndicator
           />
         </div>
       </SectionCard>

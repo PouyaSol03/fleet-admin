@@ -1,4 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+﻿// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { useEffect, useMemo, useState } from 'react';
 import { usersAPI } from '../api/users';
@@ -9,7 +9,7 @@ import { extractApiError, formatNumber, normalizeCollection } from '../utils/for
 import {
   AccessDenied,
   Badge,
-  DangerButton,
+  ConfirmationModal,
   DataTable,
   ErrorAlert,
   Field,
@@ -17,6 +17,7 @@ import {
   Modal,
   PageHeader,
   PrimaryButton,
+  RowActionMenu,
   SecondaryButton,
   Select,
   SectionCard,
@@ -58,6 +59,8 @@ export default function Vehicles() {
   const [formData, setFormData] = useState(emptyForm);
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
   const canView = hasPermission(user, 'vehicles.view');
   const canCreate = hasPermission(user, 'vehicles.create');
@@ -137,13 +140,21 @@ export default function Vehicles() {
     setModalOpen(true);
   };
 
-  const handleDelete = async (row) => {
-    if (!window.confirm(`خودرو ${row.model} حذف شود؟`)) return;
+  const handleDelete = (row) => {
+    setDeleteTarget(row);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteSubmitting(true);
     try {
-      await vehiclesAPI.delete(row.id);
+      await vehiclesAPI.delete(deleteTarget.id);
+      setDeleteTarget(null);
       await loadData();
     } catch (err) {
       setError(extractApiError(err, 'حذف خودرو انجام نشد.'));
+    } finally {
+      setDeleteSubmitting(false);
     }
   };
 
@@ -212,18 +223,20 @@ export default function Vehicles() {
     { key: 'status', title: 'وضعیت', render: (value) => <Badge tone={statusTone[value]}>{statusLabel[value] || value}</Badge> },
     {
       key: 'actions',
-      title: 'عملیات',
+      title: 'اقدام',
       render: (_, row) => (
-        <div className="flex flex-wrap gap-2">
-          {canUpdate ? <SecondaryButton type="button" onClick={() => openEditModal(row)}>ویرایش</SecondaryButton> : null}
-          {canDelete ? <DangerButton type="button" onClick={() => handleDelete(row)}>حذف</DangerButton> : null}
-        </div>
+        <RowActionMenu
+          items={[
+            canUpdate && { label: 'ویرایش', tone: 'edit', onClick: () => openEditModal(row) },
+            canDelete && { label: 'حذف', tone: 'delete', onClick: () => handleDelete(row) },
+          ]}
+        />
       ),
     },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="flex w-full flex-col items-center gap-2">
       <PageHeader title="مدیریت خودروها" description="ثبت خودرو، تخصیص راننده و نگهداری اطلاعات عملیاتی هر وسیله نقلیه" action={canCreate ? <PrimaryButton type="button" onClick={openCreateModal}>خودرو جدید</PrimaryButton> : null} />
       <ErrorAlert message={error} />
 
@@ -314,6 +327,15 @@ export default function Vehicles() {
           </div>
         </form>
       </Modal>
+
+      <ConfirmationModal
+        open={Boolean(deleteTarget)}
+        mode="delete"
+        message={`آیا از حذف خودرو ${deleteTarget?.model || ''} اطمینان دارید؟`}
+        loading={deleteSubmitting}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }

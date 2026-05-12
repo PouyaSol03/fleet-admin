@@ -1,4 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+﻿// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { useEffect, useMemo, useState } from 'react';
 import { missionsAPI } from '../api/missions';
@@ -9,7 +9,7 @@ import { extractApiError, formatDate, normalizeCollection, toBooleanLabel } from
 import {
   AccessDenied,
   Badge,
-  DangerButton,
+  ConfirmationModal,
   DataTable,
   ErrorAlert,
   Field,
@@ -17,6 +17,7 @@ import {
   Modal,
   PageHeader,
   PrimaryButton,
+  RowActionMenu,
   SecondaryButton,
   Select,
   SectionCard,
@@ -75,6 +76,8 @@ export default function Requests() {
   const [decisionData, setDecisionData] = useState(emptyDecision);
   const [decisionError, setDecisionError] = useState('');
   const [decisionSubmitting, setDecisionSubmitting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
   const canView = hasPermission(user, 'mission_requests.view');
   const canCreate = hasPermission(user, 'mission_requests.create');
@@ -150,13 +153,21 @@ export default function Requests() {
     setDecisionOpen(true);
   };
 
-  const handleDelete = async (row) => {
-    if (!window.confirm(`درخواست ${row.title} حذف شود؟`)) return;
+  const handleDelete = (row) => {
+    setDeleteTarget(row);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteSubmitting(true);
     try {
-      await missionsAPI.deleteRequest(row.id);
+      await missionsAPI.deleteRequest(deleteTarget.id);
+      setDeleteTarget(null);
       await loadData();
     } catch (err) {
       setError(extractApiError(err, 'حذف درخواست انجام نشد.'));
+    } finally {
+      setDeleteSubmitting(false);
     }
   };
 
@@ -252,16 +263,20 @@ export default function Requests() {
     { key: 'status', title: 'وضعیت', render: (value) => <Badge tone={statusTone[value]}>{statusLabel[value] || value}</Badge> },
     {
       key: 'actions',
-      title: 'عملیات',
+      title: 'اقدام',
       render: (_, row) => {
         const pending = row.status === 'pending';
         const isOwner = row.requesterId === user?.id;
         return (
-          <div className="flex flex-wrap gap-2">
-            {pending && isOwner && canUpdate ? <SecondaryButton type="button" onClick={() => openEditModal(row)}>ویرایش</SecondaryButton> : null}
-            {pending && isOwner && canDelete ? <DangerButton type="button" onClick={() => handleDelete(row)}>حذف</DangerButton> : null}
-            {pending && canReview ? <PrimaryButton type="button" onClick={() => openDecisionModal('accept', row)}>تبدیل به ماموریت</PrimaryButton> : null}
-            {pending && canReview ? <DangerButton type="button" onClick={() => openDecisionModal('reject', row)}>رد درخواست</DangerButton> : null}
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <RowActionMenu
+              items={[
+                pending && isOwner && canUpdate && { label: 'ویرایش', tone: 'edit', onClick: () => openEditModal(row) },
+                pending && isOwner && canDelete && { label: 'حذف', tone: 'delete', onClick: () => handleDelete(row) },
+                pending && canReview && { label: 'تبدیل به ماموریت', tone: 'blue', onClick: () => openDecisionModal('accept', row) },
+                pending && canReview && { label: 'رد درخواست', tone: 'delete', onClick: () => openDecisionModal('reject', row) },
+              ]}
+            />
             {row.missionId ? <Badge tone="blue">ماموریت #{row.missionId}</Badge> : null}
           </div>
         );
@@ -270,7 +285,7 @@ export default function Requests() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="flex w-full flex-col items-center gap-2">
       <PageHeader
         title="درخواست خودرو"
         description={canReview ? 'درخواست های ثبت شده را بررسی کنید و در صورت تایید به ماموریت تبدیل کنید.' : 'برای دریافت خودرو درخواست جدید ثبت کنید و وضعیت آن را پیگیری کنید.'}
@@ -371,6 +386,15 @@ export default function Requests() {
           </div>
         </form>
       </Modal>
+
+      <ConfirmationModal
+        open={Boolean(deleteTarget)}
+        mode="delete"
+        message={`آیا از حذف درخواست ${deleteTarget?.title || ''} اطمینان دارید؟`}
+        loading={deleteSubmitting}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }

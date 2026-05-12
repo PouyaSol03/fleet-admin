@@ -1,4 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+﻿// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { useEffect, useMemo, useState } from 'react';
 import { usersAPI } from '../api/users';
@@ -8,7 +8,7 @@ import { extractApiError, normalizeCollection } from '../utils/formatters';
 import {
   AccessDenied,
   Badge,
-  DangerButton,
+  ConfirmationModal,
   DataTable,
   ErrorAlert,
   Field,
@@ -16,6 +16,7 @@ import {
   Modal,
   PageHeader,
   PrimaryButton,
+  RowActionMenu,
   SecondaryButton,
   SectionCard,
   Select,
@@ -52,6 +53,8 @@ export default function Users() {
   const [formData, setFormData] = useState(emptyForm);
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
   const canView = hasPermission(user, 'users.view');
   const canCreate = hasPermission(user, 'users.create');
@@ -145,14 +148,21 @@ export default function Users() {
     setRows(normalizeCollection(response.data).filter((row) => !row.isDriver));
   };
 
-  const handleDelete = async (row) => {
-    if (!window.confirm(`کاربر ${row.fullName || row.userName} حذف شود؟`)) return;
+  const handleDelete = (row) => {
+    setDeleteTarget(row);
+  };
 
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteSubmitting(true);
     try {
-      await usersAPI.delete(row.id);
+      await usersAPI.delete(deleteTarget.id);
+      setDeleteTarget(null);
       await refreshUsers();
     } catch (err) {
       setError(extractApiError(err, 'حذف کاربر انجام نشد.'));
+    } finally {
+      setDeleteSubmitting(false);
     }
   };
 
@@ -221,18 +231,20 @@ export default function Users() {
     },
     {
       key: 'actions',
-      title: 'عملیات',
+      title: 'اقدام',
       render: (_, row) => (
-        <div className="flex flex-wrap gap-2">
-          {canUpdate ? <SecondaryButton type="button" onClick={() => openEditModal(row)}>ویرایش</SecondaryButton> : null}
-          {canDelete ? <DangerButton type="button" onClick={() => handleDelete(row)}>حذف</DangerButton> : null}
-        </div>
+        <RowActionMenu
+          items={[
+            canUpdate && { label: 'ویرایش', tone: 'edit', onClick: () => openEditModal(row) },
+            canDelete && { label: 'حذف', tone: 'delete', onClick: () => handleDelete(row) },
+          ]}
+        />
       ),
     },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="flex w-full flex-col items-center gap-2">
       <PageHeader
         title="کاربران"
         description="ایجاد، ویرایش و مدیریت کاربران سازمان"
@@ -343,6 +355,15 @@ export default function Users() {
           </div>
         </form>
       </Modal>
+
+      <ConfirmationModal
+        open={Boolean(deleteTarget)}
+        mode="delete"
+        message={`آیا از حذف کاربر ${deleteTarget?.fullName || deleteTarget?.userName || ''} اطمینان دارید؟`}
+        loading={deleteSubmitting}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }

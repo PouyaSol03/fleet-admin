@@ -1,4 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+﻿// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { useEffect, useRef, useState } from 'react';
 import { vehiclesAPI } from '../api/vehicles';
@@ -180,7 +180,7 @@ export default function VehicleMap() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="flex w-full flex-col items-center gap-2">
       <PageHeader
         title="نقشه خودروها"
         description="نمای موقعیت لحظه‌ای خودروها با داده‌های Traccar و سرویس نقشه داخلی"

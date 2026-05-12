@@ -1,4 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+﻿// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { useEffect, useMemo, useState } from 'react';
 import { vehiclesAPI } from '../api/vehicles';
@@ -7,7 +7,7 @@ import { hasPermission } from '../utils/permissions';
 import { extractApiError, normalizeCollection } from '../utils/formatters';
 import {
   AccessDenied,
-  DangerButton,
+  ConfirmationModal,
   DataTable,
   ErrorAlert,
   Field,
@@ -15,6 +15,7 @@ import {
   Modal,
   PageHeader,
   PrimaryButton,
+  RowActionMenu,
   SecondaryButton,
   SectionCard,
   Textarea,
@@ -34,6 +35,8 @@ export default function VehicleGroups() {
   const [formData, setFormData] = useState(emptyForm);
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
   const canView = hasPermission(user, 'vehicle_groups.view');
   const canCreate = hasPermission(user, 'vehicle_groups.create');
@@ -80,13 +83,21 @@ export default function VehicleGroups() {
     setModalOpen(true);
   };
 
-  const handleDelete = async (row) => {
-    if (!window.confirm(`گروه ${row.name} حذف شود؟`)) return;
+  const handleDelete = (row) => {
+    setDeleteTarget(row);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteSubmitting(true);
     try {
-      await vehiclesAPI.deleteGroup(row.id);
+      await vehiclesAPI.deleteGroup(deleteTarget.id);
+      setDeleteTarget(null);
       await loadData();
     } catch (err) {
       setError(extractApiError(err, 'حذف گروه انجام نشد.'));
+    } finally {
+      setDeleteSubmitting(false);
     }
   };
 
@@ -116,18 +127,20 @@ export default function VehicleGroups() {
     { key: 'description', title: 'توضیحات' },
     {
       key: 'actions',
-      title: 'عملیات',
+      title: 'اقدام',
       render: (_, row) => (
-        <div className="flex flex-wrap gap-2">
-          {canUpdate ? <SecondaryButton type="button" onClick={() => openEditModal(row)}>ویرایش</SecondaryButton> : null}
-          {canDelete ? <DangerButton type="button" onClick={() => handleDelete(row)}>حذف</DangerButton> : null}
-        </div>
+        <RowActionMenu
+          items={[
+            canUpdate && { label: 'ویرایش', tone: 'edit', onClick: () => openEditModal(row) },
+            canDelete && { label: 'حذف', tone: 'delete', onClick: () => handleDelete(row) },
+          ]}
+        />
       ),
     },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="flex w-full flex-col items-center gap-2">
       <PageHeader title="گروه های خودرو" description="ساخت دسته بندی برای تقسیم خودروها بین واحدها یا ماموریت ها" action={canCreate ? <PrimaryButton type="button" onClick={openCreateModal}>گروه جدید</PrimaryButton> : null} />
       <ErrorAlert message={error} />
       <SectionCard title="جستجو">
@@ -151,6 +164,15 @@ export default function VehicleGroups() {
           </div>
         </form>
       </Modal>
+
+      <ConfirmationModal
+        open={Boolean(deleteTarget)}
+        mode="delete"
+        message={`آیا از حذف گروه ${deleteTarget?.name || ''} اطمینان دارید؟`}
+        loading={deleteSubmitting}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }

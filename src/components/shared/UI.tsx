@@ -1,5 +1,20 @@
+import {
+  Children,
+  isValidElement,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import DatePickerModule from "react-multi-date-picker";
+import DateObjectModule from "react-date-object";
+import gregorian from "react-date-object/calendars/gregorian";
+import persian from "react-date-object/calendars/persian";
+import gregorian_en from "react-date-object/locales/gregorian_en";
+import persian_fa from "react-date-object/locales/persian_fa";
 import type {
   ButtonHTMLAttributes,
+  ChangeEvent,
   InputHTMLAttributes,
   ReactNode,
   SelectHTMLAttributes,
@@ -41,30 +56,82 @@ type DataTableColumn = {
   render?: (value: ReactNode, row: Row) => ReactNode;
 };
 
+type SelectOption = {
+  label: ReactNode;
+  value: string;
+  disabled?: boolean;
+};
+
+type RowActionItem = {
+  label: string;
+  onClick?: () => void;
+  disabled?: boolean;
+  tone?: "edit" | "delete" | "blue" | "neutral";
+};
+
+const panelShadow = "2px 2px 7px 0px rgba(0, 0, 0, 0.08)";
+const DatePickerComponent =
+  (DatePickerModule as any).render || (DatePickerModule as any).$$typeof
+    ? DatePickerModule
+    : (DatePickerModule as any).default?.render || (DatePickerModule as any).default?.$$typeof
+      ? (DatePickerModule as any).default
+      : (DatePickerModule as any).default?.default || DatePickerModule;
+const DateObjectClass = (DateObjectModule as any).default || DateObjectModule;
+const metricToneClass: Record<Tone, string> = {
+  blue: "bg-[#206AB433]",
+  emerald: "bg-[#00992E33]",
+  amber: "bg-[#FFB03133]",
+  rose: "bg-[#FA545433]",
+  purple: "bg-[#7C3AED33]",
+  slate: "bg-[#7D7D7D33]",
+  red: "bg-[#A3000033]",
+};
+
 export function PageHeader({ title, description, action }: PageHeaderProps) {
   return (
-    <div className="flex flex-col gap-3 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-sky-100 lg:flex-row lg:items-center lg:justify-between">
-      <div>
-        <h1 className="text-2xl font-bold text-sky-950">{title}</h1>
+    <div className="flex w-full flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="min-w-0">
+        <div className="flex items-center justify-start gap-1 text-xs">
+          <span className="font-bold text-[#206AB4]">خانه</span>
+          <span className="font-bold text-black">/</span>
+          <span className="text-black">{title}</span>
+        </div>
         {description ? (
-          <p className="mt-2 text-sm leading-7 text-slate-500">{description}</p>
+          <p className="mt-2 max-w-3xl text-xs leading-6 text-[#7D7D7D]">
+            {description}
+          </p>
         ) : null}
       </div>
-      {action ? <div className="flex flex-wrap gap-2">{action}</div> : null}
+      {action ? <div className="flex shrink-0 flex-wrap gap-2">{action}</div> : null}
     </div>
   );
 }
 
-export function SectionCard({ title, subtitle, actions, children, className = "" }: SectionCardProps) {
+export function SectionCard({
+  title,
+  subtitle,
+  actions,
+  children,
+  className = "",
+}: SectionCardProps) {
   return (
-    <section className={`rounded-3xl bg-white p-6 shadow-sm ring-1 ring-sky-100 ${className}`.trim()}>
+    <section
+      className={`w-full rounded-[10px] bg-white p-4 ${className}`.trim()}
+      style={{ boxShadow: panelShadow }}
+    >
       {title || subtitle || actions ? (
-        <div className="mb-5 flex flex-col gap-2 border-b border-sky-100 pb-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            {title ? <h2 className="text-base font-bold text-sky-950">{title}</h2> : null}
-            {subtitle ? <p className="mt-1 text-xs text-slate-500">{subtitle}</p> : null}
+            {title ? (
+              <h2 className="text-base font-bold text-[#222222]">{title}</h2>
+            ) : null}
+            {subtitle ? (
+              <p className="mt-1 text-xs text-[#7D7D7D]">{subtitle}</p>
+            ) : null}
           </div>
-          {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
+          {actions ? (
+            <div className="flex flex-wrap gap-2">{actions}</div>
+          ) : null}
         </div>
       ) : null}
       {children}
@@ -83,65 +150,137 @@ export function StatCard({
   tone?: Tone;
   helper?: ReactNode;
 }) {
-  const toneClass = {
-    blue: "border-sky-100 bg-sky-50",
-    emerald: "border-emerald-100 bg-emerald-50",
-    amber: "border-amber-100 bg-amber-50",
-    rose: "border-rose-100 bg-rose-50",
-    purple: "border-violet-100 bg-violet-50",
-    slate: "border-slate-100 bg-slate-50",
-    red: "border-red-100 bg-red-50",
-  }[tone] || "border-sky-100 bg-sky-50";
-
   return (
-    <div className={`rounded-2xl border p-4 ${toneClass}`}>
-      <p className="text-xs font-medium text-slate-500">{label}</p>
-      <p className="mt-2 text-2xl font-black tracking-tight text-slate-900">{value}</p>
-      {helper ? <p className="mt-1 text-xs text-slate-500">{helper}</p> : null}
+    <div
+      className="relative flex min-h-[100px] w-full items-center justify-between overflow-hidden rounded-[15px] border border-[#D9D9D9] bg-white px-4 py-2"
+      style={{ boxShadow: panelShadow }}
+    >
+      <div
+        className={`absolute -left-3 -top-4 h-[50px] w-[50px] rounded-full blur-[18px] ${metricToneClass[tone] || metricToneClass.blue}`}
+      />
+      <div className="relative flex h-full min-w-0 flex-col justify-between">
+        <p className="text-2xl font-medium text-[#222222]">{label}</p>
+        <p className="text-xs font-medium text-[#7D7D7D]">{helper || "به نسبت گزارش"}</p>
+      </div>
+      <span className="relative text-4xl font-normal text-black">{value}</span>
     </div>
   );
 }
 
-export function Badge({ children, tone = "slate" }: { children?: ReactNode; tone?: Tone }) {
-  const toneClass = {
-    slate: "bg-slate-100 text-slate-700",
-    blue: "bg-sky-100 text-sky-800",
-    emerald: "bg-emerald-100 text-emerald-700",
-    amber: "bg-amber-100 text-amber-800",
-    red: "bg-red-100 text-red-700",
-    rose: "bg-rose-100 text-rose-700",
-    purple: "bg-violet-100 text-violet-700",
-  }[tone] || "bg-slate-100 text-slate-700";
+export function Badge({
+  children,
+  tone = "slate",
+}: {
+  children?: ReactNode;
+  tone?: Tone;
+}) {
+  const toneClass =
+    {
+      slate: "bg-[#EFEFEF] text-[#011627]",
+      blue: "bg-[#EAF3FC] text-[#206AB4]",
+      emerald: "bg-[#E8F7EF] text-[#16803C]",
+      amber: "bg-[#FFF6E6] text-[#FFB031]",
+      red: "bg-[#FFE6E6] text-[#A30000]",
+      rose: "bg-[#FFEAF0] text-[#C0265A]",
+      purple: "bg-[#F2ECFF] text-[#6D3BC4]",
+    }[tone] || "bg-[#EFEFEF] text-[#011627]";
 
   return (
-    <span className={`inline-flex rounded-lg px-2.5 py-1 text-xs font-medium ${toneClass}`}>
+    <span
+      className={`inline-flex rounded-[10px] px-2.5 py-1 text-xs font-medium ${toneClass}`}
+    >
       {children}
     </span>
   );
 }
 
-export function EmptyState({ title, description }: { title: string; description?: string }) {
+export function EmptyState({
+  title,
+  description,
+}: {
+  title: string;
+  description?: string;
+}) {
   return (
-    <div className="rounded-2xl border border-dashed border-sky-200 bg-sky-50/60 px-6 py-10 text-center text-slate-500">
-      <p className="text-sm font-semibold text-sky-950">{title}</p>
+    <div className="rounded-[10px] border border-dashed border-[#D9D9D9] bg-white px-6 py-10 text-center text-[#737373]">
+      <p className="text-sm font-semibold text-[#011627]">{title}</p>
       {description ? <p className="mt-1 text-xs">{description}</p> : null}
     </div>
   );
 }
 
-export function ErrorAlert({ message }: { message?: string }) {
+export function ErrorAlert({
+  message,
+  title = "خطا",
+  onDismiss,
+}: {
+  message?: string;
+  title?: string;
+  onDismiss?: () => void;
+}) {
   if (!message) return null;
   return (
-    <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
-      {message}
+    <div className="relative flex items-start gap-3 rounded-[10px] border border-[#FFE6E6] bg-[#FFF6F6] px-4 py-3 text-sm text-[#A30000]">
+      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-[#FFE6E6] text-[#FA5454]">
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            d="M12 8v5m0 4h.01M10.3 4.4 2.8 17.2A2 2 0 0 0 4.5 20h15a2 2 0 0 0 1.7-2.8L13.7 4.4a2 2 0 0 0-3.4 0Z"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="font-bold text-[#A30000]">{title}</p>
+        <p className="mt-1 leading-6 text-[#A30000]">{message}</p>
+      </div>
+      {onDismiss ? (
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] text-[#A30000] transition hover:bg-[#FFE6E6]"
+          aria-label="بستن پیام خطا"
+        >
+          ×
+        </button>
+      ) : null}
     </div>
   );
 }
 
-export function LoadingState({ message = "در حال بارگذاری..." }: { message?: string }) {
+export function LoadingState({
+  message = "در حال بارگذاری...",
+  className = "",
+}: {
+  message?: string;
+  className?: string;
+}) {
   return (
-    <div className="rounded-3xl bg-white px-6 py-12 text-center text-sm text-slate-500 shadow-sm ring-1 ring-sky-100">
-      {message}
+    <div
+      className={`flex min-h-[calc(100dvh-8rem)] w-full flex-col items-center justify-center gap-2 ${className}`.trim()}
+    >
+      <div className="relative flex h-60 w-60 items-center justify-center rounded-full">
+        <div className="absolute inset-0 rounded-full border-2 border-[#EAF3FC] border-t-[#206AB4] animate-spin" />
+        <div className="flex h-52 w-52 items-center justify-center rounded-full p-2">
+          <img
+            src="/ExirLogo.png"
+            alt="Exir"
+            className="h-full w-full object-contain"
+          />
+        </div>
+      </div>
+      <p className="mt-5 text-xl font-semibold text-[#011627]">{message}</p>
+      {/* <div className="mt-6 h-1 w-28 overflow-hidden rounded-full bg-[#EAF3FC]">
+        <div className="h-full w-1/2 rounded-full bg-[#206AB4] animate-pulse" />
+      </div> */}
     </div>
   );
 }
@@ -150,36 +289,232 @@ export function ToolbarInput(props: InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
-      className={`h-11 w-full rounded-2xl border border-sky-100 bg-sky-50/60 px-4 py-2 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-sky-500 focus:bg-white focus:ring-4 focus:ring-sky-100 ${props.className || ""}`.trim()}
+      className={`h-10 w-full rounded-none border-0 border-b border-[#737373] bg-transparent px-2 py-3 text-sm text-[#222222] outline-none transition placeholder:text-[#737373] focus:border-[#737373] focus:ring-0 ${props.className || ""}`.trim()}
     />
+  );
+}
+
+function getSelectOptions(children: ReactNode): SelectOption[] {
+  return Children.toArray(children).flatMap((child) => {
+    if (!isValidElement(child) || child.type !== "option") return [];
+    const props = child.props as {
+      children?: ReactNode;
+      value?: string | number;
+      disabled?: boolean;
+    };
+
+    return [
+      {
+        label: props.children,
+        value:
+          props.value !== undefined
+            ? String(props.value)
+            : String(props.children ?? ""),
+        disabled: props.disabled,
+      },
+    ];
+  });
+}
+
+function emitSelectChange(
+  onChange: SelectHTMLAttributes<HTMLSelectElement>["onChange"],
+  value: string,
+) {
+  onChange?.({
+    target: { value },
+    currentTarget: { value },
+  } as ChangeEvent<HTMLSelectElement>);
+}
+
+function emitInputChange(
+  onChange: InputHTMLAttributes<HTMLInputElement>["onChange"],
+  value: string,
+) {
+  onChange?.({
+    target: { value },
+    currentTarget: { value },
+  } as ChangeEvent<HTMLInputElement>);
+}
+
+function getPickerValue(value: InputHTMLAttributes<HTMLInputElement>["value"]) {
+  if (!value) return null;
+  const datePart = String(value).slice(0, 10);
+  return new DateObject({
+    date: datePart,
+    format: "YYYY-MM-DD",
+    calendar: gregorian,
+    locale: gregorian_en,
+  }).convert(persian, persian_fa);
+}
+
+function toGregorianDateValue(date: DateObject | DateObject[] | null) {
+  if (!date || Array.isArray(date)) return "";
+  return date.convert(gregorian, gregorian_en).format("YYYY-MM-DD");
+}
+
+function CustomSelect({
+  variant = "field",
+  ...props
+}: SelectHTMLAttributes<HTMLSelectElement> & { variant?: "field" | "toolbar" }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const options = useMemo(() => getSelectOptions(props.children), [props.children]);
+  const selectedValue = String(props.value ?? props.defaultValue ?? "");
+  const selectedOption = options.find((option) => option.value === selectedValue);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [open]);
+
+  if (props.multiple) {
+    return (
+      <select
+        {...props}
+        className={`h-40 w-full rounded-md border border-[#D9D9D9] bg-white px-[13px] py-3 text-right text-sm text-[#222222] outline-none transition focus:border-[#206AB4] ${props.className || ""}`.trim()}
+      />
+    );
+  }
+
+  const triggerClass =
+    variant === "toolbar"
+      ? "h-10 rounded-[10px] px-3 text-sm"
+      : "h-14 rounded-md px-[13px] text-sm";
+
+  return (
+    <div ref={rootRef} className={`relative w-full ${props.className || ""}`.trim()}>
+      <button
+        type="button"
+        disabled={props.disabled}
+        onClick={() => setOpen((current) => !current)}
+        className={`flex w-full items-center justify-between gap-2 border border-[#D9D9D9] bg-white text-right font-normal text-[#222222] outline-none transition focus:border-[#206AB4] disabled:cursor-not-allowed disabled:opacity-60 ${triggerClass}`}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        <span className={selectedValue ? "text-[#222222]" : "text-[#BFC4D5]"}>
+          {selectedOption?.label || options[0]?.label || "انتخاب کنید"}
+        </span>
+        <svg
+          className={`h-5 w-5 shrink-0 text-[#7D7D7D] transition ${open ? "rotate-180" : ""}`}
+          viewBox="0 0 24 24"
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            d="m6 9 6 6 6-6"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
+
+      {open ? (
+        <div
+          className="absolute right-0 top-[calc(100%+4px)] z-30 max-h-56 w-full overflow-y-auto rounded-[10px] border border-[#D9D9D9] bg-white p-1 text-right shadow-lg"
+          role="listbox"
+        >
+          {options.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              disabled={option.disabled}
+              onClick={() => {
+                emitSelectChange(props.onChange, option.value);
+                setOpen(false);
+              }}
+              className={`flex min-h-9 w-full items-center justify-end rounded-[8px] px-3 text-sm transition hover:bg-[#EAF3FC] hover:text-[#206AB4] disabled:cursor-not-allowed disabled:opacity-50 ${
+                selectedValue === option.value
+                  ? "bg-[#EAF3FC] font-bold text-[#206AB4]"
+                  : "text-[#222222]"
+              }`}
+              role="option"
+              aria-selected={selectedValue === option.value}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
 export function ToolbarSelect(props: SelectHTMLAttributes<HTMLSelectElement>) {
-  return (
-    <select
-      {...props}
-      className={`h-11 w-full rounded-2xl border border-sky-100 bg-sky-50/60 px-4 py-2 text-sm text-slate-800 outline-none transition focus:border-sky-500 focus:bg-white focus:ring-4 focus:ring-sky-100 ${props.className || ""}`.trim()}
-    />
-  );
+  return <CustomSelect {...props} variant="toolbar" />;
 }
 
 export function Field({ label, error, children, hint }: FieldProps) {
   return (
-    <label className="block space-y-2 text-right">
-      <span className="text-sm font-medium text-sky-950">{label}</span>
+    <label className="flex min-w-0 flex-col gap-2 text-right">
+      <span className="flex h-6 items-center justify-end text-base font-medium text-[#7D7D7D]">
+        {label}
+      </span>
       {children}
-      {hint ? <span className="block text-xs text-slate-500">{hint}</span> : null}
-      {error ? <span className="block text-xs text-red-600">{error}</span> : null}
+      {hint ? (
+        <span className="block text-xs text-[#737373]">{hint}</span>
+      ) : null}
+      {error ? (
+        <span className="block text-xs text-[#A30000]">{error}</span>
+      ) : null}
     </label>
   );
 }
 
 export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
+  if (props.type === "date" || props.type === "datetime-local") {
+    const currentValue = String(props.value || "");
+    const timePart = props.type === "datetime-local" && currentValue.includes("T")
+      ? currentValue.slice(11, 16)
+      : "00:00";
+
+    return (
+      <div className={`relative w-full ${props.className || ""}`.trim()}>
+        <DatePicker
+          value={getPickerValue(props.value)}
+          onChange={(date) => {
+            const nextDate = toGregorianDateValue(date as DateObject | DateObject[] | null);
+            emitInputChange(
+              props.onChange,
+              props.type === "datetime-local" && nextDate ? `${nextDate}T${timePart}` : nextDate,
+            );
+          }}
+          calendar={persian}
+          locale={persian_fa}
+          calendarPosition="bottom-right"
+          format="YYYY/MM/DD"
+          inputClass="h-14 w-full rounded-md border border-[#D9D9D9] bg-white pr-14 pl-[13px] text-right text-sm font-normal text-[#222222] outline-none transition placeholder:text-[#BFC4D5] focus:border-[#206AB4]"
+          placeholder={props.placeholder || "تاریخ را انتخاب کنید"}
+          disabled={props.disabled}
+        />
+        <span className="pointer-events-none absolute right-px top-px flex h-[54px] w-11 items-center justify-center rounded-r-md bg-[#D9D9D9] text-[#222222]">
+          <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="M7 3v3m10-3v3M4 9h16M6 5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </span>
+      </div>
+    );
+  }
+
   return (
     <input
       {...props}
-      className={`h-11 w-full rounded-2xl border border-sky-100 bg-sky-50/60 px-4 py-2 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-sky-500 focus:bg-white focus:ring-4 focus:ring-sky-100 ${props.className || ""}`.trim()}
+      className={`h-14 w-full rounded-md border border-[#D9D9D9] bg-white px-[13px] text-right text-sm font-normal text-[#222222] outline-none transition placeholder:text-[#BFC4D5] focus:border-[#206AB4] ${props.className || ""}`.trim()}
     />
   );
 }
@@ -188,50 +523,208 @@ export function Textarea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
     <textarea
       {...props}
-      className={`w-full rounded-2xl border border-sky-100 bg-sky-50/60 px-4 py-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-sky-500 focus:bg-white focus:ring-4 focus:ring-sky-100 ${props.className || ""}`.trim()}
+      className={`min-h-[100px] w-full resize-none rounded-md border border-[#D9D9D9] bg-white px-[13px] py-3 text-right text-sm font-normal text-[#222222] outline-none transition placeholder:text-[#7D7D7D] focus:border-[#206AB4] ${props.className || ""}`.trim()}
     />
   );
 }
 
 export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
-  return (
-    <select
-      {...props}
-      className={`h-11 w-full rounded-2xl border border-sky-100 bg-sky-50/60 px-4 py-2 text-sm text-slate-800 outline-none transition focus:border-sky-500 focus:bg-white focus:ring-4 focus:ring-sky-100 ${props.className || ""}`.trim()}
-    />
-  );
+  return <CustomSelect {...props} variant="field" />;
 }
 
-export function PrimaryButton({ children, className = "", ...props }: ButtonProps) {
+export function PrimaryButton({
+  children,
+  className = "",
+  ...props
+}: ButtonProps) {
   return (
     <button
       {...props}
-      className={`h-10 rounded-xl border border-[#206AB4] bg-[#206AB4] px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-60 ${className}`.trim()}
+      className={`inline-flex h-10 items-center justify-center gap-2 rounded-[10px] border border-[#206AB4] bg-[#206AB4] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#15558F] disabled:cursor-not-allowed disabled:opacity-60 ${className}`.trim()}
     >
       {children}
     </button>
   );
 }
 
-export function SecondaryButton({ children, className = "", ...props }: ButtonProps) {
+export function SecondaryButton({
+  children,
+  className = "",
+  ...props
+}: ButtonProps) {
   return (
     <button
       {...props}
-      className={`h-10 rounded-xl border border-sky-100 bg-white px-4 py-2 text-sm font-semibold text-sky-800 transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-60 ${className}`.trim()}
+      className={`inline-flex h-10 items-center justify-center gap-2 rounded-[10px] border border-[#D9D9D9] bg-white px-3 py-2 text-sm font-semibold text-[#222222] transition hover:bg-[#EFEFEF] disabled:cursor-not-allowed disabled:opacity-60 ${className}`.trim()}
     >
       {children}
     </button>
   );
 }
 
-export function DangerButton({ children, className = "", ...props }: ButtonProps) {
+export function DangerButton({
+  children,
+  className = "",
+  ...props
+}: ButtonProps) {
   return (
     <button
       {...props}
-      className={`h-10 rounded-xl border border-red-100 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 ${className}`.trim()}
+      className={`inline-flex h-10 items-center justify-center gap-2 rounded-[10px] border border-[#FFE6E6] bg-[#FFE6E6] px-3 py-2 text-sm font-semibold text-[#FA5454] transition hover:border-[#FA5454] disabled:cursor-not-allowed disabled:opacity-60 ${className}`.trim()}
     >
       {children}
     </button>
+  );
+}
+
+function ActionIcon({ tone }: { tone: RowActionItem["tone"] }) {
+  if (tone === "delete") {
+    return (
+      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path
+          d="M4 7h16m-10 4v6m4-6v6M9 7l1-2h4l1 2m-9 0 1 13h10l1-13"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
+  if (tone === "blue") {
+    return (
+      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path
+          d="M5 12h14m-7-7 7 7-7 7"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
+  return (
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="m14.7 5.3 4 4L9 19H5v-4L14.7 5.3Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function RowActionMenu({
+  items,
+  label = "اقدام",
+}: {
+  items: Array<RowActionItem | null | false | undefined>;
+  label?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const visibleItems = items.filter(Boolean) as RowActionItem[];
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [open]);
+
+  if (!visibleItems.length) return null;
+
+  const toneClass = (tone: RowActionItem["tone"]) =>
+    tone === "delete"
+      ? "bg-[#FFE6E6] text-[#FA5454]"
+      : tone === "blue"
+        ? "bg-[#EAF3FC] text-[#206AB4]"
+        : tone === "neutral"
+          ? "bg-[#EFEFEF] text-[#7D7D7D]"
+          : "bg-[#FFF6E6] text-[#FFB031]";
+
+  return (
+    <div ref={rootRef} className="relative flex justify-center">
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          setOpen((current) => !current);
+        }}
+        className="mx-auto flex h-8 items-center justify-center gap-1 rounded-[10px] border border-[#D9D9D9] bg-white px-2 text-[#222222]"
+        aria-label={label}
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"
+            stroke="currentColor"
+            strokeWidth="1.7"
+          />
+          <path
+            d="M19.4 13.5a7.8 7.8 0 0 0 0-3l2-1.5-2-3.5-2.4 1a8.2 8.2 0 0 0-2.6-1.5L14 2.5h-4l-.4 2.5A8.2 8.2 0 0 0 7 6.5l-2.4-1-2 3.5 2 1.5a7.8 7.8 0 0 0 0 3l-2 1.5 2 3.5 2.4-1a8.2 8.2 0 0 0 2.6 1.5l.4 2.5h4l.4-2.5a8.2 8.2 0 0 0 2.6-1.5l2.4 1 2-3.5-2-1.5Z"
+            stroke="currentColor"
+            strokeWidth="1.4"
+            strokeLinejoin="round"
+          />
+        </svg>
+        <svg
+          className={`h-4 w-4 transition ${open ? "rotate-180" : ""}`}
+          viewBox="0 0 24 24"
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            d="m6 9 6 6 6-6"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
+
+      {open ? (
+        <div
+          className="absolute left-1/2 top-11 z-20 flex w-[120px] -translate-x-1/2 flex-col gap-1 rounded-tl-[10px] rounded-bl-[10px] rounded-br-[10px] border border-[#D9D9D9] bg-white/85 px-2 py-1 text-[#222222] shadow-lg backdrop-blur-sm before:absolute before:-top-[7px] before:left-4 before:h-3 before:w-3 before:rotate-45 before:border-l before:border-t before:border-[#D9D9D9] before:bg-white/85"
+          role="menu"
+          onClick={(event) => event.stopPropagation()}
+        >
+          {visibleItems.map((item) => (
+            <button
+              key={item.label}
+              type="button"
+              disabled={item.disabled}
+              onClick={() => {
+                setOpen(false);
+                item.onClick?.();
+              }}
+              className="flex items-center justify-between rounded-[10px] px-1 py-1 text-xs hover:bg-[#EFEFEF] disabled:cursor-not-allowed disabled:opacity-50"
+              role="menuitem"
+            >
+              <span>{item.label}</span>
+              <span
+                className={`flex h-8 w-8 items-center justify-center rounded-[10px] ${toneClass(item.tone)}`}
+              >
+                <ActionIcon tone={item.tone} />
+              </span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -246,17 +739,38 @@ export function DataTable({
   keyField?: string;
   emptyTitle?: string;
 }) {
-  if (!rows.length) return <EmptyState title={emptyTitle} />;
-
   return (
-    <div className="overflow-x-auto rounded-2xl border border-sky-100">
-      <table className="min-w-full bg-white text-sm text-slate-700">
+    <div className="h-full w-full overflow-x-auto bg-white">
+      <div className="mb-4 flex justify-start">
+        <button
+          type="button"
+          className="flex h-10 items-center justify-center gap-1 rounded-[10px] border border-[#D9D9D9] bg-white px-3 py-2 text-sm font-medium text-[#222222] transition hover:bg-[#EFEFEF]"
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M12 3v11m0 0 4-4m-4 4-4-4M5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          خروجی
+        </button>
+      </div>
+      <table className="min-w-full border border-[#D9D9D9] bg-white text-sm text-[#606060]">
         <thead>
-          <tr className="bg-sky-50 text-sky-950">
+          <tr className="bg-[#EFEFEF] text-[#011627]">
             {columns.map((column) => (
               <th
                 key={column.key}
-                className="whitespace-nowrap border-b border-l border-sky-100 px-4 py-3 text-right font-bold last:border-l-0"
+                className="whitespace-nowrap border-b border-r border-[#D9D9D9] px-4 py-2 text-center font-bold first:border-r-0"
               >
                 {column.title}
               </th>
@@ -264,21 +778,34 @@ export function DataTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, rowIndex) => (
-            <tr
-              key={String(row[keyField] ?? rowIndex)}
-              className={`${rowIndex % 2 === 0 ? "bg-white" : "bg-sky-50/30"} transition hover:bg-sky-50`}
-            >
-              {columns.map((column) => (
-                <td
-                  key={column.key}
-                  className="border-b border-l border-sky-50 px-4 py-3 align-top last:border-l-0"
-                >
-                  {column.render ? column.render(row[column.key], row) : row[column.key] ?? "-"}
-                </td>
-              ))}
+          {rows.length ? (
+            rows.map((row, rowIndex) => (
+              <tr
+                key={String(row[keyField] ?? rowIndex)}
+                className={`${rowIndex % 2 === 0 ? "bg-gray-50" : "bg-white"} cursor-pointer transition hover:bg-[#206AB4] hover:text-white`}
+              >
+                {columns.map((column) => (
+                  <td
+                    key={column.key}
+                    className="border-b border-r border-[#D9D9D9] px-4 py-2 text-center align-middle first:border-r-0"
+                  >
+                    {column.render
+                      ? column.render(row[column.key], row)
+                      : (row[column.key] ?? "-")}
+                  </td>
+                ))}
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td
+                colSpan={Math.max(columns.length, 1)}
+                className="px-4 py-8 text-center text-[#737373]"
+              >
+                {emptyTitle}
+              </td>
             </tr>
-          ))}
+          )}
         </tbody>
       </table>
     </div>
@@ -299,19 +826,116 @@ export function Modal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-950/40 px-4 py-8">
-      <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-3xl bg-white shadow-xl ring-1 ring-sky-100">
-        <div className="sticky top-0 flex items-center justify-between border-b border-sky-100 bg-white/95 px-5 py-4 backdrop-blur">
-          <h3 className="text-base font-bold text-sky-950">{title}</h3>
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 px-4 py-8">
+      <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-[10px] bg-white shadow-xl">
+        <div className="sticky top-0 flex items-center justify-between border-b border-[#D9D9D9] bg-white/95 px-5 py-4 backdrop-blur">
+          <h3 className="text-base font-bold text-[#011627]">{title}</h3>
           <button
             type="button"
             onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition hover:bg-sky-50 hover:text-sky-950"
+            className="flex h-9 w-9 items-center justify-center rounded-[10px] text-[#737373] transition hover:bg-[#EFEFEF] hover:text-[#011627]"
           >
             ×
           </button>
         </div>
         <div className="p-5">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+type ConfirmationMode = "confirm" | "delete" | "warning" | "success" | "info";
+
+type ConfirmationModalProps = {
+  open: boolean;
+  mode?: ConfirmationMode;
+  message?: ReactNode;
+  title?: ReactNode;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  loading?: boolean;
+  onConfirm: () => void | Promise<void>;
+  onCancel: () => void;
+};
+
+export function ConfirmationModal({
+  open,
+  mode = "confirm",
+  message,
+  title,
+  confirmLabel = "تایید",
+  cancelLabel = "انصراف",
+  loading = false,
+  onConfirm,
+  onCancel,
+}: ConfirmationModalProps) {
+  if (!open) return null;
+
+  const defaultMessage =
+    {
+      delete: "آیا از حذف موارد انتخاب شده اطمینان دارید؟",
+      warning: "آیا از انجام این عملیات اطمینان دارید؟",
+      success: "آیا این عملیات تایید شود؟",
+      info: "آیا ادامه می دهید؟",
+      confirm: "آیا از انجام این عملیات اطمینان دارید؟",
+    }[mode] || "آیا از انجام این عملیات اطمینان دارید؟";
+
+  const confirmClass =
+    mode === "delete"
+      ? "border-[#206AB4] bg-[#206AB4] text-white hover:bg-[#15558F]"
+      : mode === "warning"
+        ? "border-[#FFB031] bg-[#FFB031] text-white hover:bg-[#E39A20]"
+        : mode === "success"
+          ? "border-[#00992E] bg-[#00992E] text-white hover:bg-[#087D2B]"
+          : "border-[#206AB4] bg-[#206AB4] text-white hover:bg-[#15558F]";
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4 py-6">
+      <div
+        className="relative w-full max-w-[320px] rounded-[10px] border border-[#D9D9D9] bg-white px-2 pb-4 pt-8"
+        dir="rtl"
+      >
+        <div className="absolute right-2 top-2 flex h-6 w-[304px] justify-end">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={loading}
+            className="flex h-6 w-6 items-center justify-center rounded-[4px] text-[#222222] disabled:cursor-not-allowed disabled:opacity-60"
+            aria-label="بستن"
+          >
+            <span className="flex h-[19px] w-[19px] items-center justify-center rounded-[3px] border border-[#222222] text-base leading-none">
+              ×
+            </span>
+          </button>
+        </div>
+
+        {title ? (
+          <p className="mb-1 text-center text-sm font-medium text-[#7D7D7D]">
+            {title}
+          </p>
+        ) : null}
+        <div className="flex min-h-[60px] items-center justify-center px-1 text-center text-xl font-medium leading-[30px] text-black">
+          {message || defaultMessage}
+        </div>
+
+        <div className="mt-4 flex h-10 items-center justify-center gap-4">
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={loading}
+            className={`flex h-10 w-[140px] items-center justify-center rounded-[10px] border px-3 text-base font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${confirmClass}`}
+          >
+            {loading ? "در حال انجام..." : confirmLabel}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={loading}
+            className="flex h-10 w-[140px] items-center justify-center rounded-[10px] border border-[#A30000] bg-white px-3 text-base font-medium text-[#A30000] transition hover:bg-[#FFF6F6] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {cancelLabel}
+          </button>
+        </div>
       </div>
     </div>
   );

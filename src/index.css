@@ -1,39 +1,16 @@
 @import "tailwindcss";
 
-@font-face {
-  font-family: "Vazir";
-  src:
-    url("/fonts/Vazir.woff2") format("woff2"),
-    url("/fonts/Vazir.woff") format("woff");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
 
 @font-face {
-  font-family: "Vazir";
+  font-family: "iransans";
   src:
-    url("/fonts/Vazir-Medium.woff2") format("woff2"),
-    url("/fonts/Vazir-Medium.woff") format("woff");
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Vazir";
-  src:
-    url("/fonts/Vazir-Bold.woff2") format("woff2"),
-    url("/fonts/Vazir-Bold.woff") format("woff");
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
+    url("/fonts/IRANSansXFaNum-Regular.woff") format("woff"),
 }
 
 :root {
   color: #0f172a;
   background: #f1f5f9;
-  font-family: "Vazir", Tahoma, "Segoe UI", sans-serif;
+  font-family: "iransans", Tahoma, "Segoe UI", sans-serif;
   --fleet-bg: #f1f5f9;
   --fleet-surface: #ffffff;
   --fleet-border: #e2e8f0;
@@ -99,4 +76,124 @@ textarea {
   animation-name: fleet-dashboard-scroll;
   animation-timing-function: linear;
   animation-iteration-count: infinite;
+}
+
+.mission-calendar-board .fc {
+  --fc-border-color: #d9d9d9;
+  --fc-page-bg-color: #ffffff;
+  --fc-neutral-bg-color: #efefef;
+  --fc-today-bg-color: #eaf3fc;
+  color: #222222;
+  direction: rtl;
+}
+
+.mission-calendar-board .fc .fc-toolbar {
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.mission-calendar-board .fc .fc-toolbar-title {
+  color: #222222;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.mission-calendar-board .fc .fc-button {
+  border: 1px solid #d9d9d9;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #222222;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.mission-calendar-board .fc .fc-button-primary:not(:disabled).fc-button-active,
+.mission-calendar-board .fc .fc-button-primary:not(:disabled):active,
+.mission-calendar-board .fc .fc-button-primary:hover {
+  border-color: #206ab4;
+  background: #206ab4;
+  color: #ffffff;
+}
+
+.mission-calendar-board .fc .fc-col-header-cell {
+  background: #efefef;
+  color: #011627;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.mission-calendar-board .fc .fc-daygrid-day-number {
+  color: #222222;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 8px;
+}
+
+.mission-calendar-board .fc .fc-daygrid-day-frame {
+  min-height: 128px;
+  padding: 4px;
+}
+
+.mission-calendar-board .fc .fc-event {
+  overflow: visible;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+}
+
+.mission-calendar-event-content {
+  display: flex;
+  min-height: 58px;
+  flex-direction: column;
+  gap: 4px;
+  border-radius: 10px;
+  padding: 7px 8px;
+  color: #222222;
+  box-shadow: 1px 1px 5px rgba(0, 0, 0, 0.08);
+}
+
+.mission-calendar-event-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.mission-calendar-event-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 10px;
+  color: #7d7d7d;
+}
+
+.mission-calendar-event-vehicle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  color: #222222;
+}
+
+.fc-mission-planned .mission-calendar-event-content {
+  border: 1px solid #ffb031;
+  background: #fff6e6;
+}
+
+.fc-mission-active .mission-calendar-event-content {
+  border: 1px solid #206ab4;
+  background: #eaf3fc;
+}
+
+.fc-mission-done .mission-calendar-event-content {
+  border: 1px solid #00992e;
+  background: #e8f7ef;
+}
+
+.fc-mission-canceled .mission-calendar-event-content {
+  border: 1px solid #fa5454;
+  background: #ffe6e6;
 }

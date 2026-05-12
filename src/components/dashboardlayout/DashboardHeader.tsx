@@ -1,4 +1,5 @@
 import { HiOutlineBell } from "react-icons/hi2";
+import { ErrorAlert } from "../shared/UI";
 import type { AuthUser } from "../../context/AuthContext";
 import { formatDate } from "../../utils/formatters";
 
@@ -17,7 +18,9 @@ type DashboardHeaderProps = {
   unreadCount: number;
   panelOpen: boolean;
   loadingNotifications: boolean;
+  notificationError?: string;
   onToggleNotifications: () => void;
+  onDismissNotificationError?: () => void;
   onMarkRead: (notificationId: number | string) => void;
   onMarkAllRead: () => void;
 };
@@ -28,7 +31,9 @@ export function DashboardHeader({
   unreadCount,
   panelOpen,
   loadingNotifications,
+  notificationError,
   onToggleNotifications,
+  onDismissNotificationError,
   onMarkRead,
   onMarkAllRead,
 }: DashboardHeaderProps) {
@@ -68,6 +73,16 @@ export function DashboardHeader({
             </span>
           ) : null}
         </button>
+
+        {notificationError ? (
+          <div className="absolute right-6 top-full mt-2 w-[min(440px,calc(100vw-2rem))]">
+            <ErrorAlert
+              message={notificationError}
+              title="مشکل در اعلان ها"
+              onDismiss={onDismissNotificationError}
+            />
+          </div>
+        ) : null}
 
         {panelOpen ? (
           <div className="absolute left-6 top-full mt-2 w-[min(440px,calc(100vw-2rem))] rounded-3xl bg-white p-4 shadow-xl ring-1 ring-sky-100">

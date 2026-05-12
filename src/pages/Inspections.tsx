@@ -1,4 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+﻿// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { useEffect, useMemo, useState } from 'react';
 import { vehiclesAPI } from '../api/vehicles';
@@ -8,7 +8,7 @@ import { extractApiError, formatDate, normalizeCollection } from '../utils/forma
 import {
   AccessDenied,
   Badge,
-  DangerButton,
+  ConfirmationModal,
   DataTable,
   ErrorAlert,
   Field,
@@ -16,6 +16,7 @@ import {
   Modal,
   PageHeader,
   PrimaryButton,
+  RowActionMenu,
   SecondaryButton,
   Select,
   SectionCard,
@@ -44,6 +45,8 @@ export default function Inspections() {
   const [formData, setFormData] = useState(emptyForm);
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
   const canView = hasPermission(user, 'inspections.view');
   const canCreate = hasPermission(user, 'inspections.create');
@@ -101,13 +104,21 @@ export default function Inspections() {
     setModalOpen(true);
   };
 
-  const handleDelete = async (row) => {
-    if (!window.confirm(`بازرسی خودرو ${row.vehicleModel} حذف شود؟`)) return;
+  const handleDelete = (row) => {
+    setDeleteTarget(row);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteSubmitting(true);
     try {
-      await vehiclesAPI.deleteInspection(row.id);
+      await vehiclesAPI.deleteInspection(deleteTarget.id);
+      setDeleteTarget(null);
       await loadData();
     } catch (err) {
       setError(extractApiError(err, 'حذف بازرسی انجام نشد.'));
+    } finally {
+      setDeleteSubmitting(false);
     }
   };
 
@@ -162,18 +173,20 @@ export default function Inspections() {
     { key: 'status', title: 'وضعیت', render: (value) => <Badge tone={statusTone[value]}>{statusLabel[value] || value}</Badge> },
     {
       key: 'actions',
-      title: 'عملیات',
+      title: 'اقدام',
       render: (_, row) => (
-        <div className="flex flex-wrap gap-2">
-          {canUpdate ? <SecondaryButton type="button" onClick={() => openEditModal(row)}>ویرایش</SecondaryButton> : null}
-          {canDelete ? <DangerButton type="button" onClick={() => handleDelete(row)}>حذف</DangerButton> : null}
-        </div>
+        <RowActionMenu
+          items={[
+            canUpdate && { label: 'ویرایش', tone: 'edit', onClick: () => openEditModal(row) },
+            canDelete && { label: 'حذف', tone: 'delete', onClick: () => handleDelete(row) },
+          ]}
+        />
       ),
     },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="flex w-full flex-col items-center gap-2">
       <PageHeader title="بازرسی خودروها" description="ثبت نتیجه بازرسی و برنامه ریزی زمان بررسی بعدی" action={canCreate ? <PrimaryButton type="button" onClick={openCreateModal}>بازرسی جدید</PrimaryButton> : null} />
       <ErrorAlert message={error} />
       <SectionCard title="فیلتر وضعیت">
@@ -223,6 +236,15 @@ export default function Inspections() {
           </div>
         </form>
       </Modal>
+
+      <ConfirmationModal
+        open={Boolean(deleteTarget)}
+        mode="delete"
+        message={`آیا از حذف بازرسی خودرو ${deleteTarget?.vehicleModel || ''} اطمینان دارید؟`}
+        loading={deleteSubmitting}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }
