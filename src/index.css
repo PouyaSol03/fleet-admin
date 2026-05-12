@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Vazir";
+  src:
+    url("/fonts/Vazir.woff2") format("woff2"),
+    url("/fonts/Vazir.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Vazir";
+  src:
+    url("/fonts/Vazir-Medium.woff2") format("woff2"),
+    url("/fonts/Vazir-Medium.woff") format("woff");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Vazir";
+  src:
+    url("/fonts/Vazir-Bold.woff2") format("woff2"),
+    url("/fonts/Vazir-Bold.woff") format("woff");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  color: #0f172a;
+  background: #f1f5f9;
+  font-family: "Vazir", Tahoma, "Segoe UI", sans-serif;
+  --fleet-bg: #f1f5f9;
+  --fleet-surface: #ffffff;
+  --fleet-border: #e2e8f0;
+  --fleet-text: #0f172a;
+  --fleet-muted: #64748b;
+  --fleet-primary: #2563eb;
+  --fleet-primary-strong: #1d4ed8;
+  direction: rtl;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: radial-gradient(circle at top, #f8fbff 0%, var(--fleet-bg) 45%);
+  color: var(--fleet-text);
+  line-height: 1.5;
+  direction: rtl;
+}
+
+html {
+  direction: rtl;
+}
+
+a {
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes fleet-dashboard-scroll {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(50%);
+  }
+}
+
+.fleet-dashboard-marquee {
+  animation-name: fleet-dashboard-scroll;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
