@@ -77,7 +77,8 @@ export function LoginPage() {
       }
 
       navigate("/dashboard", { replace: true });
-    } catch (err) {
+    } catch (err:any) {
+      setErrors(err)
       setApiError(
         extractApiError(
           err,
