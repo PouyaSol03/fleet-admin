@@ -6,7 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
-import DatePickerModule from "react-multi-date-picker";
+import DatePickerModule, { type ChangedValue } from "react-multi-date-picker";
 import DateObjectModule from "react-date-object";
 import gregorian from "react-date-object/calendars/gregorian";
 import persian from "react-date-object/calendars/persian";
@@ -339,7 +339,7 @@ function emitInputChange(
 function getPickerValue(value: InputHTMLAttributes<HTMLInputElement>["value"]) {
   if (!value) return null;
   const datePart = String(value).slice(0, 10);
-  return new DateObject({
+  return new DateObjectClass({
     date: datePart,
     format: "YYYY-MM-DD",
     calendar: gregorian,
@@ -347,7 +347,7 @@ function getPickerValue(value: InputHTMLAttributes<HTMLInputElement>["value"]) {
   }).convert(persian, persian_fa);
 }
 
-function toGregorianDateValue(date: DateObject | DateObject[] | null) {
+function toGregorianDateValue(date: ChangedValue) {
   if (!date || Array.isArray(date)) return "";
   return date.convert(gregorian, gregorian_en).format("YYYY-MM-DD");
 }
@@ -479,10 +479,10 @@ export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
 
     return (
       <div className={`relative w-full ${props.className || ""}`.trim()}>
-        <DatePicker
+        <DatePickerComponent
           value={getPickerValue(props.value)}
-          onChange={(date) => {
-            const nextDate = toGregorianDateValue(date as DateObject | DateObject[] | null);
+          onChange={(date: ChangedValue) => {
+            const nextDate = toGregorianDateValue(date);
             emitInputChange(
               props.onChange,
               props.type === "datetime-local" && nextDate ? `${nextDate}T${timePart}` : nextDate,

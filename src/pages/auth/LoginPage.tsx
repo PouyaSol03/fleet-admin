@@ -27,7 +27,7 @@ export function LoginPage() {
     password: "",
   });
 
-  const [errors] = useState<LoginErrors>({});
+  const [errors , setErrors] = useState<LoginErrors>({});
   const [apiError, setApiError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [checkingSetup, setCheckingSetup] = useState(true);
