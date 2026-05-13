@@ -1,11 +1,13 @@
 import {
   Children,
   isValidElement,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import DatePickerModule, { type ChangedValue } from "react-multi-date-picker";
 import DateObjectModule from "react-date-object";
 import gregorian from "react-date-object/calendars/gregorian";
@@ -15,6 +17,7 @@ import persian_fa from "react-date-object/locales/persian_fa";
 import type {
   ButtonHTMLAttributes,
   ChangeEvent,
+  CSSProperties,
   InputHTMLAttributes,
   ReactNode,
   SelectHTMLAttributes,
@@ -70,13 +73,6 @@ type RowActionItem = {
 };
 
 const panelShadow = "2px 2px 7px 0px rgba(0, 0, 0, 0.08)";
-const DatePickerComponent =
-  (DatePickerModule as any).render || (DatePickerModule as any).$$typeof
-    ? DatePickerModule
-    : (DatePickerModule as any).default?.render || (DatePickerModule as any).default?.$$typeof
-      ? (DatePickerModule as any).default
-      : (DatePickerModule as any).default?.default || DatePickerModule;
-const DateObjectClass = (DateObjectModule as any).default || DateObjectModule;
 const metricToneClass: Record<Tone, string> = {
   blue: "bg-[#206AB433]",
   emerald: "bg-[#00992E33]",
@@ -116,7 +112,7 @@ export function SectionCard({
 }: SectionCardProps) {
   return (
     <section
-      className={`w-full rounded-[10px] bg-white p-4 ${className}`.trim()}
+      className={`min-w-0 w-full rounded-[10px] bg-white p-4 ${className}`.trim()}
       style={{ boxShadow: panelShadow }}
     >
       {title || subtitle || actions ? (
@@ -124,9 +120,6 @@ export function SectionCard({
           <div>
             {title ? (
               <h2 className="text-base font-bold text-[#222222]">{title}</h2>
-            ) : null}
-            {subtitle ? (
-              <p className="mt-1 text-xs text-[#7D7D7D]">{subtitle}</p>
             ) : null}
           </div>
           {actions ? (
@@ -339,7 +332,7 @@ function emitInputChange(
 function getPickerValue(value: InputHTMLAttributes<HTMLInputElement>["value"]) {
   if (!value) return null;
   const datePart = String(value).slice(0, 10);
-  return new DateObjectClass({
+  return new DateObjectModule({
     date: datePart,
     format: "YYYY-MM-DD",
     calendar: gregorian,
@@ -357,23 +350,67 @@ function CustomSelect({
   ...props
 }: SelectHTMLAttributes<HTMLSelectElement> & { variant?: "field" | "toolbar" }) {
   const [open, setOpen] = useState(false);
+  const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
   const rootRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const options = useMemo(() => getSelectOptions(props.children), [props.children]);
   const selectedValue = String(props.value ?? props.defaultValue ?? "");
   const selectedOption = options.find((option) => option.value === selectedValue);
+
+  const updateMenuPosition = useCallback(() => {
+    if (typeof window === "undefined") return;
+
+    const rect = rootRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const gap = 4;
+    const viewportPadding = 8;
+    const preferredMaxHeight = 224;
+    const spaceBelow = window.innerHeight - rect.bottom - viewportPadding;
+    const spaceAbove = rect.top - viewportPadding;
+    const placeAbove = spaceBelow < 144 && spaceAbove > spaceBelow;
+    const availableHeight = Math.max(
+      96,
+      Math.min(preferredMaxHeight, placeAbove ? spaceAbove - gap : spaceBelow - gap),
+    );
+
+    setMenuStyle({
+      position: "fixed",
+      top: placeAbove ? Math.max(viewportPadding, rect.top - availableHeight - gap) : rect.bottom + gap,
+      left: rect.left,
+      width: rect.width,
+      maxHeight: availableHeight,
+      zIndex: 9999,
+    });
+  }, []);
 
   useEffect(() => {
     if (!open) return;
 
     const handlePointerDown = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (!rootRef.current?.contains(target) && !menuRef.current?.contains(target)) {
         setOpen(false);
       }
     };
 
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+
+    updateMenuPosition();
     document.addEventListener("mousedown", handlePointerDown);
-    return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [open]);
+    document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("resize", updateMenuPosition);
+    window.addEventListener("scroll", updateMenuPosition, true);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("resize", updateMenuPosition);
+      window.removeEventListener("scroll", updateMenuPosition, true);
+    };
+  }, [open, updateMenuPosition]);
 
   if (props.multiple) {
     return (
@@ -394,7 +431,10 @@ function CustomSelect({
       <button
         type="button"
         disabled={props.disabled}
-        onClick={() => setOpen((current) => !current)}
+        onClick={() => {
+          if (!open) updateMenuPosition();
+          setOpen((current) => !current);
+        }}
         className={`flex w-full items-center justify-between gap-2 border border-[#D9D9D9] bg-white text-right font-normal text-[#222222] outline-none transition focus:border-[#206AB4] disabled:cursor-not-allowed disabled:opacity-60 ${triggerClass}`}
         aria-haspopup="listbox"
         aria-expanded={open}
@@ -418,10 +458,12 @@ function CustomSelect({
         </svg>
       </button>
 
-      {open ? (
+      {open && typeof document !== "undefined" ? createPortal(
         <div
-          className="absolute right-0 top-[calc(100%+4px)] z-30 max-h-56 w-full overflow-y-auto rounded-[10px] border border-[#D9D9D9] bg-white p-1 text-right shadow-lg"
+          ref={menuRef}
+          className="overflow-y-auto rounded-[10px] border border-[#D9D9D9] bg-white p-1 text-right shadow-lg"
           role="listbox"
+          style={menuStyle}
         >
           {options.map((option) => (
             <button
@@ -443,7 +485,8 @@ function CustomSelect({
               {option.label}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body,
       ) : null}
     </div>
   );
@@ -479,7 +522,7 @@ export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
 
     return (
       <div className={`relative w-full ${props.className || ""}`.trim()}>
-        <DatePickerComponent
+        <DatePickerModule
           value={getPickerValue(props.value)}
           onChange={(date: ChangedValue) => {
             const nextDate = toGregorianDateValue(date);
@@ -740,30 +783,7 @@ export function DataTable({
   emptyTitle?: string;
 }) {
   return (
-    <div className="h-full w-full overflow-x-auto bg-white">
-      <div className="mb-4 flex justify-start">
-        <button
-          type="button"
-          className="flex h-10 items-center justify-center gap-1 rounded-[10px] border border-[#D9D9D9] bg-white px-3 py-2 text-sm font-medium text-[#222222] transition hover:bg-[#EFEFEF]"
-        >
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            aria-hidden="true"
-          >
-            <path
-              d="M12 3v11m0 0 4-4m-4 4-4-4M5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          خروجی
-        </button>
-      </div>
+    <div className="w-full min-w-0 max-w-full overflow-x-auto bg-transparent">
       <table className="min-w-full border border-[#D9D9D9] bg-white text-sm text-[#606060]">
         <thead>
           <tr className="bg-[#EFEFEF] text-[#011627]">
@@ -809,6 +829,32 @@ export function DataTable({
         </tbody>
       </table>
     </div>
+  );
+}
+
+export function DataTableExportButton() {
+  return (
+    <button
+      type="button"
+      className="flex h-10 items-center justify-center gap-1 rounded-[10px] border border-[#D9D9D9] bg-white px-3 py-2 text-sm font-medium text-[#222222] transition hover:bg-[#EFEFEF]"
+    >
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        aria-hidden="true"
+      >
+        <path
+          d="M12 3v11m0 0 4-4m-4 4-4-4M5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+      خروجی
+    </button>
   );
 }
 

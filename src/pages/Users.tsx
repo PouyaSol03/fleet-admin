@@ -10,6 +10,7 @@ import {
   Badge,
   ConfirmationModal,
   DataTable,
+  DataTableExportButton,
   ErrorAlert,
   Field,
   Input,
@@ -277,7 +278,7 @@ export default function Users() {
         </div>
       </SectionCard>
 
-      <SectionCard title="کاربران" subtitle={`${filteredRows.length} کاربر`}>
+      <SectionCard title="کاربران" subtitle={`${filteredRows.length} کاربر`} actions={<DataTableExportButton />}>
         {loading ? (
           <p className="text-sm text-slate-500">در حال بارگذاری...</p>
         ) : (

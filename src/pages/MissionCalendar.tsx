@@ -1,6 +1,7 @@
-﻿// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+﻿
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -18,12 +19,9 @@ import {
   Field,
   LoadingState,
   Modal,
-  PageHeader,
   PrimaryButton,
-  SectionCard,
   Select,
   SecondaryButton,
-  StatCard,
 } from '../components/shared/UI';
 
 const statusLabel = {
@@ -68,6 +66,7 @@ function missionDurationDays(startDate, endDate) {
 
 export default function MissionCalendar() {
   const { user } = useAuth();
+  const calendarRef = useRef(null);
   const canView = hasPermission(user, 'missions.view');
   const canCreate = hasPermission(user, 'missions.create');
   const canUpdate = hasPermission(user, 'missions.update');
@@ -83,6 +82,8 @@ export default function MissionCalendar() {
   const [statusDraft, setStatusDraft] = useState('');
   const [statusLoading, setStatusLoading] = useState(false);
   const [statusError, setStatusError] = useState('');
+  const [calendarTitle, setCalendarTitle] = useState('');
+  const [calendarView, setCalendarView] = useState('dayGridMonth');
 
   const missionMap = useMemo(() => {
     const map = new Map();
@@ -158,7 +159,27 @@ export default function MissionCalendar() {
   const handleDatesSet = (arg) => {
     const start = formatDateOnly(arg.startStr);
     const end = formatDateOnly(arg.endStr);
+    setCalendarTitle(arg.view?.title || '');
+    setCalendarView(arg.view?.type || 'dayGridMonth');
     setRange((prev) => (prev.start === start && prev.end === end ? prev : { start, end }));
+  };
+
+  const calendarApi = () => calendarRef.current?.getApi();
+
+  const navigateCalendar = (action) => {
+    const api = calendarApi();
+    if (!api) return;
+    api[action]();
+    setCalendarTitle(api.view.title);
+    setCalendarView(api.view.type);
+  };
+
+  const changeCalendarView = (viewName) => {
+    const api = calendarApi();
+    if (!api) return;
+    api.changeView(viewName);
+    setCalendarTitle(api.view.title);
+    setCalendarView(api.view.type);
   };
 
   const handleEventClick = (clickInfo) => {
@@ -299,32 +320,22 @@ export default function MissionCalendar() {
   if (!canView) return <AccessDenied />;
 
   return (
-    <div className="flex w-full flex-col items-center gap-2">
-      <PageHeader
-        title="تقویم ماموریت"
-        description="ماموریت را بکشید و روی روز جدید رها کنید. برای کپی از Ctrl/Cmd + Drag استفاده کنید."
-      />
-
-      <ErrorAlert message={error} />
-
-      <div className="grid w-full gap-4 md:grid-cols-4">
-        <StatCard label="ماموریت ها" value={events.length} tone="blue" helper="در بازه نمایش" />
-        <StatCard label="برنامه ریزی" value={missions.filter((item) => item.status === 'planned').length} tone="amber" helper="آینده" />
-        <StatCard label="فعال" value={missions.filter((item) => item.status === 'active').length} tone="emerald" helper="در جریان" />
-        <StatCard label="لغو شده" value={missions.filter((item) => item.status === 'canceled').length} tone="rose" helper="نیازمند بررسی" />
+    <div className="relative flex h-full min-h-0 w-full flex-col bg-white">
+      <div className="absolute right-4 top-4 z-20 min-w-[220px] max-w-[min(520px,calc(100vw-2rem))]">
+        <ErrorAlert message={error} />
       </div>
-
-      <SectionCard subtitle={`${events.length} ماموریت در بازه نمایش`}>
+      <div className="relative h-full min-h-0 w-full">
         {loading && !events.length ? <LoadingState message="در حال بارگذاری تقویم ماموریت..." /> : null}
         {actionLoading ? <LoadingState message="در حال اعمال تغییرات ماموریت..." /> : null}
-        <div className="mission-calendar-board" dir="rtl">
+        <div className="mission-calendar-board h-full w-full" dir="rtl">
           <FullCalendar
+            ref={calendarRef}
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
             initialView="dayGridMonth"
             locale={faLocale}
             direction="rtl"
             firstDay={6}
-            height="78vh"
+            height="100%"
             dayMaxEvents={4}
             fixedWeekCount
             editable={canUpdate || canCreate}
@@ -340,16 +351,50 @@ export default function MissionCalendar() {
               timeGridWeek: { dayMaxEvents: 8 },
               timeGridDay: { dayMaxEvents: 12 },
             }}
-            headerToolbar={{
-              right: 'prev,next today',
-              center: 'title',
-              left: 'dayGridMonth,timeGridWeek,timeGridDay',
-            }}
-            buttonText={{ today: 'امروز', month: 'ماه', week: 'هفته', day: 'روز' }}
+            headerToolbar={false}
             nowIndicator
           />
         </div>
-      </SectionCard>
+      </div>
+
+      <div className="pointer-events-none absolute inset-x-0 bottom-5 z-30 flex justify-center px-4">
+        <div className="pointer-events-auto flex w-full max-w-[820px] flex-col gap-3 rounded-[18px] border border-[#D9D9D9] bg-white/90 p-3 shadow-xl backdrop-blur-md md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center justify-center gap-2">
+            <button type="button" onClick={() => navigateCalendar('prev')} className="h-10 rounded-[10px] border border-[#D9D9D9] bg-white px-3 text-sm font-semibold text-[#222222] transition hover:bg-[#EFEFEF]">
+              قبلی
+            </button>
+            <button type="button" onClick={() => navigateCalendar('today')} className="h-10 rounded-[10px] border border-[#206AB4] bg-[#206AB4] px-4 text-sm font-semibold text-white transition hover:bg-[#15558F]">
+              امروز
+            </button>
+            <button type="button" onClick={() => navigateCalendar('next')} className="h-10 rounded-[10px] border border-[#D9D9D9] bg-white px-3 text-sm font-semibold text-[#222222] transition hover:bg-[#EFEFEF]">
+              بعدی
+            </button>
+          </div>
+          <div className="min-w-0 text-center text-base font-bold text-[#222222] md:text-lg">
+            {calendarTitle}
+          </div>
+          <div className="grid grid-cols-3 overflow-hidden rounded-[10px] border border-[#D9D9D9] bg-white">
+            {[
+              ['dayGridMonth', 'ماه'],
+              ['timeGridWeek', 'هفته'],
+              ['timeGridDay', 'روز'],
+            ].map(([viewName, label]) => (
+              <button
+                key={viewName}
+                type="button"
+                onClick={() => changeCalendarView(viewName)}
+                className={`h-10 px-4 text-sm font-semibold transition ${
+                  calendarView === viewName
+                    ? 'bg-[#206AB4] text-white'
+                    : 'text-[#222222] hover:bg-[#EFEFEF]'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
 
       <Modal open={Boolean(selectedMission)} title="جزئیات ماموریت" onClose={() => setSelectedMission(null)}>
         {selectedMission ? (

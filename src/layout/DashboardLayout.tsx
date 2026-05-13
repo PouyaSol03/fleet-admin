@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Navigate, Outlet, useNavigate } from "react-router";
+import { Navigate, Outlet, useLocation, useNavigate } from "react-router";
 import { authAPI } from "../api/auth";
 import { API_BASE_URL, clearAuthTokens, getAccessToken } from "../api/client";
 import { notificationsAPI } from "../api/notifications";
@@ -37,6 +37,7 @@ export function DashboardLayout() {
   const [notificationError, setNotificationError] = useState("");
   const socketRef = useRef<WebSocket | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     let mounted = true;
@@ -165,6 +166,7 @@ export function DashboardLayout() {
   const contextValue = useMemo(() => ({ user, setUser }), [user]);
   const visiblePermissions = user?.isSuperuser ? [] : user?.permissions || [];
   const unreadCount = notifications.filter((item) => !item.isRead).length;
+  const fullBleedMain = location.pathname === "/vehicle-map" || location.pathname === "/missions-calendar";
 
   if (!loading && !user) {
     return <Navigate to="/login" replace />;
@@ -172,10 +174,10 @@ export function DashboardLayout() {
 
   return (
     <AuthContext.Provider value={contextValue}>
-      <div className="min-h-screen" dir="rtl">
+      <div className="min-h-screen bg-[#FAFBFC]" dir="rtl">
         <DashboardAside permissions={visiblePermissions} />
 
-        <div className="min-h-screen lg:mr-72">
+        <div className="flex min-h-screen flex-col bg-[#FAFBFC] lg:mr-72">
           <DashboardHeader
             user={user}
             notifications={notifications}
@@ -190,9 +192,9 @@ export function DashboardLayout() {
             onMarkRead={handleMarkRead}
             onMarkAllRead={handleMarkAllRead}
           />
-          <main className="p-6">
+          <main className={`flex h-[calc(100vh-5rem)] min-h-0 bg-[#FAFBFC] ${fullBleedMain ? "p-0" : "p-6"}`}>
             {loading ? (
-              <div className="w-full min-h-full">
+              <div className="flex min-h-0 w-full">
                 <LoadingState message="در حال آماده سازی داشبورد..." />
               </div>
             ) : (

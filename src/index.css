@@ -83,8 +83,15 @@ textarea {
   --fc-page-bg-color: #ffffff;
   --fc-neutral-bg-color: #efefef;
   --fc-today-bg-color: #eaf3fc;
+  height: 100%;
   color: #222222;
   direction: rtl;
+}
+
+.mission-calendar-board .fc-view-harness,
+.mission-calendar-board .fc-view,
+.mission-calendar-board .fc-scrollgrid {
+  height: 100% !important;
 }
 
 .mission-calendar-board .fc .fc-toolbar {

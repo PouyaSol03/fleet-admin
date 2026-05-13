@@ -10,9 +10,7 @@ import {
   Badge,
   ErrorAlert,
   LoadingState,
-  PageHeader,
   SecondaryButton,
-  SectionCard,
 } from '../components/shared/UI';
 
 const TILE_URL = 'https://map.exirfirm.com/tile/{z}/{x}/{y}.png';
@@ -180,76 +178,65 @@ export default function VehicleMap() {
   };
 
   return (
-    <div className="flex w-full flex-col items-center gap-2">
-      <PageHeader
-        title="نقشه خودروها"
-        description="نمای موقعیت لحظه‌ای خودروها با داده‌های Traccar و سرویس نقشه داخلی"
-        action={(
-          <div className="flex flex-wrap gap-2">
-            <SecondaryButton type="button" onClick={() => setZoom((current) => Math.max(current - 1, 3))}>-</SecondaryButton>
-            <Badge tone="blue">زوم {zoom}</Badge>
-            <SecondaryButton type="button" onClick={() => setZoom((current) => Math.min(current + 1, 19))}>+</SecondaryButton>
-          </div>
-        )}
-      />
-
-      <ErrorAlert message={error} />
-
-      <SectionCard
-        title="نقشه زنده"
-        subtitle={`تعداد خودروهای قابل نمایش: ${formatNumber(markerRows.length)}`}
+    <div className="relative h-full min-h-0 w-full overflow-hidden bg-linear-to-b from-blue-50 to-slate-100">
+      <div
+        ref={mapRef}
+        className="relative h-full w-full cursor-grab touch-none overflow-hidden active:cursor-grabbing"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerUp}
       >
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-linear-to-b from-blue-50 to-slate-100">
-          <div
-            ref={mapRef}
-            className="relative h-[640px] w-full overflow-hidden touch-none cursor-grab active:cursor-grabbing"
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerLeave={handlePointerUp}
-          >
-            {mapTiles.map((tile) => (
-              <img
-                key={tile.key}
-                src={tile.src}
-                alt=""
-                draggable="false"
-                className="absolute h-64 w-64 max-w-none select-none"
-                style={{ left: tile.left, top: tile.top }}
-              />
-            ))}
+        {mapTiles.map((tile) => (
+          <img
+            key={tile.key}
+            src={tile.src}
+            alt=""
+            draggable="false"
+            className="absolute h-64 w-64 max-w-none select-none"
+            style={{ left: tile.left, top: tile.top }}
+          />
+        ))}
 
-            {markerRows.map((row) => {
-              const pointPixelX = lonToTileX(Number(row.location.lng), zoom) * TILE_SIZE;
-              const pointPixelY = latToTileY(Number(row.location.lat), zoom) * TILE_SIZE;
-              const left = pointPixelX - centerPixelX + halfWidth;
-              const top = pointPixelY - centerPixelY + halfHeight;
+        {markerRows.map((row) => {
+          const pointPixelX = lonToTileX(Number(row.location.lng), zoom) * TILE_SIZE;
+          const pointPixelY = latToTileY(Number(row.location.lat), zoom) * TILE_SIZE;
+          const left = pointPixelX - centerPixelX + halfWidth;
+          const top = pointPixelY - centerPixelY + halfHeight;
 
-              return (
-                <div
-                  key={row.id}
-                  className="absolute -translate-x-1/2 -translate-y-full"
-                  style={{ left, top }}
-                >
-                  <div className="min-w-[190px] rounded-xl border border-white/80 bg-white/95 px-3 py-2 text-xs text-slate-900" style={{ boxShadow: '0 10px 26px -16px rgba(15,23,42,0.5)' }}>
-                    <div className="flex items-center justify-between gap-3">
-                      <strong className="text-sm">{row.model}</strong>
-                      {trackingBadge(row)}
-                    </div>
-                    <div className="mt-1 space-y-1 text-slate-600">
-                      <div>پلاک: {row.plateNumber || '-'}</div>
-                      <div>راننده: {row.driverName || '-'}</div>
-                      <div>سرعت: {formatNumber(row.traccarSpeedKmh)} km/h</div>
-                      <div>آخرین گزارش: {formatDate(row.lastReportedAt, true)}</div>
-                    </div>
-                  </div>
-                  <div className="mx-auto h-4 w-4 rotate-45 rounded-[2px] border border-white bg-rose-600" />
+          return (
+            <div
+              key={row.id}
+              className="absolute -translate-x-1/2 -translate-y-full"
+              style={{ left, top }}
+            >
+              <div className="min-w-[190px] rounded-xl border border-white/80 bg-white/95 px-3 py-2 text-xs text-slate-900" style={{ boxShadow: '0 10px 26px -16px rgba(15,23,42,0.5)' }}>
+                <div className="flex items-center justify-between gap-3">
+                  <strong className="text-sm">{row.model}</strong>
+                  {trackingBadge(row)}
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      </SectionCard>
+                <div className="mt-1 space-y-1 text-slate-600">
+                  <div>پلاک: {row.plateNumber || '-'}</div>
+                  <div>راننده: {row.driverName || '-'}</div>
+                  <div>سرعت: {formatNumber(row.traccarSpeedKmh)} km/h</div>
+                  <div>آخرین گزارش: {formatDate(row.lastReportedAt, true)}</div>
+                </div>
+              </div>
+              <div className="mx-auto h-4 w-4 rotate-45 rounded-[2px] border border-white bg-rose-600" />
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="absolute left-4 top-4 z-20 flex flex-wrap items-center gap-2">
+        <SecondaryButton type="button" onClick={() => setZoom((current) => Math.max(current - 1, 3))}>-</SecondaryButton>
+        <Badge tone="blue">زوم {zoom}</Badge>
+        <SecondaryButton type="button" onClick={() => setZoom((current) => Math.min(current + 1, 19))}>+</SecondaryButton>
+      </div>
+
+      <div className="absolute right-4 top-4 z-20 min-w-[220px] max-w-[min(520px,calc(100vw-2rem))]">
+        <ErrorAlert message={error} />
+      </div>
     </div>
   );
 }
