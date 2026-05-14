@@ -50,12 +50,143 @@ function computeMapCenter(rows) {
   return { lat, lng };
 }
 
-function trackingBadge(row) {
-  if (!row.imei) return <Badge tone="slate">بدون IMEI</Badge>;
-  if (row.traccarOnline && row.traccarMotion) return <Badge tone="emerald">در حرکت</Badge>;
-  if (row.traccarOnline) return <Badge tone="blue">آنلاین</Badge>;
-  if (row.trackingStatus === 'not_available') return <Badge tone="amber">بدون داده</Badge>;
-  return <Badge tone="red">آفلاین</Badge>;
+function vehicleStatus(row) {
+  if (!row.imei) {
+    return {
+      label: 'بدون IMEI',
+      dot: 'bg-[#7D7D7D]',
+      pin: 'bg-[#7D7D7D]',
+      glow: 'shadow-[0_0_0_6px_rgba(125,125,125,0.18)]',
+      badge: 'bg-[#EFEFEF] text-[#606060]',
+      border: 'border-[#D9D9D9]',
+    };
+  }
+
+  if (row.traccarOnline && row.traccarMotion) {
+    return {
+      label: 'در حرکت',
+      dot: 'bg-[#00992E]',
+      pin: 'bg-[#00992E]',
+      glow: 'shadow-[0_0_0_6px_rgba(0,153,46,0.18)]',
+      badge: 'bg-[#E8F7EF] text-[#16803C]',
+      border: 'border-[#BFEBD0]',
+    };
+  }
+
+  if (row.traccarOnline) {
+    return {
+      label: 'آنلاین',
+      dot: 'bg-[#206AB4]',
+      pin: 'bg-[#206AB4]',
+      glow: 'shadow-[0_0_0_6px_rgba(32,106,180,0.18)]',
+      badge: 'bg-[#EAF3FC] text-[#206AB4]',
+      border: 'border-[#BBD8F3]',
+    };
+  }
+
+  if (row.trackingStatus === 'not_available') {
+    return {
+      label: 'بدون داده',
+      dot: 'bg-[#FFB031]',
+      pin: 'bg-[#FFB031]',
+      glow: 'shadow-[0_0_0_6px_rgba(255,176,49,0.20)]',
+      badge: 'bg-[#FFF6E6] text-[#9D6100]',
+      border: 'border-[#FFE2AE]',
+    };
+  }
+
+  return {
+    label: 'آفلاین',
+    dot: 'bg-[#FA5454]',
+    pin: 'bg-[#FA5454]',
+    glow: 'shadow-[0_0_0_6px_rgba(250,84,84,0.18)]',
+    badge: 'bg-[#FFE6E6] text-[#A30000]',
+    border: 'border-[#FFD0D0]',
+  };
+}
+
+function VehicleIcon() {
+  return (
+    <img
+      src="/Car.png"
+      alt=""
+      draggable="false"
+      className="h-12 w-auto select-none object-contain"
+      aria-hidden="true"
+    />
+  );
+}
+
+function VehicleMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-[10px] bg-[#F7F9FB] px-3 py-2">
+      <div className="text-[11px] font-medium text-[#7D7D7D]">{label}</div>
+      <div className="mt-1 truncate text-xs font-bold text-[#222222]">{value || '-'}</div>
+    </div>
+  );
+}
+
+function VehicleMarker({ row, left, top }) {
+  const status = vehicleStatus(row);
+  const speed = Number(row.traccarSpeedKmh || 0);
+
+  return (
+    <div
+      className="group absolute z-10 -translate-x-1/2 -translate-y-full outline-none"
+      style={{ left, top }}
+      tabIndex={0}
+      onPointerDown={(event) => event.stopPropagation()}
+    >
+      <div className="flex flex-col items-center">
+        <div className="relative transition duration-200 drop-shadow-[0_6px_8px_rgba(15,23,42,0.28)] group-hover:scale-110 group-focus:scale-110">
+          <VehicleIcon />
+          {/* <span className={`absolute left-1/2 top-1.5 h-2.5 w-2.5 -translate-x-1/2 rounded-full ring-2 ring-white ${status.dot}`} /> */}
+        </div>
+      </div>
+
+      <div className="pointer-events-none absolute bottom-[66px] left-1/2 w-[300px] -translate-x-1/2 translate-y-2 opacity-0 transition duration-200 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100">
+        <div className="overflow-hidden rounded-[18px] border border-white/80 bg-white/95 text-right shadow-[0_18px_45px_rgba(15,23,42,0.18)] backdrop-blur-md">
+          <div className="flex items-start justify-between gap-3 border-b border-[#EFEFEF] px-4 py-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className={`h-2.5 w-2.5 rounded-full ${status.dot}`} />
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${status.badge}`}>
+                  {status.label}
+                </span>
+              </div>
+              <h3 className="mt-2 truncate text-base font-bold text-[#222222]">{row.model || 'خودرو'}</h3>
+              <p className="mt-0.5 truncate text-xs text-[#7D7D7D]">{row.driverName || 'راننده تعیین نشده'}</p>
+            </div>
+            <div className="flex h-14 w-12 shrink-0 items-center justify-center rounded-[14px] bg-[#EAF3FC]">
+              <VehicleIcon />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 px-4 py-3">
+            <VehicleMetric label="پلاک" value={row.plateNumber || '-'} />
+            <VehicleMetric label="سرعت" value={`${formatNumber(speed)} km/h`} />
+            <VehicleMetric label="IMEI" value={row.imei || '-'} />
+            <VehicleMetric label="آخرین گزارش" value={formatDate(row.lastReportedAt, true)} />
+          </div>
+
+          <div className="flex items-center justify-between gap-2 bg-[#FAFBFC] px-4 py-3 text-xs text-[#606060]">
+            <span className="truncate">
+              {Number(row.location.lat).toFixed(5)}, {Number(row.location.lng).toFixed(5)}
+            </span>
+            <a
+              href={`https://www.google.com/maps?q=${row.location.lat},${row.location.lng}`}
+              target="_blank"
+              rel="noreferrer"
+              className="shrink-0 rounded-[10px] bg-[#206AB4] px-3 py-1.5 font-bold text-white transition hover:bg-[#15558F]"
+              onPointerDown={(event) => event.stopPropagation()}
+            >
+              مسیر
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function VehicleMap() {
@@ -205,25 +336,7 @@ export default function VehicleMap() {
           const top = pointPixelY - centerPixelY + halfHeight;
 
           return (
-            <div
-              key={row.id}
-              className="absolute -translate-x-1/2 -translate-y-full"
-              style={{ left, top }}
-            >
-              <div className="min-w-[190px] rounded-xl border border-white/80 bg-white/95 px-3 py-2 text-xs text-slate-900" style={{ boxShadow: '0 10px 26px -16px rgba(15,23,42,0.5)' }}>
-                <div className="flex items-center justify-between gap-3">
-                  <strong className="text-sm">{row.model}</strong>
-                  {trackingBadge(row)}
-                </div>
-                <div className="mt-1 space-y-1 text-slate-600">
-                  <div>پلاک: {row.plateNumber || '-'}</div>
-                  <div>راننده: {row.driverName || '-'}</div>
-                  <div>سرعت: {formatNumber(row.traccarSpeedKmh)} km/h</div>
-                  <div>آخرین گزارش: {formatDate(row.lastReportedAt, true)}</div>
-                </div>
-              </div>
-              <div className="mx-auto h-4 w-4 rotate-45 rounded-[2px] border border-white bg-rose-600" />
-            </div>
+            <VehicleMarker key={row.id} row={row} left={left} top={top} />
           );
         })}
       </div>

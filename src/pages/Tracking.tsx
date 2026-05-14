@@ -1,6 +1,6 @@
 ﻿// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { vehiclesAPI } from '../api/vehicles';
 import { useAuth } from '../context/AuthContext';
 import { hasPermission } from '../utils/permissions';
@@ -19,6 +19,7 @@ import {
   SecondaryButton,
   SectionCard,
   StatCard,
+  SuccessAlert,
 } from '../components/shared/UI';
 
 const emptyConfig = {
@@ -55,12 +56,12 @@ export default function Tracking() {
   const canSync = hasPermission(user, 'vehicles.update');
   const canConfigure = hasPermission(user, 'system.configure');
 
-  const loadLive = async () => {
+  const loadLive = useCallback(async () => {
     const response = await vehiclesAPI.listLive();
     setRows(normalizeCollection(response.data));
-  };
+  }, []);
 
-  const loadConfig = async () => {
+  const loadConfig = useCallback(async () => {
     if (!canConfigure) return;
     const response = await vehiclesAPI.getTraccarConfig();
     setConfig({
@@ -69,7 +70,7 @@ export default function Tracking() {
       password: response.data.password || '',
       is_active: Boolean(response.data.is_active),
     });
-  };
+  }, [canConfigure]);
 
   useEffect(() => {
     if (!canView) return;
@@ -91,7 +92,7 @@ export default function Tracking() {
     return () => {
       mounted = false;
     };
-  }, [canView, canConfigure]);
+  }, [canView, loadConfig, loadLive]);
 
   const handleSync = async () => {
     try {
@@ -173,7 +174,7 @@ export default function Tracking() {
       />
 
       <ErrorAlert message={error} />
-      {success ? <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-700">{success}</div> : null}
+      <SuccessAlert message={success} onDismiss={() => setSuccess('')} />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard label="خودروهای لینک‌شده" value={formatNumber(linkedVehicles)} tone="blue" />

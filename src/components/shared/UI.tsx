@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
+import toast from "react-hot-toast";
 import DatePickerModule, { type ChangedValue } from "react-multi-date-picker";
 import DateObjectModule from "react-date-object";
 import gregorian from "react-date-object/calendars/gregorian";
@@ -53,6 +54,8 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   className?: string;
 };
 
+type ToastTone = "error" | "success";
+
 type DataTableColumn = {
   key: string;
   title: string;
@@ -73,6 +76,25 @@ type RowActionItem = {
 };
 
 const panelShadow = "2px 2px 7px 0px rgba(0, 0, 0, 0.08)";
+const toastToneClass: Record<ToastTone, {
+  border: string;
+  iconBg: string;
+  iconText: string;
+  text: string;
+}> = {
+  error: {
+    border: "border-[#FFE6E6]",
+    iconBg: "bg-[#FFE6E6]",
+    iconText: "text-[#FA5454]",
+    text: "text-[#A30000]",
+  },
+  success: {
+    border: "border-[#E8F7EF]",
+    iconBg: "bg-[#E8F7EF]",
+    iconText: "text-[#00992E]",
+    text: "text-[#16803C]",
+  },
+};
 const metricToneClass: Record<Tone, string> = {
   blue: "bg-[#206AB433]",
   emerald: "bg-[#00992E33]",
@@ -202,6 +224,80 @@ export function EmptyState({
   );
 }
 
+function ToastIcon({ tone }: { tone: ToastTone }) {
+  if (tone === "success") {
+    return (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path
+          d="M20 6 9 17l-5-5"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 8v5m0 4h.01M10.3 4.4 2.8 17.2A2 2 0 0 0 4.5 20h15a2 2 0 0 0 1.7-2.8L13.7 4.4a2 2 0 0 0-3.4 0Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function showAppToast({
+  tone,
+  message,
+  onDismiss,
+}: {
+  tone: ToastTone;
+  title: string;
+  message?: string;
+  onDismiss?: () => void;
+}) {
+  if (!message) return;
+
+  const toneClass = toastToneClass[tone];
+  const toastId = `${tone}:${message}`;
+
+  toast.custom(
+    (toastItem) => (
+      <div
+        className={`flex w-fit max-w-[min(360px,calc(100vw-2rem))] items-center gap-2 rounded-xl border bg-white px-3 py-2 text-sm shadow-[0_10px_30px_rgba(15,23,42,0.14)] transition ${
+          toastItem.visible ? "translate-y-0 scale-100 opacity-100" : "-translate-y-2 scale-95 opacity-0"
+        } ${toneClass.border}`}
+        dir="rtl"
+      >
+        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${toneClass.iconBg} ${toneClass.iconText}`}>
+          <ToastIcon tone={tone} />
+        </div>
+        <p className={`min-w-0 max-w-[270px] leading-6 ${toneClass.text}`}>
+          {message}
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            toast.dismiss(toastItem.id);
+            onDismiss?.();
+          }}
+          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition ${toneClass.text} hover:bg-[#EFEFEF]`}
+          aria-label="بستن پیام"
+        >
+          ×
+        </button>
+      </div>
+    ),
+    { id: toastId },
+  );
+}
+
 export function ErrorAlert({
   message,
   title = "خطا",
@@ -211,42 +307,27 @@ export function ErrorAlert({
   title?: string;
   onDismiss?: () => void;
 }) {
-  if (!message) return null;
-  return (
-    <div className="relative flex items-start gap-3 rounded-[10px] border border-[#FFE6E6] bg-[#FFF6F6] px-4 py-3 text-sm text-[#A30000]">
-      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-[#FFE6E6] text-[#FA5454]">
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          aria-hidden="true"
-        >
-          <path
-            d="M12 8v5m0 4h.01M10.3 4.4 2.8 17.2A2 2 0 0 0 4.5 20h15a2 2 0 0 0 1.7-2.8L13.7 4.4a2 2 0 0 0-3.4 0Z"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="font-bold text-[#A30000]">{title}</p>
-        <p className="mt-1 leading-6 text-[#A30000]">{message}</p>
-      </div>
-      {onDismiss ? (
-        <button
-          type="button"
-          onClick={onDismiss}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] text-[#A30000] transition hover:bg-[#FFE6E6]"
-          aria-label="بستن پیام خطا"
-        >
-          ×
-        </button>
-      ) : null}
-    </div>
-  );
+  useEffect(() => {
+    showAppToast({ tone: "error", title, message, onDismiss });
+  }, [message, onDismiss, title]);
+
+  return null;
+}
+
+export function SuccessAlert({
+  message,
+  title = "موفقیت",
+  onDismiss,
+}: {
+  message?: string;
+  title?: string;
+  onDismiss?: () => void;
+}) {
+  useEffect(() => {
+    showAppToast({ tone: "success", title, message, onDismiss });
+  }, [message, onDismiss, title]);
+
+  return null;
 }
 
 export function LoadingState({

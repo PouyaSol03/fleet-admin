@@ -3,6 +3,7 @@ import { FaRegEye, FaRegEyeSlash, FaUser } from "react-icons/fa";
 import { RiLockPasswordLine } from "react-icons/ri";
 import { useNavigate } from "react-router";
 import { authAPI } from "../../api/auth";
+import { ErrorAlert } from "../../components/shared/UI";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { extractApiError } from "../../utils/formatters";
@@ -77,8 +78,8 @@ export function LoginPage() {
       }
 
       navigate("/dashboard", { replace: true });
-    } catch (err:any) {
-      setErrors(err)
+    } catch (err: unknown) {
+      setErrors(err as LoginErrors);
       setApiError(
         extractApiError(
           err,
@@ -119,11 +120,7 @@ export function LoginPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        {apiError ? (
-          <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {apiError}
-          </div>
-        ) : null}
+        <ErrorAlert message={apiError} />
 
         <Input
           label="نام کاربری"
