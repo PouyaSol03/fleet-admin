@@ -270,9 +270,8 @@ function showAppToast({
   toast.custom(
     (toastItem) => (
       <div
-        className={`flex w-fit max-w-[min(360px,calc(100vw-2rem))] items-center gap-2 rounded-xl border bg-white px-3 py-2 text-sm shadow-[0_10px_30px_rgba(15,23,42,0.14)] transition ${
-          toastItem.visible ? "translate-y-0 scale-100 opacity-100" : "-translate-y-2 scale-95 opacity-0"
-        } ${toneClass.border}`}
+        className={`flex w-fit max-w-[min(360px,calc(100vw-2rem))] items-center gap-2 rounded-xl border bg-white px-3 py-2 text-sm shadow-[0_10px_30px_rgba(15,23,42,0.14)] transition ${toastItem.visible ? "translate-y-0 scale-100 opacity-100" : "-translate-y-2 scale-95 opacity-0"
+          } ${toneClass.border}`}
         dir="rtl"
       >
         <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${toneClass.iconBg} ${toneClass.iconText}`}>
@@ -555,11 +554,10 @@ function CustomSelect({
                 emitSelectChange(props.onChange, option.value);
                 setOpen(false);
               }}
-              className={`flex min-h-9 w-full items-center justify-end rounded-[8px] px-3 text-sm transition hover:bg-[#EAF3FC] hover:text-[#206AB4] disabled:cursor-not-allowed disabled:opacity-50 ${
-                selectedValue === option.value
-                  ? "bg-[#EAF3FC] font-bold text-[#206AB4]"
-                  : "text-[#222222]"
-              }`}
+              className={`flex min-h-9 w-full items-center justify-end rounded-[8px] px-3 text-sm transition hover:bg-[#EAF3FC] hover:text-[#206AB4] disabled:cursor-not-allowed disabled:opacity-50 ${selectedValue === option.value
+                ? "bg-[#EAF3FC] font-bold text-[#206AB4]"
+                : "text-[#222222]"
+                }`}
               role="option"
               aria-selected={selectedValue === option.value}
             >
@@ -858,57 +856,120 @@ export function DataTable({
   keyField = "id",
   emptyTitle = "داده ای یافت نشد.",
 }: {
-  columns: DataTableColumn[];
-  rows: Row[];
+  columns: any[];
+  rows: any[];
   keyField?: string;
   emptyTitle?: string;
 }) {
+
+  const requiredColumnKeys = ['plateNumber', 'fullName', 'name', 'actions', 'inspectorName', 'title', 'requesterName', 'driverName'];
+
+  const middleColumns = useMemo(() => {
+    return columns.filter(col => !requiredColumnKeys.includes(col.key));
+  }, [columns]);
+
+  const [visibleKeys, setVisibleKeys] = useState<string[]>(requiredColumnKeys);
+
+  const finalColumns = useMemo(() => {
+    return columns.filter(col =>
+      requiredColumnKeys.includes(col.key) || visibleKeys.includes(col.key)
+    );
+  }, [columns, visibleKeys]);
+
+  const handleToggle = (key: string) => {
+    setVisibleKeys(prev =>
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+    );
+  };
+
   return (
-    <div className="w-full min-w-0 max-w-full overflow-x-auto bg-transparent">
-      <table className="min-w-full border border-[#D9D9D9] bg-white text-sm text-[#606060]">
-        <thead>
-          <tr className="bg-[#EFEFEF] text-[#011627]">
-            {columns.map((column) => (
-              <th
-                key={column.key}
-                className="whitespace-nowrap border-b border-r border-[#D9D9D9] px-4 py-2 text-center font-bold first:border-r-0"
-              >
-                {column.title}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.length ? (
-            rows.map((row, rowIndex) => (
-              <tr
-                key={String(row[keyField] ?? rowIndex)}
-                className={`${rowIndex % 2 === 0 ? "bg-gray-50" : "bg-white"} cursor-pointer transition hover:bg-[#206AB4] hover:text-white`}
-              >
-                {columns.map((column) => (
-                  <td
-                    key={column.key}
-                    className="border-b border-r border-[#D9D9D9] px-4 py-2 text-center align-middle first:border-r-0"
+    <div className="w-full flex flex-col gap-4">
+      {middleColumns.length > 0 && (
+        <div className="block md:hidden rounded-2xl border border-slate-200 bg-slate-50/80 p-4 shadow-sm">
+          <div className="mb-3 flex items-center gap-2 text-slate-700">
+            <svg className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+            </svg>
+            <span className="text-xs font-bold">تنظیم نمایش ستون‌های جدول</span>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {middleColumns.map((column) => {
+              const isChecked = visibleKeys.includes(column.key);
+              return (
+                <button
+                  key={column.key}
+                  type="button"
+                  onClick={() => handleToggle(column.key)}
+                  className={`flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-medium transition-all active:scale-95 select-none
+                    ${isChecked
+                      ? 'border-blue-200 bg-blue-50 text-blue-700 shadow-sm shadow-blue-100/40'
+                      : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
+                    }`}
+                >
+                  <div className={`flex h-4 w-4 items-center justify-center rounded border transition-colors
+                    ${isChecked ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300 bg-white'}`}
                   >
-                    {column.render
-                      ? column.render(row[column.key], row)
-                      : (row[column.key] ?? "-")}
-                  </td>
-                ))}
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td
-                colSpan={Math.max(columns.length, 1)}
-                className="px-4 py-8 text-center text-[#737373]"
-              >
-                {emptyTitle}
-              </td>
+                    {isChecked && (
+                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </div>
+                  {column.title}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <div className="w-full min-w-0 max-w-full overflow-x-auto bg-transparent rounded-2xl border border-[#D9D9D9]">
+        <table className="min-w-full bg-white text-sm text-[#606060]">
+          <thead>
+            <tr className="bg-[#EFEFEF] text-[#011627]">
+              {finalColumns.map((column) => (
+                <th
+                  key={column.key}
+                  className="whitespace-nowrap border-b border-r border-[#D9D9D9] px-4 py-2 text-center font-bold first:border-r-0"
+                >
+                  {column.title}
+                </th>
+              ))}
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.length ? (
+              rows.map((row, rowIndex) => (
+                <tr
+                  key={String(row[keyField] ?? rowIndex)}
+                  className={`${rowIndex % 2 === 0 ? "bg-gray-50" : "bg-white"} cursor-pointer transition hover:bg-[#206AB4] hover:text-white`}
+                >
+                  {finalColumns.map((column) => (
+                    <td
+                      key={column.key}
+                      className="border-b border-r border-[#D9D9D9] px-4 py-2 text-center align-middle first:border-r-0"
+                    >
+                      {column.render
+                        ? column.render(row[column.key], row)
+                        : (row[column.key] ?? "-")}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td
+                  colSpan={Math.max(finalColumns.length, 1)}
+                  className="px-4 py-8 text-center text-[#737373]"
+                >
+                  {emptyTitle}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
