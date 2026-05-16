@@ -861,20 +861,50 @@ export function DataTable({
   keyField?: string;
   emptyTitle?: string;
 }) {
+  const requiredColumnKeys = [
+    'plateNumber',
+    'fullName',
+    'name',
+    'actions',
+    'inspectorName',
+    'title',
+    'requesterName',
+    'driverName'
+  ];
 
-  const requiredColumnKeys = ['plateNumber', 'fullName', 'name', 'actions', 'inspectorName', 'title', 'requesterName', 'driverName'];
+  // تشخیص اینکه آیا در حالت موبایل هستیم یا خیر
+  const [isMobile, setIsMobile] = useState(false);
 
+  useEffect(() => {
+    const checkMobile = () => {
+      // مقایسه با سایز md در تیلوند (768 پیکسل)
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkMobile(); // اجرای اولیه
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  // ستون‌هایی که در موبایل قابلیت سوئیچ دارند
   const middleColumns = useMemo(() => {
     return columns.filter(col => !requiredColumnKeys.includes(col.key));
   }, [columns]);
 
+  // در حالت اولیه موبایل، فقط ستون‌های ضروری فعال هستند
   const [visibleKeys, setVisibleKeys] = useState<string[]>(requiredColumnKeys);
 
+  // منطق نهایی نمایش ستون‌ها
   const finalColumns = useMemo(() => {
+    // اگر دسکتاپ بود، همه ستون‌ها را برگردان
+    if (!isMobile) {
+      return columns;
+    }
+    // اگر موبایل بود، فیلترینگ را اعمال کن
     return columns.filter(col =>
       requiredColumnKeys.includes(col.key) || visibleKeys.includes(col.key)
     );
-  }, [columns, visibleKeys]);
+  }, [columns, visibleKeys, isMobile]);
 
   const handleToggle = (key: string) => {
     setVisibleKeys(prev =>
@@ -884,6 +914,7 @@ export function DataTable({
 
   return (
     <div className="w-full flex flex-col gap-4">
+      {/* باکس دکمه‌ها: فقط در موبایل نمایش داده می‌شود و منطق ستون‌های انتخابی را تغییر می‌دهد */}
       {middleColumns.length > 0 && (
         <div className="block md:hidden rounded-2xl border border-slate-200 bg-slate-50/80 p-4 shadow-sm">
           <div className="mb-3 flex items-center gap-2 text-slate-700">
@@ -924,6 +955,7 @@ export function DataTable({
         </div>
       )}
 
+      {/* جدول اصلی */}
       <div className="w-full min-w-0 max-w-full overflow-x-auto bg-transparent rounded-2xl border border-[#D9D9D9]">
         <table className="min-w-full bg-white text-sm text-[#606060]">
           <thead>
