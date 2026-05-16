@@ -72,3 +72,27 @@ export function formatCurrency(value: unknown) {
 export function toBooleanLabel(value: unknown) {
   return value ? "بله" : "خیر";
 }
+
+type AuthUserMinimal = {
+  fullName?: string;
+  userName?: string;
+  [key: string]: unknown;
+};
+
+export function getProfileDetails(user: AuthUserMinimal | null) {
+  const jalaliDate = new Intl.DateTimeFormat("fa-IR-u-ca-persian-nu-latn", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date());
+
+  const displayName = user?.fullName || user?.userName || "مدیر سیستم";
+
+  const avatarLetter = displayName.trim().charAt(0) || "م";
+
+  return {
+    jalaliDate,
+    displayName,
+    avatarLetter,
+  };
+}
