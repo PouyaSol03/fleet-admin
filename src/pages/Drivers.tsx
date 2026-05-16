@@ -361,39 +361,39 @@ export default function Drivers() {
   const activeFilterChips = [
     ...(statusFilter
       ? [
-          {
-            key: "status",
-            label: "وضعیت:",
-            value: statusLabelMap[statusFilter] || statusFilter,
-            onRemove: () => setStatusFilter(""),
-          },
-        ]
+        {
+          key: "status",
+          label: "وضعیت:",
+          value: statusLabelMap[statusFilter] || statusFilter,
+          onRemove: () => setStatusFilter(""),
+        },
+      ]
       : []),
     ...(dateFrom || dateTo
       ? [
-          {
-            key: "date",
-            label: "تاریخ:",
-            value: `${dateFrom ? formatPlainDate(dateFrom) : "-"} تا ${dateTo ? formatPlainDate(dateTo) : "-"}`,
-            onRemove: () => {
-              setDateFrom("");
-              setDateTo("");
-            },
+        {
+          key: "date",
+          label: "تاریخ:",
+          value: `${dateFrom ? formatPlainDate(dateFrom) : "-"} تا ${dateTo ? formatPlainDate(dateTo) : "-"}`,
+          onRemove: () => {
+            setDateFrom("");
+            setDateTo("");
           },
-        ]
+        },
+      ]
       : []),
     ...(scoreFrom !== "0" || scoreTo !== "10"
       ? [
-          {
-            key: "score",
-            label: "امتیاز:",
-            value: `${Number(scoreFrom || 0).toFixed(1)} تا ${Number(scoreTo || 10).toFixed(1)}`,
-            onRemove: () => {
-              setScoreFrom("0");
-              setScoreTo("10");
-            },
+        {
+          key: "score",
+          label: "امتیاز:",
+          value: `${Number(scoreFrom || 0).toFixed(1)} تا ${Number(scoreTo || 10).toFixed(1)}`,
+          onRemove: () => {
+            setScoreFrom("0");
+            setScoreTo("10");
           },
-        ]
+        },
+      ]
       : []),
   ];
 
@@ -496,6 +496,51 @@ export default function Drivers() {
     setFilterOpen(false);
   };
 
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  const requiredColumnKeys = ['driver', 'actions'];
+
+  const allColumns = [
+    { key: "id", title: "شناسه" },
+    { key: "userId", title: "شناسه کاربر" },
+    { key: "driver", title: "راننده" },
+    { key: "userName", title: "نام کاربری" },
+    { key: "status", title: "فعال/غیرفعال" },
+    { key: "phone", title: "تلفن" },
+    { key: "startDate", title: "تاریخ شروع" },
+    { key: "score", title: "میانگین امتیاز" },
+  ];
+
+  const middleColumns = useMemo(() => {
+    return allColumns.filter(col => !requiredColumnKeys.includes(col.key));
+  }, []);
+
+  const [visibleKeys, setVisibleKeys] = useState(requiredColumnKeys);
+
+  const handleToggleColumn = (key) => {
+    setVisibleKeys(prev =>
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+    );
+  };
+
+  const shouldRenderColumn = (key) => {
+    if (!isMobile) return true;
+    return requiredColumnKeys.includes(key) || visibleKeys.includes(key);
+  };
+
+  const activeColumnsCount = useMemo(() => {
+    let count = allColumns.filter(col => shouldRenderColumn(col.key)).length;
+    if ((canUpdate || canDelete) && shouldRenderColumn('actions')) count += 1;
+    if (!isMobile) count += 1;
+    return count;
+  }, [visibleKeys, isMobile, canUpdate, canDelete]);
+
   if (!canView) return <AccessDenied />;
 
   return (
@@ -574,11 +619,10 @@ export default function Drivers() {
             <button
               type="button"
               onClick={() => setFilterOpen((current) => !current)}
-              className={`flex h-10 items-center justify-center gap-1 rounded-[10px] border px-2 py-4 text-xs font-medium transition ${
-                filterOpen
-                  ? "border-[#D9D9D9] bg-[#206AB4] text-white"
-                  : "border-[#D9D9D9] bg-white text-[#222222]"
-              }`}
+              className={`flex h-10 items-center justify-center gap-1 rounded-[10px] border px-2 py-4 text-xs font-medium transition ${filterOpen
+                ? "border-[#D9D9D9] bg-[#206AB4] text-white"
+                : "border-[#D9D9D9] bg-white text-[#222222]"
+                }`}
             >
               <HiOutlineFunnel className="h-5 w-5" />
               <span>فیلتر</span>
@@ -620,9 +664,8 @@ export default function Drivers() {
                         >
                           <span className="text-base font-medium">{option.label}</span>
                           <span
-                            className={`flex h-6 w-6 items-center justify-center rounded-[4px] border ${
-                              checked ? "border-[#206AB4] text-[#206AB4]" : "border-[#D9D9D9] text-[#222222]"
-                            }`}
+                            className={`flex h-6 w-6 items-center justify-center rounded-[4px] border ${checked ? "border-[#206AB4] text-[#206AB4]" : "border-[#D9D9D9] text-[#222222]"
+                              }`}
                           >
                             {checked ? <HiOutlineCheck className="h-4 w-4" /> : null}
                           </span>
@@ -807,32 +850,71 @@ export default function Drivers() {
             </div>
           ) : null}
         </div>
+        {isMobile && middleColumns.length > 0 && (
+          <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 shadow-sm mb-4">
+            <div className="mb-3 flex items-center gap-2 text-slate-700">
+              <svg className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+              </svg>
+              <span className="text-xs font-bold">تنظیم نمایش ستون‌های جدول</span>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {middleColumns.map((column) => {
+                const isChecked = visibleKeys.includes(column.key);
+                return (
+                  <button
+                    key={column.key}
+                    type="button"
+                    onClick={() => handleToggleColumn(column.key)}
+                    className={`flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-medium transition-all active:scale-95 select-none
+              ${isChecked
+                        ? 'border-blue-200 bg-blue-50 text-blue-700 shadow-sm shadow-blue-100/40'
+                        : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
+                      }`}
+                  >
+                    <div className={`flex h-4 w-4 items-center justify-center rounded border transition-colors
+              ${isChecked ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300 bg-white'}`}
+                    >
+                      {isChecked && (
+                        <HiOutlineCheck className="h-3 w-3 text-white" />
+                      )}
+                    </div>
+                    {column.title}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <div className="overflow-x-auto">
           <table className="min-w-full border border-gray-300 bg-white text-sm text-gray-600">
             <thead>
               <tr className="bg-[#EFEFEF] text-[#011627]">
-                <th className="w-8 border-b border-r border-gray-300 px-4 py-2 text-center">
-                  <button
-                    type="button"
-                    onClick={toggleVisibleRows}
-                    className="mx-auto flex h-8 w-8 items-center justify-center rounded-[8px]"
-                    aria-label="انتخاب همه"
-                  >
-                    <span className="flex h-5 w-5 items-center justify-center rounded-[4px] border border-[#D9D9D9] bg-white text-[#222222]">
-                      {allVisibleSelected ? <HiOutlineCheck className="h-4 w-4" /> : null}
-                    </span>
-                  </button>
-                </th>
-                <th className="w-8 border-b border-r border-gray-300 px-4 py-2 text-center font-bold">شناسه</th>
-                <th className="min-w-[110px] border-b border-r border-gray-300 px-4 py-2 text-center font-bold">شناسه کاربر</th>
-                <th className="min-w-[180px] border-b border-r border-gray-300 px-4 py-2 text-center font-bold">راننده</th>
-                <th className="min-w-[170px] border-b border-r border-gray-300 px-4 py-2 text-center font-bold">نام کاربری</th>
-                <th className="min-w-[130px] border-b border-r border-gray-300 px-4 py-2 text-center font-bold">فعال/غیرفعال</th>
-                <th className="min-w-[130px] border-b border-r border-gray-300 px-4 py-2 text-center font-bold">تلفن</th>
-                <th className="min-w-[130px] border-b border-r border-gray-300 px-4 py-2 text-center font-bold">تاریخ شروع</th>
-                <th className="min-w-[130px] border-b border-r border-gray-300 px-4 py-2 text-center font-bold">میانگین امتیاز</th>
-                {canUpdate || canDelete ? (
+                {!isMobile && (
+                  <th className="w-8 border-b border-r border-gray-300 px-4 py-2 text-center">
+                    <button
+                      type="button"
+                      onClick={toggleVisibleRows}
+                      className="mx-auto flex h-8 w-8 items-center justify-center rounded-[8px]"
+                      aria-label="انتخاب همه"
+                    >
+                      <span className="flex h-5 w-5 items-center justify-center rounded-[4px] border border-[#D9D9D9] bg-white text-[#222222]">
+                        {allVisibleSelected ? <HiOutlineCheck className="h-4 w-4" /> : null}
+                      </span>
+                    </button>
+                  </th>
+                )}
+                {shouldRenderColumn('id') && <th className="w-8 border-b border-r border-gray-300 px-4 py-2 text-center font-bold">شناسه</th>}
+                {shouldRenderColumn('userId') && <th className="min-w-[110px] border-b border-r border-gray-300 px-4 py-2 text-center font-bold">شناسه کاربر</th>}
+                {shouldRenderColumn('driver') && <th className="min-w-[180px] border-b border-r border-gray-300 px-4 py-2 text-center font-bold">راننده</th>}
+                {shouldRenderColumn('userName') && <th className="min-w-[170px] border-b border-r border-gray-300 px-4 py-2 text-center font-bold">نام کاربری</th>}
+                {shouldRenderColumn('status') && <th className="min-w-[130px] border-b border-r border-gray-300 px-4 py-2 text-center font-bold">فعال/غیرفعال</th>}
+                {shouldRenderColumn('phone') && <th className="min-w-[130px] border-b border-r border-gray-300 px-4 py-2 text-center font-bold">تلفن</th>}
+                {shouldRenderColumn('startDate') && <th className="min-w-[130px] border-b border-r border-gray-300 px-4 py-2 text-center font-bold">تاریخ شروع</th>}
+                {shouldRenderColumn('score') && <th className="min-w-[130px] border-b border-r border-gray-300 px-4 py-2 text-center font-bold">میانگین امتیاز</th>}
+                {(canUpdate || canDelete) && shouldRenderColumn('actions') ? (
                   <th className="w-[140px] border-b border-r border-gray-300 px-4 py-2 text-center font-bold">اقدامات</th>
                 ) : null}
               </tr>
@@ -840,7 +922,7 @@ export default function Drivers() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={canUpdate || canDelete ? 10 : 9}>
+                  <td colSpan={activeColumnsCount}>
                     <LoadingState message="در حال دریافت اطلاعات..." className="min-h-[260px]" />
                   </td>
                 </tr>
@@ -848,7 +930,7 @@ export default function Drivers() {
 
               {!loading && !pagedRows.length ? (
                 <tr>
-                  <td colSpan={canUpdate || canDelete ? 10 : 9} className="px-4 py-8 text-center text-[#737373]">
+                  <td colSpan={activeColumnsCount} className="px-4 py-8 text-center text-[#737373]">
                     راننده ای برای نمایش وجود ندارد.
                   </td>
                 </tr>
@@ -856,16 +938,18 @@ export default function Drivers() {
 
               {!loading
                 ? pagedRows.map((row, rowIndex) => {
-                    const isSelected = selectedRows.includes(row.id);
-                    const displayName = row.name || row.fullName || "-";
-                    const userName = row.userName || "-";
+                  const isSelected = selectedRows.includes(row.id);
+                  const displayName = row.name || row.fullName || "-";
+                  const userName = row.userName || "-";
 
-                    return (
-                      <tr
-                        key={row.id || rowIndex}
-                        onClick={() => toggleRow(row.id)}
-                        className={`${isSelected ? "bg-[#206AB4] text-white" : rowIndex % 2 === 0 ? "bg-gray-50" : "bg-white"} cursor-pointer transition hover:bg-[#206AB4] hover:text-white`}
-                      >
+                  return (
+                    <tr
+                      key={row.id || rowIndex}
+                      onClick={() => toggleRow(row.id)}
+                      className={`${isSelected ? "bg-[#206AB4] text-white" : rowIndex % 2 === 0 ? "bg-gray-50" : "bg-white"} cursor-pointer transition hover:bg-[#206AB4] hover:text-white`}
+                    >
+                      {/* سلول چک باکس ردیف: فقط در دسکتاپ نمایش داده می‌شود */}
+                      {!isMobile && (
                         <td className="border-b border-r border-gray-300 px-4 py-2 text-center">
                           <button
                             type="button"
@@ -881,8 +965,10 @@ export default function Drivers() {
                             </span>
                           </button>
                         </td>
-                        <td className="border-b border-r border-gray-300 px-4 py-2 text-center">{row.id ?? "-"}</td>
-                        <td className="border-b border-r border-gray-300 px-4 py-2 text-center">{row.userId ?? "-"}</td>
+                      )}
+                      {shouldRenderColumn('id') && <td className="border-b border-r border-gray-300 px-4 py-2 text-center">{row.id ?? "-"}</td>}
+                      {shouldRenderColumn('userId') && <td className="border-b border-r border-gray-300 px-4 py-2 text-center">{row.userId ?? "-"}</td>}
+                      {shouldRenderColumn('driver') && (
                         <td className="border-b border-r border-gray-300 px-4 py-2 text-center">
                           <div className="flex items-center justify-center gap-2">
                             <DriverAvatar name={displayName} />
@@ -891,75 +977,78 @@ export default function Drivers() {
                             </div>
                           </div>
                         </td>
-                        <td className="border-b border-r border-gray-300 px-4 py-2 text-center">{userName}</td>
+                      )}
+                      {shouldRenderColumn('userName') && <td className="border-b border-r border-gray-300 px-4 py-2 text-center">{userName}</td>}
+                      {shouldRenderColumn('status') && (
                         <td className="border-b border-r border-gray-300 px-4 py-2 text-center">
                           {statusLabelMap[row.status] || row.status || "-"}
                         </td>
-                        <td className="border-b border-r border-gray-300 px-4 py-2 text-center">{row.phone || "-"}</td>
-                        <td className="border-b border-r border-gray-300 px-4 py-2 text-center">{formatDate(row.startDate)}</td>
-                        <td className="border-b border-r border-gray-300 px-4 py-2 text-center">{toNumber(row.score).toFixed(1)}</td>
-                        {canUpdate || canDelete ? (
-                          <td className="relative border-b border-r border-gray-300 px-4 py-2 text-center">
-                            <button
-                              type="button"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                setActionMenuId((current) => (current === row.id ? null : row.id));
-                              }}
-                              className="mx-auto flex h-8 items-center justify-center gap-1 rounded-[10px] border border-[#D9D9D9] bg-white px-2 text-[#222222]"
-                              aria-label="اقدامات"
+                      )}
+                      {shouldRenderColumn('phone') && <td className="border-b border-r border-gray-300 px-4 py-2 text-center">{row.phone || "-"}</td>}
+                      {shouldRenderColumn('startDate') && <td className="border-b border-r border-gray-300 px-4 py-2 text-center">{formatDate(row.startDate)}</td>}
+                      {shouldRenderColumn('score') && <td className="border-b border-r border-gray-300 px-4 py-2 text-center">{toNumber(row.score).toFixed(1)}</td>}
+                      {(canUpdate || canDelete) && shouldRenderColumn('actions') ? (
+                        <td className="relative border-b border-r border-gray-300 px-4 py-2 text-center">
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setActionMenuId((current) => (current === row.id ? null : row.id));
+                            }}
+                            className="mx-auto flex h-8 items-center justify-center gap-1 rounded-[10px] border border-[#D9D9D9] bg-white px-2 text-[#222222]"
+                            aria-label="اقدامات"
+                          >
+                            <HiOutlineCog6Tooth className="h-5 w-5" />
+                            <HiOutlineChevronDown
+                              className={`h-4 w-4 transition ${actionMenuId === row.id ? "rotate-180" : ""}`}
+                            />
+                          </button>
+                          {actionMenuId === row.id ? (
+                            <div
+                              className="absolute left-4 top-11 z-20 flex w-[120px] flex-col gap-1 rounded-tl-[10px] rounded-bl-[10px] rounded-br-[10px] border border-[#D9D9D9] bg-white/85 px-2 py-1 text-[#222222] shadow-lg backdrop-blur-sm before:absolute before:-top-[7px] before:left-3 before:h-3 before:w-3 before:rotate-45 before:border-l before:border-t before:border-[#D9D9D9] before:bg-white/85"
+                              onClick={(event) => event.stopPropagation()}
                             >
-                              <HiOutlineCog6Tooth className="h-5 w-5" />
-                              <HiOutlineChevronDown
-                                className={`h-4 w-4 transition ${actionMenuId === row.id ? "rotate-180" : ""}`}
-                              />
-                            </button>
-                            {actionMenuId === row.id ? (
-                              <div
-                                className="absolute left-4 top-11 z-20 flex w-[120px] flex-col gap-1 rounded-tl-[10px] rounded-bl-[10px] rounded-br-[10px] border border-[#D9D9D9] bg-white/85 px-2 py-1 text-[#222222] shadow-lg backdrop-blur-sm before:absolute before:-top-[7px] before:left-3 before:h-3 before:w-3 before:rotate-45 before:border-l before:border-t before:border-[#D9D9D9] before:bg-white/85"
-                                onClick={(event) => event.stopPropagation()}
-                              >
-                                {canUpdate ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => openEditModal(row)}
-                                    className="flex items-center justify-between rounded-[10px] px-1 py-1 text-xs hover:bg-[#FFF6E6]"
-                                  >
-                                    <span>ویرایش</span>
-                                    <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#FFF6E6] text-[#FFB031]">
-                                      <HiOutlinePencilSquare className="h-5 w-5" />
-                                    </span>
-                                  </button>
-                                ) : null}
+                              {canUpdate ? (
                                 <button
                                   type="button"
-                                  onClick={() => setActionMenuId(null)}
-                                  className="flex items-center justify-between rounded-[10px] px-1 py-1 text-xs hover:bg-[#EAF3FC]"
+                                  onClick={() => openEditModal(row)}
+                                  className="flex items-center justify-between rounded-[10px] px-1 py-1 text-xs hover:bg-[#FFF6E6]"
                                 >
-                                  <span>تغییر رمز</span>
-                                  <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#EAF3FC] text-[#206AB4]">
-                                    <HiOutlineKey className="h-5 w-5" />
+                                  <span>ویرایش</span>
+                                  <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#FFF6E6] text-[#FFB031]">
+                                    <HiOutlinePencilSquare className="h-5 w-5" />
                                   </span>
                                 </button>
-                                {canDelete ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDelete(row)}
-                                    className="flex items-center justify-between rounded-[10px] px-1 py-1 text-xs hover:bg-[#FFE6E6]"
-                                  >
-                                    <span>حذف</span>
-                                    <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#FFE6E6] text-[#FA5454]">
-                                      <HiOutlineTrash className="h-5 w-5" />
-                                    </span>
-                                  </button>
-                                ) : null}
-                              </div>
-                            ) : null}
-                          </td>
-                        ) : null}
-                      </tr>
-                    );
-                  })
+                              ) : null}
+                              <button
+                                type="button"
+                                onClick={() => setActionMenuId(null)}
+                                className="flex items-center justify-between rounded-[10px] px-1 py-1 text-xs hover:bg-[#EAF3FC]"
+                              >
+                                <span>تغییر رمز</span>
+                                <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#EAF3FC] text-[#206AB4]">
+                                  <HiOutlineKey className="h-5 w-5" />
+                                </span>
+                              </button>
+                              {canDelete ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDelete(row)}
+                                  className="flex items-center justify-between rounded-[10px] px-1 py-1 text-xs hover:bg-[#FFE6E6]"
+                                >
+                                  <span>حذف</span>
+                                  <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#FFE6E6] text-[#FA5454]">
+                                    <HiOutlineTrash className="h-5 w-5" />
+                                  </span>
+                                </button>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </td>
+                      ) : null}
+                    </tr>
+                  );
+                })
                 : null}
             </tbody>
           </table>
@@ -992,9 +1081,8 @@ export default function Drivers() {
                       setPage(1);
                       setRowCountOpen(false);
                     }}
-                    className={`h-8 rounded-[8px] text-sm font-bold transition hover:bg-[#EAF3FC] hover:text-[#206AB4] ${
-                      pageSize === option ? "bg-[#EAF3FC] text-[#206AB4]" : "text-[#222222]"
-                    }`}
+                    className={`h-8 rounded-[8px] text-sm font-bold transition hover:bg-[#EAF3FC] hover:text-[#206AB4] ${pageSize === option ? "bg-[#EAF3FC] text-[#206AB4]" : "text-[#222222]"
+                      }`}
                     role="option"
                     aria-selected={pageSize === option}
                   >
