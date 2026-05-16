@@ -1,7 +1,7 @@
-import { HiOutlineBell } from "react-icons/hi2";
+import { HiOutlineBell, HiBars3 } from "react-icons/hi2"; // آیکون همبرگری اضافه شد
 import { ErrorAlert } from "../shared/UI";
 import type { AuthUser } from "../../context/AuthContext";
-import { formatDate } from "../../utils/formatters";
+import { formatDate, getProfileDetails } from "../../utils/formatters";
 
 type Notification = {
   id: number | string;
@@ -23,6 +23,7 @@ type DashboardHeaderProps = {
   onDismissNotificationError?: () => void;
   onMarkRead: (notificationId: number | string) => void;
   onMarkAllRead: () => void;
+  onToggleSidebar: () => void; // پراپ جدید برای مدیریت منوی موبایل
 };
 
 export function DashboardHeader({
@@ -36,20 +37,24 @@ export function DashboardHeader({
   onDismissNotificationError,
   onMarkRead,
   onMarkAllRead,
+  onToggleSidebar,
 }: DashboardHeaderProps) {
-  const jalaliDate = new Intl.DateTimeFormat("fa-IR-u-ca-persian-nu-latn", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(new Date());
 
-  const displayName = user?.fullName || user?.userName || "مدیر سیستم";
-  const avatarLetter = displayName.trim().charAt(0) || "م";
+  const { displayName, avatarLetter, jalaliDate } = getProfileDetails(user);
 
   return (
     <header className="sticky top-0 z-30 h-20 border-b border-sky-100 bg-white/80 backdrop-blur">
       <div className="relative flex h-full items-center justify-between px-6">
         <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onToggleSidebar}
+            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-sky-100 bg-white text-slate-700 transition hover:bg-sky-50 lg:hidden"
+            title="منو"
+          >
+            <HiBars3 className="h-6 w-6" />
+          </button>
+
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#206AB4] text-base font-bold text-white">
             {avatarLetter}
           </div>
@@ -115,11 +120,10 @@ export function DashboardHeader({
                 notifications.map((item) => (
                   <div
                     key={item.id}
-                    className={`rounded-2xl border px-4 py-3 ${
-                      item.isRead
+                    className={`rounded-2xl border px-4 py-3 ${item.isRead
                         ? "border-sky-100 bg-white"
                         : "border-sky-200 bg-sky-50"
-                    }`}
+                      }`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="space-y-1">

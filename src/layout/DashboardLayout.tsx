@@ -35,9 +35,14 @@ export function DashboardLayout() {
   const [loadingNotifications, setLoadingNotifications] = useState(false);
   const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
   const [notificationError, setNotificationError] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const socketRef = useRef<WebSocket | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
 
   useEffect(() => {
     let mounted = true;
@@ -175,7 +180,12 @@ export function DashboardLayout() {
   return (
     <AuthContext.Provider value={contextValue}>
       <div className="min-h-screen bg-[#FAFBFC]" dir="rtl">
-        <DashboardAside permissions={visiblePermissions} />
+        <DashboardAside
+          permissions={visiblePermissions} 
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          user={user}
+        />
 
         <div className="flex min-h-screen flex-col bg-[#FAFBFC] lg:mr-72">
           <DashboardHeader
@@ -191,6 +201,7 @@ export function DashboardLayout() {
             onDismissNotificationError={() => setNotificationError("")}
             onMarkRead={handleMarkRead}
             onMarkAllRead={handleMarkAllRead}
+            onToggleSidebar={() => setSidebarOpen((current) => !current)}
           />
           <main className={`flex h-[calc(100vh-5rem)] min-h-0 bg-[#FAFBFC] ${fullBleedMain ? "p-0" : "p-6"}`}>
             {loading ? (
