@@ -14,6 +14,7 @@ import DateObjectModule from "react-date-object";
 import gregorian from "react-date-object/calendars/gregorian";
 import persian from "react-date-object/calendars/persian";
 import gregorian_en from "react-date-object/locales/gregorian_en";
+import { HiOutlineChevronDown } from "react-icons/hi";
 import persian_fa from "react-date-object/locales/persian_fa";
 import type {
   ButtonHTMLAttributes,
@@ -872,7 +873,28 @@ export function DataTable({
     'driverName'
   ];
 
+  // استیت‌های اضافه شده برای مدیریت لاجیک صفحه‌بندی
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [rowCountOpen, setRowCountOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+
+  // محاسبه تعداد کل صفحات
+  const pageCount = useMemo(() => {
+    return Math.max(1, Math.ceil(rows.length / pageSize));
+  }, [rows.length, pageSize]);
+
+  // اطمینان از اینکه صفحه فعلی از محدوده کل صفحات خارج نشود
+  const safePage = useMemo(() => {
+    return Math.min(page, pageCount);
+  }, [page, pageCount]);
+
+  // برش دادن داده‌ها برای نمایش سطر‌های مربوط به صفحه فعلی
+  const paginatedRows = useMemo(() => {
+    const start = (safePage - 1) * pageSize;
+    const end = start + pageSize;
+    return rows.slice(start, end);
+  }, [rows, safePage, pageSize]);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -963,8 +985,8 @@ export function DataTable({
             </tr>
           </thead>
           <tbody>
-            {rows.length ? (
-              rows.map((row, rowIndex) => (
+            {paginatedRows.length ? (
+              paginatedRows.map((row, rowIndex) => (
                 <tr
                   key={String(row[keyField] ?? rowIndex)}
                   className={`${rowIndex % 2 === 0 ? "bg-gray-50" : "bg-white"} cursor-pointer transition hover:bg-[#206AB4] hover:text-white`}
@@ -993,6 +1015,68 @@ export function DataTable({
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className="mt-4 flex flex-col gap-4 px-4 md:flex-row md:items-center md:justify-between">
+        <div className="relative flex items-center gap-3 text-sm text-[#7D7D7D]">
+          <span>تعداد سطر ها:</span>
+          <button
+            type="button"
+            onClick={() => setRowCountOpen((current) => !current)}
+            className="flex h-8 min-w-14 items-center justify-center gap-1 rounded-[10px] border border-[#206AB4] bg-white px-2 text-sm font-bold text-[#206AB4]"
+            aria-haspopup="listbox"
+            aria-expanded={rowCountOpen}
+          >
+            <HiOutlineChevronDown className={`h-4 w-4 transition ${rowCountOpen ? "rotate-180" : ""}`} />
+            <span>{pageSize}</span>
+          </button>
+          {rowCountOpen ? (
+            <div
+              className="absolute right-[92px] bottom-9 z-20 flex w-16 flex-col rounded-[10px] border border-[#D9D9D9] bg-white p-1 text-[#222222] shadow-lg"
+              role="listbox"
+            >
+              {[10, 20, 50].map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => {
+                    setPageSize(option);
+                    setPage(1);
+                    setRowCountOpen(false);
+                  }}
+                  className={`h-8 rounded-[8px] text-sm font-bold transition hover:bg-[#EAF3FC] hover:text-[#206AB4] ${pageSize === option ? "bg-[#EAF3FC] text-[#206AB4]" : "text-[#222222]"
+                    }`}
+                  role="option"
+                  aria-selected={pageSize === option}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => setPage((current) => Math.min(pageCount, current + 1))}
+            disabled={safePage >= pageCount}
+            className="h-8 rounded-[10px] bg-[#206AB4] px-6 md:px-3 text-xs text-white disabled:bg-[#D9D9D9]"
+          >
+            بعد
+          </button>
+          <span className="text-xs text-[#7D7D7D]">
+            صفحه {safePage} از {pageCount}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPage((current) => Math.max(1, current - 1))}
+            disabled={safePage <= 1}
+            className="h-8 rounded-[10px] bg-[#7D7D7D] px-6 md:px-3 text-xs text-white disabled:bg-[#D9D9D9]"
+          >
+            قبل
+          </button>
+        </div>
       </div>
     </div>
   );
