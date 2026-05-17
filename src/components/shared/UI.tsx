@@ -134,7 +134,7 @@ export function SectionCard({
 }: SectionCardProps) {
   return (
     <section
-      className={`min-w-0 w-full rounded-[10px] bg-white p-4 ${className}`.trim()}
+      className={`min-w-0 w-full rounded-[10px] bg-white py-4 md:p-4 ${className}`.trim()}
       style={{ boxShadow: panelShadow }}
     >
       {title || subtitle || actions ? (
@@ -872,35 +872,28 @@ export function DataTable({
     'driverName'
   ];
 
-  // تشخیص اینکه آیا در حالت موبایل هستیم یا خیر
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     const checkMobile = () => {
-      // مقایسه با سایز md در تیلوند (768 پیکسل)
       setIsMobile(window.innerWidth < 768);
     };
 
-    checkMobile(); // اجرای اولیه
+    checkMobile();
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // ستون‌هایی که در موبایل قابلیت سوئیچ دارند
   const middleColumns = useMemo(() => {
     return columns.filter(col => !requiredColumnKeys.includes(col.key));
   }, [columns]);
 
-  // در حالت اولیه موبایل، فقط ستون‌های ضروری فعال هستند
   const [visibleKeys, setVisibleKeys] = useState<string[]>(requiredColumnKeys);
 
-  // منطق نهایی نمایش ستون‌ها
   const finalColumns = useMemo(() => {
-    // اگر دسکتاپ بود، همه ستون‌ها را برگردان
     if (!isMobile) {
       return columns;
     }
-    // اگر موبایل بود، فیلترینگ را اعمال کن
     return columns.filter(col =>
       requiredColumnKeys.includes(col.key) || visibleKeys.includes(col.key)
     );
@@ -914,9 +907,8 @@ export function DataTable({
 
   return (
     <div className="w-full flex flex-col gap-4">
-      {/* باکس دکمه‌ها: فقط در موبایل نمایش داده می‌شود و منطق ستون‌های انتخابی را تغییر می‌دهد */}
       {middleColumns.length > 0 && (
-        <div className="block md:hidden rounded-2xl border border-slate-200 bg-slate-50/80 p-4 shadow-sm">
+        <div className="block md:hidden rounded-2xl border border-slate-200 bg-slate-50/80 py-4 md:p-4 shadow-sm">
           <div className="mb-3 flex items-center gap-2 text-slate-700">
             <svg className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
