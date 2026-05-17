@@ -873,23 +873,19 @@ export function DataTable({
     'driverName'
   ];
 
-  // استیت‌های اضافه شده برای مدیریت لاجیک صفحه‌بندی
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [rowCountOpen, setRowCountOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
-  // محاسبه تعداد کل صفحات
   const pageCount = useMemo(() => {
     return Math.max(1, Math.ceil(rows.length / pageSize));
   }, [rows.length, pageSize]);
 
-  // اطمینان از اینکه صفحه فعلی از محدوده کل صفحات خارج نشود
   const safePage = useMemo(() => {
     return Math.min(page, pageCount);
   }, [page, pageCount]);
 
-  // برش دادن داده‌ها برای نمایش سطر‌های مربوط به صفحه فعلی
   const paginatedRows = useMemo(() => {
     const start = (safePage - 1) * pageSize;
     const end = start + pageSize;
@@ -969,7 +965,6 @@ export function DataTable({
         </div>
       )}
 
-      {/* جدول اصلی */}
       <div className="w-full min-w-0 max-w-full overflow-x-auto bg-transparent rounded-2xl border border-[#D9D9D9]">
         <table className="min-w-full bg-white text-sm text-[#606060]">
           <thead>
