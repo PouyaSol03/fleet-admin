@@ -9,7 +9,8 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import toast from "react-hot-toast";
-import DatePickerModule, { type ChangedValue } from "react-multi-date-picker";
+import DatePickerModule from "react-multi-date-picker";
+import type { ChangedValue } from "react-multi-date-picker";
 import DateObjectModule from "react-date-object";
 import gregorian from "react-date-object/calendars/gregorian";
 import persian from "react-date-object/calendars/persian";
@@ -27,7 +28,6 @@ import type {
 } from "react";
 
 type Tone = "slate" | "blue" | "emerald" | "amber" | "red" | "rose" | "purple";
-type Row = Record<string, ReactNode>;
 
 type PageHeaderProps = {
   title: string;
@@ -69,6 +69,9 @@ type RowActionItem = {
   disabled?: boolean;
   tone?: "edit" | "delete" | "blue" | "neutral";
 };
+
+const DateObject = (DateObjectModule as any).default || DateObjectModule;
+const DatePicker = (DatePickerModule as any).default || DatePickerModule;
 
 const panelShadow = "2px 2px 7px 0px rgba(0, 0, 0, 0.08)";
 const toastToneClass: Record<ToastTone, {
@@ -407,7 +410,9 @@ function emitInputChange(
 function getPickerValue(value: InputHTMLAttributes<HTMLInputElement>["value"]) {
   if (!value) return null;
   const datePart = String(value).slice(0, 10);
-  return new DateObjectModule({
+  
+  // Uses the safely resolved constructor
+  return new DateObject({
     date: datePart,
     format: "YYYY-MM-DD",
     calendar: gregorian,
@@ -596,7 +601,8 @@ export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
 
     return (
       <div className={`relative w-full ${props.className || ""}`.trim()}>
-        <DatePickerModule
+        {/* Render using the safely resolved DatePicker component function */}
+        <DatePicker
           value={getPickerValue(props.value)}
           onChange={(date: ChangedValue) => {
             const nextDate = toGregorianDateValue(date);
