@@ -176,7 +176,7 @@ export default function Tracking() {
       <ErrorAlert message={error} />
       <SuccessAlert message={success} onDismiss={() => setSuccess('')} />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 w-full md:grid-cols-2 xl:grid-cols-4">
         <StatCard label="خودروهای لینک‌شده" value={formatNumber(linkedVehicles)} tone="blue" />
         <StatCard label="خودروهای دارای داده" value={formatNumber(liveVehicles)} tone="emerald" />
         <StatCard label="خودروهای آنلاین" value={formatNumber(onlineVehicles)} tone="amber" />
