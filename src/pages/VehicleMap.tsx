@@ -132,7 +132,7 @@ function VehicleMarker({ row, left, top }) {
 
   return (
     <div
-      className="group absolute z-10 -translate-x-1/2 -translate-y-full outline-none"
+      className="group absolute z-10 -translate-x-1/2 -translate-y-full outline-none hover:z-50 focus-within:z-50"
       style={{ left, top }}
       tabIndex={0}
       onPointerDown={(event) => event.stopPropagation()}
