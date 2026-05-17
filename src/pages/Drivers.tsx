@@ -1093,12 +1093,12 @@ export default function Drivers() {
             ) : null}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between gap-3">
             <button
               type="button"
               onClick={() => setPage((current) => Math.min(pageCount, current + 1))}
               disabled={safePage >= pageCount}
-              className="h-8 rounded-[10px] bg-[#206AB4] px-3 text-xs text-white disabled:bg-[#D9D9D9]"
+              className="h-8 rounded-[10px] bg-[#206AB4] px-6 md:px-3 text-xs text-white disabled:bg-[#D9D9D9]"
             >
               بعد
             </button>
@@ -1109,7 +1109,7 @@ export default function Drivers() {
               type="button"
               onClick={() => setPage((current) => Math.max(1, current - 1))}
               disabled={safePage <= 1}
-              className="h-8 rounded-[10px] bg-[#7D7D7D] px-3 text-xs text-white disabled:bg-[#D9D9D9]"
+              className="h-8 rounded-[10px] bg-[#7D7D7D] px-6 md:px-3 text-xs text-white disabled:bg-[#D9D9D9]"
             >
               قبل
             </button>
