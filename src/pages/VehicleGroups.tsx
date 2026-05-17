@@ -12,6 +12,7 @@ import {
   ErrorAlert,
   Field,
   Input,
+  LoadingState,
   Modal,
   PageHeader,
   PrimaryButton,
@@ -147,7 +148,7 @@ export default function VehicleGroups() {
         <ToolbarInput placeholder="جستجو بر اساس نام یا توضیحات" value={search} onChange={(event) => setSearch(event.target.value)} />
       </SectionCard>
       <SectionCard title="فهرست گروه ها">
-        {loading ? <p className="text-sm text-slate-500">در حال بارگذاری...</p> : <DataTable columns={columns} rows={filteredRows} emptyTitle="گروهی برای نمایش وجود ندارد." />}
+        {loading ? <LoadingState/> : <DataTable columns={columns} rows={filteredRows} emptyTitle="گروهی برای نمایش وجود ندارد." />}
       </SectionCard>
       <Modal open={modalOpen} title={editingId ? 'ویرایش گروه' : 'ایجاد گروه'} onClose={() => setModalOpen(false)}>
         <form onSubmit={handleSubmit} className="space-y-5">

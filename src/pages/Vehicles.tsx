@@ -23,6 +23,7 @@ import {
   SectionCard,
   ToolbarInput,
   ToolbarSelect,
+  LoadingState,
 } from '../components/shared/UI';
 
 const emptyForm = {
@@ -254,7 +255,7 @@ export default function Vehicles() {
       </SectionCard>
 
       <SectionCard title="فهرست خودروها">
-        {loading ? <p className="text-sm text-slate-500">در حال بارگذاری...</p> : <DataTable columns={columns} rows={filteredRows} emptyTitle="خودرویی برای نمایش وجود ندارد." />}
+        {loading ? <LoadingState/> : <DataTable columns={columns} rows={filteredRows} emptyTitle="خودرویی برای نمایش وجود ندارد." />}
       </SectionCard>
 
       <Modal open={modalOpen} title={formMode === 'edit' ? 'ویرایش خودرو' : 'ثبت خودرو'} onClose={() => setModalOpen(false)}>

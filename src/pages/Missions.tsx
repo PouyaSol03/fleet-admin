@@ -24,6 +24,7 @@ import {
   SectionCard,
   Textarea,
   ToolbarSelect,
+  LoadingState,
 } from '../components/shared/UI';
 
 const emptyForm = {
@@ -259,7 +260,7 @@ export default function Missions() {
         </ToolbarSelect>
       </SectionCard>
       <SectionCard title="فهرست ماموریت ها">
-        {loading ? <p className="text-sm text-slate-500">در حال بارگذاری...</p> : <DataTable columns={columns} rows={filteredRows} emptyTitle="ماموریتی ثبت نشده است." />}
+        {loading ? <LoadingState/> : <DataTable columns={columns} rows={filteredRows} emptyTitle="ماموریتی ثبت نشده است." />}
       </SectionCard>
       <Modal open={modalOpen} title={editingId ? 'ویرایش ماموریت' : 'ایجاد ماموریت'} onClose={() => setModalOpen(false)}>
         <form onSubmit={handleSubmit} className="space-y-5">

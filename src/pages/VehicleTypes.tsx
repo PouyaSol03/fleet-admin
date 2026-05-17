@@ -12,6 +12,7 @@ import {
   ErrorAlert,
   Field,
   Input,
+  LoadingState,
   Modal,
   PageHeader,
   PrimaryButton,
@@ -147,7 +148,7 @@ export default function VehicleTypes() {
         <ToolbarInput placeholder="جستجو بر اساس نام یا توضیحات" value={search} onChange={(event) => setSearch(event.target.value)} />
       </SectionCard>
       <SectionCard title="فهرست انواع خودرو">
-        {loading ? <p className="text-sm text-slate-500">در حال بارگذاری...</p> : <DataTable columns={columns} rows={filteredRows} emptyTitle="نوعی برای نمایش وجود ندارد." />}
+        {loading ? <LoadingState/> : <DataTable columns={columns} rows={filteredRows} emptyTitle="نوعی برای نمایش وجود ندارد." />}
       </SectionCard>
       <Modal open={modalOpen} title={editingId ? 'ویرایش نوع خودرو' : 'ایجاد نوع خودرو'} onClose={() => setModalOpen(false)}>
         <form onSubmit={handleSubmit} className="space-y-5">

@@ -13,6 +13,7 @@ import {
   ErrorAlert,
   Field,
   Input,
+  LoadingState,
   Modal,
   PageHeader,
   PrimaryButton,
@@ -235,7 +236,7 @@ export default function AccessGroups() {
 
       <SectionCard title="گروه‌های دسترسی" subtitle={`${filteredRows.length} گروه`}>
         {loading ? (
-          <p className="text-sm text-slate-500">در حال بارگذاری...</p>
+          <LoadingState/>
         ) : (
           <DataTable columns={columns} rows={filteredRows} emptyTitle="گروه دسترسی یافت نشد." />
         )}

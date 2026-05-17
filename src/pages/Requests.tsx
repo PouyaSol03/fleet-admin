@@ -23,6 +23,7 @@ import {
   SectionCard,
   Textarea,
   ToolbarSelect,
+  LoadingState,
 } from '../components/shared/UI';
 
 const emptyForm = {
@@ -301,7 +302,7 @@ export default function Requests() {
         </ToolbarSelect>
       </SectionCard>
       <SectionCard title="فهرست درخواست ها">
-        {loading ? <p className="text-sm text-slate-500">در حال بارگذاری...</p> : <DataTable columns={columns} rows={filteredRows} emptyTitle="درخواستی ثبت نشده است." />}
+        {loading ? <LoadingState/> : <DataTable columns={columns} rows={filteredRows} emptyTitle="درخواستی ثبت نشده است." />}
       </SectionCard>
 
       <Modal open={modalOpen} title={editingId ? 'ویرایش درخواست' : 'ثبت درخواست خودرو'} onClose={() => setModalOpen(false)}>

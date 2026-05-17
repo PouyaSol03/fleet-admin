@@ -15,6 +15,7 @@ import {
   ErrorAlert,
   Field,
   Input,
+  LoadingState,
   Modal,
   PageHeader,
   PrimaryButton,
@@ -285,7 +286,7 @@ export default function Reports() {
         </div>
       </SectionCard>
 
-      {loading ? <p className="text-sm text-slate-500">در حال بارگذاری...</p> : (
+      {loading ? <LoadingState/> : (
         <>
           <div className="grid w-full gap-4 md:grid-cols-2 xl:grid-cols-4">
             <StatCard label="کل ماموریت ها" value={formatNumber(summary?.totalMissions)} tone="blue" helper="در بازه گزارش" />

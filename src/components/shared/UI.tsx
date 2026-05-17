@@ -339,7 +339,7 @@ export function LoadingState({
 }) {
   return (
     <div
-      className={`flex min-h-[calc(100dvh-8rem)] w-full flex-col items-center justify-center gap-2 ${className}`.trim()}
+      className={`flex md:min-h-[calc(100dvh-8rem)] w-full flex-col items-center justify-center gap-2 ${className}`.trim()}
     >
       <div className="relative flex h-60 w-60 items-center justify-center rounded-full">
         <div className="absolute inset-0 rounded-full border-2 border-[#EAF3FC] border-t-[#206AB4] animate-spin" />

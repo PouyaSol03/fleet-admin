@@ -22,6 +22,7 @@ import {
   SectionCard,
   Textarea,
   ToolbarSelect,
+  LoadingState,
 } from '../components/shared/UI';
 
 const emptyForm = {
@@ -198,7 +199,7 @@ export default function Inspections() {
         </ToolbarSelect>
       </SectionCard>
       <SectionCard title="فهرست بازرسی ها">
-        {loading ? <p className="text-sm text-slate-500">در حال بارگذاری...</p> : <DataTable columns={columns} rows={filteredRows} emptyTitle="بازرسی ثبت نشده است." />}
+        {loading ? <LoadingState/> : <DataTable columns={columns} rows={filteredRows} emptyTitle="بازرسی ثبت نشده است." />}
       </SectionCard>
       <Modal open={modalOpen} title={editingId ? 'ویرایش بازرسی' : 'ثبت بازرسی'} onClose={() => setModalOpen(false)}>
         <form onSubmit={handleSubmit} className="space-y-5">

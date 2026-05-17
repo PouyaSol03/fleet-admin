@@ -14,6 +14,7 @@ import {
   ErrorAlert,
   Field,
   Input,
+  LoadingState,
   Modal,
   PageHeader,
   PrimaryButton,
@@ -280,7 +281,7 @@ export default function Users() {
 
       <SectionCard title="کاربران" subtitle={`${filteredRows.length} کاربر`} actions={<DataTableExportButton />}>
         {loading ? (
-          <p className="text-sm text-slate-500">در حال بارگذاری...</p>
+          <LoadingState/>
         ) : (
           <DataTable columns={columns} rows={filteredRows} emptyTitle="کاربری یافت نشد." />
         )}
