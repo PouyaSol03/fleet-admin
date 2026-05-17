@@ -70,7 +70,7 @@ function TrendIndicator({ value }) {
 function DriverMetricCard({ title, value, percent }) {
   return (
     <div
-      className="relative flex h-[100px] w-full max-w-[286px] items-center justify-between overflow-hidden rounded-[15px] border border-[#D9D9D9] bg-white px-4 py-2"
+      className="relative flex h-[100px] w-full md:max-w-[286px] items-center justify-between overflow-hidden rounded-[15px] border border-[#D9D9D9] bg-white px-4 py-2"
       style={{ boxShadow: "2px 2px 7px 0px rgba(0, 0, 0, 0.08)" }}
     >
       <div className="absolute -left-3 -top-4 h-[50px] w-[50px] rounded-full bg-[#206AB433] blur-[18px]" />
@@ -561,7 +561,7 @@ export default function Drivers() {
       </div>
 
       <div
-        className="w-full rounded-[10px] bg-white p-4"
+        className="w-full rounded-[10px] bg-white py-4 md:p-4"
         style={{ boxShadow: "2px 2px 7px 0px rgba(0, 0, 0, 0.08)" }}
       >
         <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -851,7 +851,7 @@ export default function Drivers() {
           ) : null}
         </div>
         {isMobile && middleColumns.length > 0 && (
-          <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 shadow-sm mb-4">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50/80 py-4 md:p-4 shadow-sm mb-4">
             <div className="mb-3 flex items-center gap-2 text-slate-700">
               <svg className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
