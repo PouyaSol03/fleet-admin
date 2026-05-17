@@ -1,5 +1,4 @@
-﻿
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+﻿// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { useEffect, useMemo, useRef, useState } from 'react';
 import FullCalendar from '@fullcalendar/react';
@@ -85,28 +84,50 @@ export default function MissionCalendar() {
   const [calendarTitle, setCalendarTitle] = useState('');
   const [calendarView, setCalendarView] = useState('dayGridMonth');
 
+  const [copySource, setCopySource] = useState(null);
+  const [targetDates, setTargetDates] = useState([]);
+  const [isMultiCopyMode, setIsMultiCopyMode] = useState(false);
+
   const missionMap = useMemo(() => {
     const map = new Map();
     missions.forEach((mission) => map.set(String(mission.id), mission));
     return map;
   }, [missions]);
 
-  const events = useMemo(
-    () =>
-      missions.map((mission) => ({
-        id: String(mission.id),
-        title: mission.title || `ماموریت #${mission.id}`,
-        start: formatDateOnly(mission.startDate),
-        end: mission.endDate ? shiftDate(formatDateOnly(mission.endDate), 1) : undefined,
-        allDay: true,
-        extendedProps: {
-          status: mission.status,
-          driverName: mission.driverName || 'بدون راننده',
-          vehicleModel: mission.vehicleModel || 'بدون خودرو',
-        },
-      })),
-    [missions],
-  );
+  const events = useMemo(() => {
+    const baseEvents = missions.map((mission) => ({
+      id: String(mission.id),
+      title: mission.title || `ماموریت #${mission.id}`,
+      start: formatDateOnly(mission.startDate),
+      end: mission.endDate ? shiftDate(formatDateOnly(mission.endDate), 1) : undefined,
+      allDay: true,
+      extendedProps: {
+        status: mission.status,
+        driverName: mission.driverName || 'بدون راننده',
+        vehicleModel: mission.vehicleModel || 'بدون خودرو',
+        isGhost: false,
+      },
+    }));
+
+    if (!copySource || targetDates.length === 0) return baseEvents;
+
+    const diffDays = missionDurationDays(copySource.startDate, copySource.endDate);
+    const ghostEvents = targetDates.map((target) => ({
+      id: target.id,
+      title: `پیش‌نویس: ${copySource.title || `ماموریت #${copySource.id}`}`,
+      start: target.date,
+      end: shiftDate(target.date, diffDays + 1),
+      allDay: true,
+      extendedProps: {
+        status: 'planned',
+        driverName: copySource.driverName || 'بدون راننده',
+        vehicleModel: copySource.vehicleModel || 'بدون خودرو',
+        isGhost: true,
+      },
+    }));
+
+    return [...baseEvents, ...ghostEvents];
+  }, [missions, copySource, targetDates]);
 
   const loadMissions = async (startDate, endDate) => {
     const response = await missionsAPI.list({
@@ -183,6 +204,12 @@ export default function MissionCalendar() {
   };
 
   const handleEventClick = (clickInfo) => {
+    if (clickInfo.event.extendedProps.isGhost) {
+      const ghostId = clickInfo.event.id;
+      setTargetDates((prev) => prev.filter((item) => item.id !== ghostId));
+      return;
+    }
+
     const mission = missionMap.get(clickInfo.event.id);
     if (!mission) return;
     setSelectedMission(mission);
@@ -192,25 +219,79 @@ export default function MissionCalendar() {
   };
 
   const handleEventClassNames = (arg) => {
+    if (arg.event.extendedProps.isGhost) {
+      return ['fc-mission-event', 'fc-mission-ghost'];
+    }
     const status = arg.event.extendedProps.status;
     return ['fc-mission-event', statusClassName[status] || 'fc-mission-planned'];
+  };
+
+  const handleInitiateCopy = (e, missionId) => {
+    e.stopPropagation();
+    if (!canCreate) return;
+    
+    const mission = missionMap.get(String(missionId));
+    if (!mission) return;
+
+    if (!mission.vehicleId) {
+      setError('برای کپی ماموریت، ابتدا خودرو را برای ماموریت انتخاب کنید.');
+      return;
+    }
+
+    setCopySource(mission);
+    setTargetDates([]);
+    setIsMultiCopyMode(false); 
+    setError('');
   };
 
   const renderEventContent = (eventInfo) => {
     const status = eventInfo.event.extendedProps.status;
     const driverName = eventInfo.event.extendedProps.driverName;
     const vehicleModel = eventInfo.event.extendedProps.vehicleModel;
+    const isGhost = eventInfo.event.extendedProps.isGhost;
 
     return (
-      <div className="mission-calendar-event-content">
-        <div className="mission-calendar-event-title">{eventInfo.event.title}</div>
+      <div className="mission-calendar-event-content group relative w-full pr-1">
+        <div className="mission-calendar-event-title font-bold text-ellipsis overflow-hidden whitespace-nowrap">
+          {eventInfo.event.title}
+        </div>
         <div className="mission-calendar-event-meta">
           <span>{driverName}</span>
           <span>{statusLabel[status] || status || '-'}</span>
         </div>
         <div className="mission-calendar-event-vehicle">{vehicleModel}</div>
+        
+        {/* دکمه با آیکون کپی دوتایی کاملاً استاندارد و انیمیشن هاور جذاب */}
+        {canCreate && !isGhost && !copySource && (
+          <button
+            type="button"
+            onClick={(e) => handleInitiateCopy(e, eventInfo.event.id)}
+            className="absolute left-1 top-1/2 -translate-y-1/2 rounded-md bg-white border border-slate-200 p-1.5 text-slate-500 opacity-40 shadow-sm transition-all duration-200 hover:scale-110 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 hover:opacity-100 group-hover:opacity-100"
+            title="کپی کردن این ماموریت"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="h-3.5 w-3.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376A8.965 8.965 0 0 0 12 12.75c-.497 0-.982.04-1.455.12l-.104.022m.753-1.64h1.455c.621 0 1.125.504 1.125 1.125V15M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+          </button>
+        )}
       </div>
     );
+  };
+
+  const handleDateClick = (arg) => {
+    if (!copySource) return;
+
+    const clickedDate = formatDateOnly(arg.dateStr || arg.date);
+    const newTarget = {
+      id: `ghost-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      date: clickedDate
+    };
+
+    if (isMultiCopyMode) {
+      setTargetDates((prev) => [...prev, newTarget]);
+    } else {
+      setTargetDates([newTarget]);
+    }
   };
 
   const saveMission = async () => {
@@ -261,6 +342,39 @@ export default function MissionCalendar() {
       status: 'planned',
       notes: mission.notes || '',
     };
+  };
+
+  const handleFinalizeCopy = async () => {
+    if (!copySource || targetDates.length === 0) return;
+    try {
+      setActionLoading(true);
+      setError('');
+
+      const requests = targetDates.map((target) => {
+        const payload = buildCopyPayload(copySource, target.date);
+        return missionsAPI.create(payload);
+      });
+
+      await Promise.all(requests);
+
+      setCopySource(null);
+      setTargetDates([]);
+      setIsMultiCopyMode(false);
+      
+      if (range.start && range.end) {
+        await loadMissions(range.start, range.end);
+      }
+    } catch (err) {
+      setError(extractApiError(err, 'عملیات کپی چندگانه ماموریت با خطا مواجه شد.'));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleCancelCopy = () => {
+    setCopySource(null);
+    setTargetDates([]);
+    setIsMultiCopyMode(false);
   };
 
   const handleEventDrop = async (dropInfo) => {
@@ -327,7 +441,7 @@ export default function MissionCalendar() {
       <div className="relative h-full min-h-0 w-full">
         {loading && !events.length ? <LoadingState message="در حال بارگذاری تقویم ماموریت..." /> : null}
         {actionLoading ? <LoadingState message="در حال اعمال تغییرات ماموریت..." /> : null}
-        <div className="mission-calendar-board h-full w-full" dir="rtl">
+        <div className={`mission-calendar-board h-full w-full ${copySource ? 'cursor-crosshair' : ''}`} dir="rtl">
           <FullCalendar
             ref={calendarRef}
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -338,10 +452,11 @@ export default function MissionCalendar() {
             height="100%"
             dayMaxEvents={4}
             fixedWeekCount
-            editable={canUpdate || canCreate}
-            eventStartEditable={canUpdate || canCreate}
+            editable={!copySource && (canUpdate || canCreate)}
+            eventStartEditable={!copySource && (canUpdate || canCreate)}
             datesSet={handleDatesSet}
             eventDrop={handleEventDrop}
+            dateClick={handleDateClick}
             events={events}
             eventContent={renderEventContent}
             eventClick={handleEventClick}
@@ -358,42 +473,87 @@ export default function MissionCalendar() {
       </div>
 
       <div className="pointer-events-none absolute inset-x-0 bottom-5 z-30 flex justify-center px-4">
-        <div className="pointer-events-auto flex w-full max-w-[820px] flex-col gap-3 rounded-[18px] border border-[#D9D9D9] bg-white/90 p-3 shadow-xl backdrop-blur-md md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center justify-center gap-2">
-            <button type="button" onClick={() => navigateCalendar('prev')} className="h-10 rounded-[10px] border border-[#D9D9D9] bg-white px-3 text-sm font-semibold text-[#222222] transition hover:bg-[#EFEFEF]">
-              قبلی
-            </button>
-            <button type="button" onClick={() => navigateCalendar('today')} className="h-10 rounded-[10px] border border-[#206AB4] bg-[#206AB4] px-4 text-sm font-semibold text-white transition hover:bg-[#15558F]">
-              امروز
-            </button>
-            <button type="button" onClick={() => navigateCalendar('next')} className="h-10 rounded-[10px] border border-[#D9D9D9] bg-white px-3 text-sm font-semibold text-[#222222] transition hover:bg-[#EFEFEF]">
-              بعدی
-            </button>
-          </div>
-          <div className="min-w-0 text-center text-base font-bold text-[#222222] md:text-lg">
-            {calendarTitle}
-          </div>
-          <div className="grid grid-cols-3 overflow-hidden rounded-[10px] border border-[#D9D9D9] bg-white">
-            {[
-              ['dayGridMonth', 'ماه'],
-              ['timeGridWeek', 'هفته'],
-              ['timeGridDay', 'روز'],
-            ].map(([viewName, label]) => (
-              <button
-                key={viewName}
-                type="button"
-                onClick={() => changeCalendarView(viewName)}
-                className={`h-10 px-4 text-sm font-semibold transition ${
-                  calendarView === viewName
-                    ? 'bg-[#206AB4] text-white'
-                    : 'text-[#222222] hover:bg-[#EFEFEF]'
-                }`}
-              >
-                {label}
+        {copySource ? (
+          <div className="pointer-events-auto flex w-full max-w-[720px] flex-col gap-4 rounded-2xl border border-blue-200 bg-white p-4 shadow-2xl md:flex-row md:items-center md:justify-between transition-all duration-300 ring-4 ring-blue-50">
+            <div className="flex flex-col md:flex-row md:items-center gap-4 flex-1">
+              <label className="flex items-center gap-3 cursor-pointer select-none rounded-xl border border-blue-100 bg-blue-50/70 px-4 py-2.5 transition hover:bg-blue-50 group shrink-0">
+                <div className="relative flex items-center">
+                  <input 
+                    type="checkbox"
+                    checked={isMultiCopyMode}
+                    onChange={(e) => setIsMultiCopyMode(e.target.checked)}
+                    className="peer h-5 w-5 cursor-pointer appearance-none rounded-md border-2 border-blue-400 bg-white checked:border-blue-600 checked:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-1 transition-all"
+                  />
+                  <svg className="absolute left-1 top-1 h-3 w-3 pointer-events-none stroke-white fill-none text-white opacity-0 peer-checked:opacity-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </div>
+                <div className="flex flex-col text-right">
+                  <span className="text-xs font-extrabold text-blue-900">کپی چندگانه فعال باشد</span>
+                  <span className="text-[10px] text-blue-600 mt-0.5">ثبت چندین ماموریت همزمان</span>
+                </div>
+              </label>
+
+              <div className="text-right min-w-0">
+                <p className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <span className="inline-block h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
+                  در حال کپی: <span className="text-blue-700 font-extrabold truncate max-w-[180px]">«{copySource.title || `ماموریت #${copySource.id}`}»</span>
+                </p>
+                <p className="text-[11px] text-slate-500 mt-1 font-medium">
+                  {targetDates.length === 0 
+                    ? 'روی روزهای تقویم کلیک کنید. (برای حذف هر پیش‌نویس، روی خودش کلیک کنید)' 
+                    : `تعداد مقاصد آماده ثبت: ${targetDates.length} مورد`}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-2 shrink-0 justify-end border-t border-slate-100 pt-3 md:border-t-0 md:pt-0">
+              <button type="button" onClick={handleCancelCopy} className="h-10 rounded-xl border border-slate-200 bg-slate-50 px-4 text-xs font-bold text-slate-600 transition hover:bg-slate-100 hover:text-slate-800">
+                انصراف
               </button>
-            ))}
+              <button type="button" onClick={handleFinalizeCopy} disabled={targetDates.length === 0} className="h-10 rounded-xl bg-blue-600 px-5 text-xs font-bold text-white shadow-md shadow-blue-200 transition hover:bg-blue-700 disabled:opacity-40 disabled:pointer-events-none">
+                تایید و ذخیره نهایی
+              </button>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="pointer-events-auto flex w-full max-w-[820px] flex-col gap-3 rounded-[18px] border border-[#D9D9D9] bg-white/90 p-3 shadow-xl backdrop-blur-md md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center justify-center gap-2">
+              <button type="button" onClick={() => navigateCalendar('prev')} className="h-10 rounded-[10px] border border-[#D9D9D9] bg-white px-3 text-sm font-semibold text-[#222222] transition hover:bg-[#EFEFEF]">
+                قبلی
+              </button>
+              <button type="button" onClick={() => navigateCalendar('today')} className="h-10 rounded-[10px] border border-[#206AB4] bg-[#206AB4] px-4 text-sm font-semibold text-white transition hover:bg-[#15558F]">
+                امروز
+              </button>
+              <button type="button" onClick={() => navigateCalendar('next')} className="h-10 rounded-[10px] border border-[#D9D9D9] bg-white px-3 text-sm font-semibold text-[#222222] transition hover:bg-[#EFEFEF]">
+                بعدی
+              </button>
+            </div>
+            <div className="min-w-0 text-center text-base font-bold text-[#222222] md:text-lg">
+              {calendarTitle}
+            </div>
+            <div className="grid grid-cols-3 overflow-hidden rounded-[10px] border border-[#D9D9D9] bg-white">
+              {[
+                ['dayGridMonth', 'ماه'],
+                ['timeGridWeek', 'هفته'],
+                ['timeGridDay', 'روز'],
+              ].map(([viewName, label]) => (
+                <button
+                  key={viewName}
+                  type="button"
+                  onClick={() => changeCalendarView(viewName)}
+                  className={`h-10 px-4 text-sm font-semibold transition ${
+                    calendarView === viewName
+                      ? 'bg-[#206AB4] text-white'
+                      : 'text-[#222222] hover:bg-[#EFEFEF]'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <Modal open={Boolean(selectedMission)} title="جزئیات ماموریت" onClose={() => setSelectedMission(null)}>
@@ -493,7 +653,7 @@ export default function MissionCalendar() {
           color: #5f6368;
           font-weight: 700;
           padding: 8px 0;
-        }
+         }
         .fc .fc-daygrid-day-number {
           font-weight: 700;
           color: #334155;
@@ -505,9 +665,9 @@ export default function MissionCalendar() {
         .fc .fc-h-event.fc-mission-event {
           border: 1px solid transparent !important;
           border-radius: 8px;
-          padding: 1px 4px;
+          padding: 2px 6px;
           font-size: 11px;
-          line-height: 1.35;
+          line-height: 1.4;
           cursor: pointer;
           color: #111827 !important;
         }
@@ -538,6 +698,27 @@ export default function MissionCalendar() {
           background: #fef2f2 !important;
           border-color: #fca5a5 !important;
           color: #b91c1c !important;
+        }
+        .fc .fc-daygrid-event.fc-mission-ghost,
+        .fc .fc-h-event.fc-mission-ghost {
+          background: rgba(37, 99, 235, 0.05) !important;
+          border: 2px dashed #3b82f6 !important;
+          color: #1d4ed8 !important;
+          opacity: 0.85;
+          pointer-events: auto !important;
+          animation: pulseGhost 3s infinite ease-in-out;
+        }
+        .fc .fc-daygrid-event.fc-mission-ghost:hover {
+          background: rgba(239, 68, 68, 0.1) !important;
+          border-color: #ef4444 !important;
+          color: #b91c1c !important;
+        }
+        .cursor-crosshair .fc-daygrid-day {
+          cursor: crosshair !important;
+        }
+        @keyframes pulseGhost {
+          0%, 100% { opacity: 0.6; }
+          50% { opacity: 0.9; }
         }
       `}</style>
     </div>
