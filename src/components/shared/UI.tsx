@@ -57,12 +57,6 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 type ToastTone = "error" | "success";
 
-type DataTableColumn = {
-  key: string;
-  title: string;
-  render?: (value: ReactNode, row: Row) => ReactNode;
-};
-
 type SelectOption = {
   label: ReactNode;
   value: string;
@@ -663,7 +657,7 @@ export function PrimaryButton({
   return (
     <button
       {...props}
-      className={`inline-flex h-10 items-center justify-center gap-2 rounded-[10px] border border-[#206AB4] bg-[#206AB4] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#15558F] disabled:cursor-not-allowed disabled:opacity-60 ${className}`.trim()}
+      className={`inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-[10px] border border-[#206AB4] bg-[#206AB4] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#15558F] disabled:cursor-not-allowed disabled:opacity-60 ${className}`.trim()}
     >
       {children}
     </button>
@@ -678,7 +672,7 @@ export function SecondaryButton({
   return (
     <button
       {...props}
-      className={`inline-flex h-10 items-center justify-center gap-2 rounded-[10px] border border-[#D9D9D9] bg-white px-3 py-2 text-sm font-semibold text-[#222222] transition hover:bg-[#EFEFEF] disabled:cursor-not-allowed disabled:opacity-60 ${className}`.trim()}
+      className={`inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-[10px] border border-[#D9D9D9] bg-white px-3 py-2 text-sm font-semibold text-[#222222] transition hover:bg-[#EFEFEF] disabled:cursor-not-allowed disabled:opacity-60 ${className}`.trim()}
     >
       {children}
     </button>
