@@ -225,7 +225,7 @@ export default function MissionCalendar() {
 
     try {
       setActionLoading(true); setError('');
-      if (Boolean(dropInfo.jsEvent?.ctrlKey || dropInfo.jsEvent?.metaKey)) {
+      if (dropInfo.jsEvent?.ctrlKey || dropInfo.jsEvent?.metaKey) {
         if (!canCreate || !mission.vehicleId) { dropInfo.revert(); if (!mission.vehicleId) setError('ابتدا خودرو را انتخاب کنید.'); return; }
         await missionsAPI.create(buildCopyPayload(mission, targetDate)); dropInfo.revert();
       } else {
