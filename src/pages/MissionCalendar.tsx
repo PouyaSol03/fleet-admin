@@ -10,6 +10,7 @@ import { missionsAPI } from '../api/missions';
 import { vehiclesAPI } from '../api/vehicles';
 import { useAuth } from '../context/AuthContext';
 import { hasPermission } from '../utils/permissions';
+import { HiOutlineDocumentDuplicate } from 'react-icons/hi2';
 import { extractApiError, formatDate, normalizeCollection } from '../utils/formatters';
 import {
   AccessDenied,
@@ -229,7 +230,7 @@ export default function MissionCalendar() {
   const handleInitiateCopy = (e, missionId) => {
     e.stopPropagation();
     if (!canCreate) return;
-    
+
     const mission = missionMap.get(String(missionId));
     if (!mission) return;
 
@@ -240,7 +241,7 @@ export default function MissionCalendar() {
 
     setCopySource(mission);
     setTargetDates([]);
-    setIsMultiCopyMode(false); 
+    setIsMultiCopyMode(false);
     setError('');
   };
 
@@ -251,27 +252,24 @@ export default function MissionCalendar() {
     const isGhost = eventInfo.event.extendedProps.isGhost;
 
     return (
-      <div className="mission-calendar-event-content group relative w-full pr-1">
+      <div className="mission-calendar-event-content group relative w-full pr-1 pl-7 text-right">
         <div className="mission-calendar-event-title font-bold text-ellipsis overflow-hidden whitespace-nowrap">
           {eventInfo.event.title}
         </div>
-        <div className="mission-calendar-event-meta">
+        <div className="mission-calendar-event-meta flex flex-wrap gap-x-1 text-[10px]">
           <span>{driverName}</span>
           <span>{statusLabel[status] || status || '-'}</span>
         </div>
-        <div className="mission-calendar-event-vehicle">{vehicleModel}</div>
-        
-        {/* دکمه با آیکون کپی دوتایی کاملاً استاندارد و انیمیشن هاور جذاب */}
+        <div className="mission-calendar-event-vehicle text-[10px] opacity-90">{vehicleModel}</div>
+
         {canCreate && !isGhost && !copySource && (
           <button
             type="button"
             onClick={(e) => handleInitiateCopy(e, eventInfo.event.id)}
-            className="absolute left-1 top-1/2 -translate-y-1/2 rounded-md bg-white border border-slate-200 p-1.5 text-slate-500 opacity-40 shadow-sm transition-all duration-200 hover:scale-110 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 hover:opacity-100 group-hover:opacity-100"
+            className="absolute left-1 bottom-1 rounded-md bg-white border border-slate-200 p-1 text-slate-500 opacity-0 shadow-sm transition-all duration-200 hover:scale-105 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 hover:opacity-100 group-hover:opacity-100 flex items-center justify-center"
             title="کپی کردن این ماموریت"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="h-3.5 w-3.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376A8.965 8.965 0 0 0 12 12.75c-.497 0-.982.04-1.455.12l-.104.022m.753-1.64h1.455c.621 0 1.125.504 1.125 1.125V15M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-            </svg>
+            <HiOutlineDocumentDuplicate className="h-3.5 w-3.5" />
           </button>
         )}
       </div>
@@ -360,7 +358,7 @@ export default function MissionCalendar() {
       setCopySource(null);
       setTargetDates([]);
       setIsMultiCopyMode(false);
-      
+
       if (range.start && range.end) {
         await loadMissions(range.start, range.end);
       }
@@ -478,7 +476,7 @@ export default function MissionCalendar() {
             <div className="flex flex-col md:flex-row md:items-center gap-4 flex-1">
               <label className="flex items-center gap-3 cursor-pointer select-none rounded-xl border border-blue-100 bg-blue-50/70 px-4 py-2.5 transition hover:bg-blue-50 group shrink-0">
                 <div className="relative flex items-center">
-                  <input 
+                  <input
                     type="checkbox"
                     checked={isMultiCopyMode}
                     onChange={(e) => setIsMultiCopyMode(e.target.checked)}
@@ -500,8 +498,8 @@ export default function MissionCalendar() {
                   در حال کپی: <span className="text-blue-700 font-extrabold truncate max-w-[180px]">«{copySource.title || `ماموریت #${copySource.id}`}»</span>
                 </p>
                 <p className="text-[11px] text-slate-500 mt-1 font-medium">
-                  {targetDates.length === 0 
-                    ? 'روی روزهای تقویم کلیک کنید. (برای حذف هر پیش‌نویس، روی خودش کلیک کنید)' 
+                  {targetDates.length === 0
+                    ? 'روی روزهای تقویم کلیک کنید. (برای حذف هر پیش‌نویس، روی خودش کلیک کنید)'
                     : `تعداد مقاصد آماده ثبت: ${targetDates.length} مورد`}
                 </p>
               </div>
@@ -542,11 +540,10 @@ export default function MissionCalendar() {
                   key={viewName}
                   type="button"
                   onClick={() => changeCalendarView(viewName)}
-                  className={`h-10 px-4 text-sm font-semibold transition ${
-                    calendarView === viewName
-                      ? 'bg-[#206AB4] text-white'
-                      : 'text-[#222222] hover:bg-[#EFEFEF]'
-                  }`}
+                  className={`h-10 px-4 text-sm font-semibold transition ${calendarView === viewName
+                    ? 'bg-[#206AB4] text-white'
+                    : 'text-[#222222] hover:bg-[#EFEFEF]'
+                    }`}
                 >
                   {label}
                 </button>
