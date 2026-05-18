@@ -8,6 +8,7 @@ import interactionPlugin from '@fullcalendar/interaction';
 import faLocale from '@fullcalendar/core/locales/fa';
 import { missionsAPI } from '../api/missions';
 import { vehiclesAPI } from '../api/vehicles';
+import { usersAPI } from '../api/users';
 import { useAuth } from '../context/AuthContext';
 import { hasPermission } from '../utils/permissions';
 import { HiOutlineDocumentDuplicate } from 'react-icons/hi2';
@@ -17,11 +18,13 @@ import {
   Badge,
   ErrorAlert,
   Field,
+  Input,
   LoadingState,
   Modal,
   PrimaryButton,
   Select,
   SecondaryButton,
+  Textarea,
 } from '../components/shared/UI';
 
 const statusLabel = {
@@ -45,6 +48,25 @@ const statusClassName = {
   canceled: 'fc-mission-canceled',
 };
 
+const emptyForm = {
+  title: '',
+  driverId: '',
+  vehicleId: '',
+  vehicleType: 'in_city',
+  missionType: 'single',
+  isSpecial: false,
+  origin: '',
+  destination: '',
+  pickupPointsText: '',
+  dropoffPointsText: '',
+  peopleCount: '1',
+  passengerIds: [],
+  startDate: '',
+  endDate: '',
+  status: 'planned',
+  notes: '',
+};
+
 function formatDateOnly(value) {
   return String(value || '').slice(0, 10);
 }
@@ -64,6 +86,17 @@ function missionDurationDays(startDate, endDate) {
   return Math.round((end.getTime() - start.getTime()) / 86400000);
 }
 
+function joinStops(values) {
+  return Array.isArray(values) ? values.join('\n') : '';
+}
+
+function parseStops(value) {
+  return String(value || '')
+    .split('\n')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 export default function MissionCalendar() {
   const { user } = useAuth();
   const calendarRef = useRef(null);
@@ -73,13 +106,18 @@ export default function MissionCalendar() {
 
   const [missions, setMissions] = useState([]);
   const [vehicles, setVehicles] = useState([]);
+  const [drivers, setDrivers] = useState([]);
+  const [users, setUsers] = useState([]);
   const [range, setRange] = useState({ start: '', end: '' });
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState('');
+  
   const [selectedMission, setSelectedMission] = useState(null);
-  const [vehicleDraft, setVehicleDraft] = useState('');
-  const [statusDraft, setStatusDraft] = useState('');
+  const [isCreateMode, setIsCreateMode] = useState(false);
+  const [formData, setFormData] = useState(emptyForm);
+  const [formTab, setFormTab] = useState('general');
+  
   const [statusLoading, setStatusLoading] = useState(false);
   const [statusError, setStatusError] = useState('');
   const [calendarTitle, setCalendarTitle] = useState('');
@@ -142,18 +180,24 @@ export default function MissionCalendar() {
   useEffect(() => {
     if (!canView) return;
     let mounted = true;
-    const loadVehicles = async () => {
+    const loadDependencies = async () => {
       try {
-        const response = await vehiclesAPI.list();
-        if (mounted) setVehicles(normalizeCollection(response.data));
+        const [vehiclesRes, driversRes, usersRes] = await Promise.all([
+          vehiclesAPI.list(),
+          usersAPI.listDrivers(),
+          usersAPI.list()
+        ]);
+        if (mounted) {
+          setVehicles(normalizeCollection(vehiclesRes.data));
+          setDrivers(normalizeCollection(driversRes.data));
+          setUsers(normalizeCollection(usersRes.data));
+        }
       } catch {
         if (mounted) setVehicles([]);
       }
     };
-    loadVehicles();
-    return () => {
-      mounted = false;
-    };
+    loadDependencies();
+    return () => { mounted = false; };
   }, [canView]);
 
   useEffect(() => {
@@ -173,9 +217,7 @@ export default function MissionCalendar() {
     };
 
     run();
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [canView, range.start, range.end]);
 
   const handleDatesSet = (arg) => {
@@ -213,10 +255,60 @@ export default function MissionCalendar() {
 
     const mission = missionMap.get(clickInfo.event.id);
     if (!mission) return;
+    
     setSelectedMission(mission);
-    setVehicleDraft(mission.vehicleId ? String(mission.vehicleId) : '');
-    setStatusDraft(mission.status || 'planned');
+    setIsCreateMode(false);
+    setFormTab('general');
+    
+    setFormData({
+      title: mission.title || '',
+      driverId: mission.driverId ? String(mission.driverId) : '',
+      vehicleId: mission.vehicleId ? String(mission.vehicleId) : '',
+      vehicleType: mission.vehicleType || 'in_city',
+      missionType: mission.missionType || 'single',
+      isSpecial: Boolean(mission.isSpecial),
+      origin: mission.origin || '',
+      destination: mission.destination || '',
+      pickupPointsText: joinStops(mission.pickupPoints),
+      dropoffPointsText: joinStops(mission.dropoffPoints),
+      peopleCount: String(mission.peopleCount ?? 1),
+      passengerIds: Array.isArray(mission.passengerIds) ? mission.passengerIds.map(String) : [],
+      startDate: formatDateOnly(mission.startDate),
+      endDate: mission.endDate ? formatDateOnly(mission.endDate) : '',
+      status: mission.status || 'planned',
+      notes: mission.notes || '',
+    });
     setStatusError('');
+  };
+
+  const handleDateClick = (arg) => {
+    if (copySource) {
+      const clickedDate = formatDateOnly(arg.dateStr || arg.date);
+      const newTarget = {
+        id: `ghost-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+        date: clickedDate
+      };
+
+      if (isMultiCopyMode) {
+        setTargetDates((prev) => [...prev, newTarget]);
+      } else {
+        setTargetDates([newTarget]);
+      }
+    } else if (canCreate) {
+      setIsCreateMode(true);
+      setSelectedMission({ id: 'new' }); 
+      setFormTab('general');
+      setFormData({
+        ...emptyForm,
+        startDate: formatDateOnly(arg.dateStr || arg.date),
+      });
+      setStatusError('');
+    }
+  };
+
+  const handlePassengerChange = (event) => {
+    const values = Array.from(event.target.selectedOptions, (option) => option.value);
+    setFormData((prev) => ({ ...prev, passengerIds: values }));
   };
 
   const handleEventClassNames = (arg) => {
@@ -276,41 +368,47 @@ export default function MissionCalendar() {
     );
   };
 
-  const handleDateClick = (arg) => {
-    if (!copySource) return;
+  const saveMission = async (e) => {
+    if (e) e.preventDefault();
+    if (!isCreateMode && (!selectedMission || !canUpdate)) return;
+    if (isCreateMode && !canCreate) return;
 
-    const clickedDate = formatDateOnly(arg.dateStr || arg.date);
-    const newTarget = {
-      id: `ghost-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-      date: clickedDate
+    const payload = {
+      title: formData.title.trim() || (isCreateMode ? 'ماموریت بدون عنوان' : selectedMission.title),
+      driverId: formData.driverId ? Number(formData.driverId) : null,
+      vehicleId: formData.vehicleId ? Number(formData.vehicleId) : null,
+      vehicleType: formData.vehicleType,
+      missionType: formData.missionType,
+      isSpecial: Boolean(formData.isSpecial),
+      origin: formData.origin.trim(),
+      destination: formData.destination.trim(),
+      pickupPoints: parseStops(formData.pickupPointsText),
+      dropoffPoints: parseStops(formData.dropoffPointsText),
+      peopleCount: Number(formData.peopleCount),
+      passengerIds: formData.passengerIds.map(Number),
+      startDate: formData.startDate,
+      endDate: formData.endDate || null,
+      status: formData.status,
+      notes: formData.notes.trim(),
     };
 
-    if (isMultiCopyMode) {
-      setTargetDates((prev) => [...prev, newTarget]);
-    } else {
-      setTargetDates([newTarget]);
-    }
-  };
-
-  const saveMission = async () => {
-    if (!selectedMission || !canUpdate) return;
     try {
       setStatusLoading(true);
       setStatusError('');
-      await missionsAPI.update(selectedMission.id, {
-        status: statusDraft,
-        vehicleId: vehicleDraft ? Number(vehicleDraft) : null,
-      });
+      
+      if (isCreateMode) {
+        await missionsAPI.create(payload);
+      } else {
+        await missionsAPI.update(selectedMission.id, payload);
+      }
+
       if (range.start && range.end) {
         await loadMissions(range.start, range.end);
       }
-      setSelectedMission((prev) => (prev ? {
-        ...prev,
-        status: statusDraft,
-        vehicleId: vehicleDraft ? Number(vehicleDraft) : null,
-      } : prev));
+      setSelectedMission(null);
+      setIsCreateMode(false);
     } catch (err) {
-      setStatusError(extractApiError(err, 'به‌روزرسانی ماموریت انجام نشد.'));
+      setStatusError(extractApiError(err, 'ذخیره تغییرات ماموریت انجام نشد.'));
     } finally {
       setStatusLoading(false);
     }
@@ -433,12 +531,38 @@ export default function MissionCalendar() {
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col bg-white">
-      <div className="absolute right-4 top-4 z-20 min-w-[220px] max-w-[min(520px,calc(100vw-2rem))]">
+      <div className="flex flex-col gap-4 border-b border-slate-100 bg-slate-50/50 p-4 md:flex-row md:items-center md:justify-between shrink-0">
+        <div className="flex flex-col text-right">
+          <h1 className="text-xl font-black text-slate-800">تقویم ماموریت‌ها</h1>
+          <p className="text-xs text-slate-500 mt-1">مدیریت، تخصیص خودرو و زمان‌بندی هوشمند ناوگان</p>
+        </div>
+        <div className="flex flex-wrap items-center justify-end gap-3" dir="rtl">
+          <div className="inline-flex rounded-xl bg-white border border-slate-200 p-0.5 shadow-sm">
+            <button type="button" onClick={() => changeCalendarView('dayGridMonth')} className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${calendarView === 'dayGridMonth' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>ماهانه</button>
+            <button type="button" onClick={() => changeCalendarView('timeGridWeek')} className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${calendarView === 'timeGridWeek' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>هفتگی</button>
+            <button type="button" onClick={() => changeCalendarView('timeGridDay')} className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${calendarView === 'timeGridDay' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>روزانه</button>
+          </div>
+          <div className="h-6 w-px bg-slate-200 hidden sm:block" />
+          <span className="min-w-[120px] text-center text-sm font-black text-slate-700">{calendarTitle}</span>
+          <div className="inline-flex rounded-xl bg-white border border-slate-200 p-0.5 shadow-sm" dir="ltr">
+            <button type="button" onClick={() => navigateCalendar('next')} className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-50 transition">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+            </button>
+            <button type="button" onClick={() => navigateCalendar('today')} className="rounded-lg px-3 py-1.5 text-xs font-extrabold text-slate-700 hover:bg-slate-50 transition">امروز</button>
+            <button type="button" onClick={() => navigateCalendar('prev')} className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-50 transition">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="absolute right-4 top-20 z-20 min-w-[220px] max-w-[min(520px,calc(100vw-2rem))]">
         <ErrorAlert message={error} />
       </div>
+
       <div className="relative h-full min-h-0 w-full">
-        {loading && !events.length ? <LoadingState message="در حال بارگذاری تقویم ماموریت..." /> : null}
-        {actionLoading ? <LoadingState message="در حال اعمال تغییرات ماموریت..." /> : null}
+        {loading && !events.length ? <LoadingState message="در حال بارگذاری تقویم..." /> : null}
+        {actionLoading ? <LoadingState message="در حال اعمال تغییرات..." /> : null}
         <div className={`mission-calendar-board h-full w-full ${copySource ? 'cursor-crosshair' : ''}`} dir="rtl">
           <FullCalendar
             ref={calendarRef}
@@ -487,237 +611,182 @@ export default function MissionCalendar() {
                   </svg>
                 </div>
                 <div className="flex flex-col text-right">
-                  <span className="text-xs font-extrabold text-blue-900">کپی چندگانه فعال باشد</span>
-                  <span className="text-[10px] text-blue-600 mt-0.5">ثبت چندین ماموریت همزمان</span>
+                  <span className="text-xs font-extrabold text-blue-900">کپی چندگانه فعال شود</span>
+                  <span className="text-[10px] text-blue-600">انتخاب چندین روز در تقویم</span>
                 </div>
               </label>
-
-              <div className="text-right min-w-0">
-                <p className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                  <span className="inline-block h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
-                  در حال کپی: <span className="text-blue-700 font-extrabold truncate max-w-[180px]">«{copySource.title || `ماموریت #${copySource.id}`}»</span>
-                </p>
-                <p className="text-[11px] text-slate-500 mt-1 font-medium">
-                  {targetDates.length === 0
-                    ? 'روی روزهای تقویم کلیک کنید. (برای حذف هر پیش‌نویس، روی خودش کلیک کنید)'
-                    : `تعداد مقاصد آماده ثبت: ${targetDates.length} مورد`}
+              <div className="text-right">
+                <p className="text-sm font-bold text-slate-800">حالت کپی: {copySource.title}</p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {targetDates.length === 0 ? 'روی روزهای موردنظر در تقویم کلیک کنید.' : `آماده کپی در ${targetDates.length} تاریخ انتخاب شده`}
                 </p>
               </div>
             </div>
-
-            <div className="flex gap-2 shrink-0 justify-end border-t border-slate-100 pt-3 md:border-t-0 md:pt-0">
-              <button type="button" onClick={handleCancelCopy} className="h-10 rounded-xl border border-slate-200 bg-slate-50 px-4 text-xs font-bold text-slate-600 transition hover:bg-slate-100 hover:text-slate-800">
-                انصراف
-              </button>
-              <button type="button" onClick={handleFinalizeCopy} disabled={targetDates.length === 0} className="h-10 rounded-xl bg-blue-600 px-5 text-xs font-bold text-white shadow-md shadow-blue-200 transition hover:bg-blue-700 disabled:opacity-40 disabled:pointer-events-none">
-                تایید و ذخیره نهایی
-              </button>
+            <div className="flex justify-end gap-2 shrink-0">
+              <SecondaryButton type="button" onClick={handleCancelCopy}>انصراف</SecondaryButton>
+              <PrimaryButton type="button" disabled={targetDates.length === 0} onClick={handleFinalizeCopy}>تایید کپی نهایی</PrimaryButton>
             </div>
           </div>
-        ) : (
-          <div className="pointer-events-auto flex w-full max-w-[820px] flex-col gap-3 rounded-[18px] border border-[#D9D9D9] bg-white/90 p-3 shadow-xl backdrop-blur-md md:flex-row md:items-center md:justify-between">
-            <div className="flex items-center justify-center gap-2">
-              <button type="button" onClick={() => navigateCalendar('prev')} className="h-10 rounded-[10px] border border-[#D9D9D9] bg-white px-3 text-sm font-semibold text-[#222222] transition hover:bg-[#EFEFEF]">
-                قبلی
-              </button>
-              <button type="button" onClick={() => navigateCalendar('today')} className="h-10 rounded-[10px] border border-[#206AB4] bg-[#206AB4] px-4 text-sm font-semibold text-white transition hover:bg-[#15558F]">
-                امروز
-              </button>
-              <button type="button" onClick={() => navigateCalendar('next')} className="h-10 rounded-[10px] border border-[#D9D9D9] bg-white px-3 text-sm font-semibold text-[#222222] transition hover:bg-[#EFEFEF]">
-                بعدی
-              </button>
-            </div>
-            <div className="min-w-0 text-center text-base font-bold text-[#222222] md:text-lg">
-              {calendarTitle}
-            </div>
-            <div className="grid grid-cols-3 overflow-hidden rounded-[10px] border border-[#D9D9D9] bg-white">
-              {[
-                ['dayGridMonth', 'ماه'],
-                ['timeGridWeek', 'هفته'],
-                ['timeGridDay', 'روز'],
-              ].map(([viewName, label]) => (
-                <button
-                  key={viewName}
-                  type="button"
-                  onClick={() => changeCalendarView(viewName)}
-                  className={`h-10 px-4 text-sm font-semibold transition ${calendarView === viewName
-                    ? 'bg-[#206AB4] text-white'
-                    : 'text-[#222222] hover:bg-[#EFEFEF]'
-                    }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        ) : null}
       </div>
 
-      <Modal open={Boolean(selectedMission)} title="جزئیات ماموریت" onClose={() => setSelectedMission(null)}>
-        {selectedMission ? (
-          <div className="space-y-4">
-            <ErrorAlert message={statusError} />
-            <div className="grid gap-3 md:grid-cols-2">
-              <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3">
-                <p className="text-xs text-slate-500">عنوان</p>
-                <p className="text-sm font-bold text-slate-900">{selectedMission.title || '-'}</p>
+      <Modal open={Boolean(selectedMission)} title={isCreateMode ? 'ایجاد ماموریت جدید' : 'مدیریت و ویرایش ماموریت'} onClose={() => { setSelectedMission(null); setIsCreateMode(false); }}>
+        <form onSubmit={saveMission} className="space-y-4">
+          <ErrorAlert message={statusError} />
+          
+          <div className="flex flex-col gap-2 rounded-2xl bg-slate-50 p-4 text-right">
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[10px] font-bold text-slate-400">عنوان ماموریت</span>
+                <span className="text-sm font-black text-slate-700">{formData.title || selectedMission?.title || `ماموریت جدید`}</span>
               </div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3">
-                <p className="text-xs text-slate-500">راننده</p>
-                <p className="text-sm font-bold text-slate-900">{selectedMission.driverName || 'تعیین نشده'}</p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3">
-                <p className="text-xs text-slate-500">تاریخ شروع</p>
-                <p className="text-sm font-bold text-slate-900">{formatDate(selectedMission.startDate)}</p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3">
-                <p className="text-xs text-slate-500">وضعیت فعلی</p>
-                <Badge tone={statusTone[selectedMission.status] || 'slate'}>
-                  {statusLabel[selectedMission.status] || selectedMission.status || '-'}
-                </Badge>
-              </div>
+              {!isCreateMode && <Badge tone={statusTone[formData.status]}>{statusLabel[formData.status]}</Badge>}
             </div>
 
-            <Field label="خودرو ماموریت">
-              <Select value={vehicleDraft} onChange={(event) => setVehicleDraft(event.target.value)}>
-                <option value="">انتخاب خودرو</option>
-                {vehicles.map((option) => (
-                  <option key={option.id} value={String(option.id)}>
-                    {option.model || 'خودرو'} - {option.plateNumber || 'بدون پلاک'}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-
-            <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3">
-              <p className="mb-1 text-xs text-slate-500">مسیر</p>
-              <p className="text-sm text-slate-700">{selectedMission.origin || '-'} ← {selectedMission.destination || '-'}</p>
+            <div className="mt-2 border-t border-slate-200/60 pt-2">
+              <span className="text-[11px] font-bold text-slate-500 block mb-1.5">تغییر سریع وضعیت ماموریت:</span>
+              <div className="grid grid-cols-4 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setFormData(p => ({ ...p, status: 'planned' }))}
+                  className={`py-1.5 px-1 rounded-xl text-[11px] font-bold transition-all border text-center ${formData.status === 'planned' ? 'bg-amber-500 border-amber-600 text-white shadow-sm ring-2 ring-amber-200' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                >
+                  برنامه‌ریزی
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData(p => ({ ...p, status: 'active' }))}
+                  className={`py-1.5 px-1 rounded-xl text-[11px] font-bold transition-all border text-center ${formData.status === 'active' ? 'bg-blue-600 border-blue-700 text-white shadow-sm ring-2 ring-blue-200' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                >
+                  فعال (در حال اجرا)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData(p => ({ ...p, status: 'done' }))}
+                  className={`py-1.5 px-1 rounded-xl text-[11px] font-bold transition-all border text-center ${formData.status === 'done' ? 'bg-emerald-600 border-emerald-700 text-white shadow-sm ring-2 ring-emerald-200' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                >
+                  انجام شده
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData(p => ({ ...p, status: 'canceled' }))}
+                  className={`py-1.5 px-1 rounded-xl text-[11px] font-bold transition-all border text-center ${formData.status === 'canceled' ? 'bg-red-600 border-red-700 text-white shadow-sm ring-2 ring-red-200' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                >
+                  لغو شده
+                </button>
+              </div>
             </div>
+          </div>
 
-            {canUpdate ? (
-              <div className="space-y-3">
-                <Field label="تغییر وضعیت ماموریت">
-                  <Select value={statusDraft} onChange={(event) => setStatusDraft(event.target.value)}>
-                    <option value="planned">برنامه‌ریزی شده</option>
-                    <option value="active">فعال</option>
-                    <option value="done">انجام شده</option>
-                    <option value="canceled">لغو شده</option>
-                  </Select>
-                </Field>
-                <div className="flex justify-end gap-2">
-                  <SecondaryButton type="button" onClick={() => setSelectedMission(null)}>بستن</SecondaryButton>
-                  <PrimaryButton type="button" onClick={saveMission} disabled={statusLoading}>
-                    {statusLoading ? 'در حال ذخیره...' : 'ذخیره تغییرات'}
-                  </PrimaryButton>
+          <div className="flex border-b border-slate-100 pb-1" dir="rtl">
+            <button type="button" onClick={() => setFormTab('general')} className={`pb-2 px-4 text-xs font-bold transition-all border-b-2 ${formTab === 'general' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>اصلی و خودرو</button>
+            <button type="button" onClick={() => setFormTab('route')} className={`pb-2 px-4 text-xs font-bold transition-all border-b-2 ${formTab === 'route' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>مسیر و ایستگاه‌ها</button>
+            <button type="button" onClick={() => setFormTab('passengers')} className={`pb-2 px-4 text-xs font-bold transition-all border-b-2 ${formTab === 'passengers' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>مسافران و یادداشت</button>
+          </div>
+
+          <div className="pt-2 min-h-[220px]">
+            {formTab === 'general' && (
+              <div className="space-y-4 animate-fadeIn">
+                {isCreateMode && (
+                  <Field label="عنوان ماموریت">
+                    <Input value={formData.title} onChange={(e) => setFormData(p => ({ ...p, title: e.target.value }))} required />
+                  </Field>
+                )}
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="انتخاب خودرو">
+                    <Select value={formData.vehicleId} onChange={(e) => setFormData(p => ({ ...p, vehicleId: e.target.value }))}>
+                      <option value="">بدون خودرو</option>
+                      {vehicles.map((v) => (
+                        <option key={v.id} value={String(v.id)}>{v.model || 'خودرو'} - {v.plateNumber || 'بدون پلاک'}</option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <Field label="راننده ماموریت">
+                    <Select value={formData.driverId} onChange={(e) => setFormData(p => ({ ...p, driverId: e.target.value }))}>
+                      <option value="">بدون راننده</option>
+                      {drivers.map((d) => (
+                        <option key={d.id} value={String(d.id)}>{d.name}</option>
+                      ))}
+                    </Select>
+                  </Field>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="تاریخ شروع">
+                    <Input type="date" value={formData.startDate} onChange={(e) => setFormData(p => ({ ...p, startDate: e.target.value }))} />
+                  </Field>
+                  <Field label="تاریخ پایان">
+                    <Input type="date" value={formData.endDate} onChange={(e) => setFormData(p => ({ ...p, endDate: e.target.value }))} />
+                  </Field>
+                </div>
+                <div className="grid grid-cols-2 gap-4 items-center pt-2">
+                  <label className="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-2.5 text-xs text-slate-600 cursor-pointer h-[42px]">
+                    <input type="checkbox" checked={formData.isSpecial} onChange={(e) => setFormData(p => ({ ...p, isSpecial: e.target.checked }))} />
+                    <span>ماموریت ویژه اختصاصی</span>
+                  </label>
+                  <Field label="نوع دوره">
+                    <Select value={formData.missionType} onChange={(e) => setFormData(p => ({ ...p, missionType: e.target.value }))}>
+                      <option value="single">تکی</option>
+                      <option value="periodic">دوره‌ای</option>
+                    </Select>
+                  </Field>
                 </div>
               </div>
-            ) : (
-              <div className="flex justify-end">
-                <SecondaryButton type="button" onClick={() => setSelectedMission(null)}>بستن</SecondaryButton>
+            )}
+
+            {formTab === 'route' && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="اولین مبدا">
+                    <Input value={formData.origin} onChange={(e) => setFormData(p => ({ ...p, origin: e.target.value }))} />
+                  </Field>
+                  <Field label="آخرین مقصد">
+                    <Input value={formData.destination} onChange={(e) => setFormData(p => ({ ...p, destination: e.target.value }))} />
+                  </Field>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="مبداهای فرعی چایگزین" hint="هر خط یک آدرس">
+                    <Textarea rows="3" value={formData.pickupPointsText} onChange={(e) => setFormData(p => ({ ...p, pickupPointsText: e.target.value }))} />
+                  </Field>
+                  <Field label="مقصدهای فرعی چایگزین" hint="هر خط یک آدرس">
+                    <Textarea rows="3" value={formData.dropoffPointsText} onChange={(e) => setFormData(p => ({ ...p, dropoffPointsText: e.target.value }))} />
+                  </Field>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="نوع جاده / مسیر">
+                    <Select value={formData.vehicleType} onChange={(e) => setFormData(p => ({ ...p, vehicleType: e.target.value }))}>
+                      <option value="in_city">داخل شهری</option>
+                      <option value="out_of_city">برون شهری</option>
+                    </Select>
+                  </Field>
+                  <Field label="تعداد نفرات ظرفیت">
+                    <Input type="number" min="1" value={formData.peopleCount} onChange={(e) => setFormData(p => ({ ...p, peopleCount: e.target.value }))} />
+                  </Field>
+                </div>
+              </div>
+            )}
+
+            {formTab === 'passengers' && (
+              <div className="space-y-4">
+                <Field label="مسافران تخصیص یافته" hint="برای انتخاب چندگانه Ctrl را نگه‌دارید">
+                  <select multiple value={formData.passengerIds} onChange={handlePassengerChange} className="h-24 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
+                    {users.map((u) => <option key={u.id} value={String(u.id)}>{u.fullName || u.userName}</option>)}
+                  </select>
+                </Field>
+                <Field label="یادداشت‌ها">
+                  <Textarea rows="2" value={formData.notes} onChange={(e) => setFormData(p => ({ ...p, notes: e.target.value }))} />
+                </Field>
               </div>
             )}
           </div>
-        ) : null}
-      </Modal>
 
-      <style>{`
-        .fc .fc-toolbar-title {
-          font-size: 1.05rem;
-          font-weight: 800;
-          color: #0f172a;
-        }
-        .fc .fc-button {
-          border-radius: 12px;
-          border: 1px solid #e2e8f0;
-          background: #fff;
-          color: #334155;
-          box-shadow: none;
-        }
-        .fc .fc-button:hover {
-          background: #f8fafc;
-          color: #0f172a;
-        }
-        .fc .fc-button-primary:not(:disabled).fc-button-active,
-        .fc .fc-button-primary:not(:disabled):active {
-          background: #2563eb;
-          border-color: #2563eb;
-          color: #fff;
-        }
-        .fc .fc-daygrid-day-frame {
-          min-height: 130px;
-        }
-        .fc .fc-col-header-cell-cushion {
-          color: #5f6368;
-          font-weight: 700;
-          padding: 8px 0;
-         }
-        .fc .fc-daygrid-day-number {
-          font-weight: 700;
-          color: #334155;
-        }
-        .fc .fc-day-today {
-          background: #eff6ff !important;
-        }
-        .fc .fc-daygrid-event.fc-mission-event,
-        .fc .fc-h-event.fc-mission-event {
-          border: 1px solid transparent !important;
-          border-radius: 8px;
-          padding: 2px 6px;
-          font-size: 11px;
-          line-height: 1.4;
-          cursor: pointer;
-          color: #111827 !important;
-        }
-        .fc .fc-daygrid-event.fc-mission-event .fc-event-main,
-        .fc .fc-h-event.fc-mission-event .fc-event-main {
-          color: inherit !important;
-        }
-        .fc .fc-daygrid-event.fc-mission-planned,
-        .fc .fc-h-event.fc-mission-planned {
-          background: #fffbeb !important;
-          border-color: #fcd34d !important;
-          color: #92400e !important;
-        }
-        .fc .fc-daygrid-event.fc-mission-active,
-        .fc .fc-h-event.fc-mission-active {
-          background: #eff6ff !important;
-          border-color: #93c5fd !important;
-          color: #1d4ed8 !important;
-        }
-        .fc .fc-daygrid-event.fc-mission-done,
-        .fc .fc-h-event.fc-mission-done {
-          background: #f0fdf4 !important;
-          border-color: #86efac !important;
-          color: #047857 !important;
-        }
-        .fc .fc-daygrid-event.fc-mission-canceled,
-        .fc .fc-h-event.fc-mission-canceled {
-          background: #fef2f2 !important;
-          border-color: #fca5a5 !important;
-          color: #b91c1c !important;
-        }
-        .fc .fc-daygrid-event.fc-mission-ghost,
-        .fc .fc-h-event.fc-mission-ghost {
-          background: rgba(37, 99, 235, 0.05) !important;
-          border: 2px dashed #3b82f6 !important;
-          color: #1d4ed8 !important;
-          opacity: 0.85;
-          pointer-events: auto !important;
-          animation: pulseGhost 3s infinite ease-in-out;
-        }
-        .fc .fc-daygrid-event.fc-mission-ghost:hover {
-          background: rgba(239, 68, 68, 0.1) !important;
-          border-color: #ef4444 !important;
-          color: #b91c1c !important;
-        }
-        .cursor-crosshair .fc-daygrid-day {
-          cursor: crosshair !important;
-        }
-        @keyframes pulseGhost {
-          0%, 100% { opacity: 0.6; }
-          50% { opacity: 0.9; }
-        }
-      `}</style>
+          <div className="flex justify-end gap-3 border-t border-slate-100 pt-3">
+            <SecondaryButton type="button" onClick={() => { setSelectedMission(null); setIsCreateMode(false); }}>انصراف</SecondaryButton>
+            <PrimaryButton type="submit" disabled={statusLoading}>
+              {statusLoading ? 'در حال اعمال تغییرات...' : 'ذخیره نهایی'}
+            </PrimaryButton>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
