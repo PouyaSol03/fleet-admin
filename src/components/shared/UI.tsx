@@ -113,7 +113,7 @@ export function PageHeader({ title, description, action }: PageHeaderProps) {
           <span className="text-black">{title}</span>
         </div>
         {description ? (
-          <p className="mt-2 max-w-3xl text-xs leading-6 text-[#7D7D7D]">
+          <p className="mt-2 max-w-3xl hidden md:block text-xs leading-6 text-[#7D7D7D]">
             {description}
           </p>
         ) : null}
