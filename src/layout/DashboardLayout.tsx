@@ -36,6 +36,7 @@ export function DashboardLayout() {
   const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
   const [notificationError, setNotificationError] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const socketRef = useRef<WebSocket | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
@@ -168,6 +169,29 @@ export function DashboardLayout() {
     }
   }
 
+  async function handleLogout() {
+    if (isLoggingOut) return;
+
+    setIsLoggingOut(true);
+    const refresh = localStorage.getItem("refresh");
+
+    try {
+      if (refresh) {
+        await authAPI.logout(refresh);
+      }
+    } catch {
+      // Local logout should still complete if the refresh token is already invalid.
+    } finally {
+      socketRef.current?.close();
+      socketRef.current = null;
+      clearAuthTokens();
+      setUser(null);
+      setNotifications([]);
+      setSidebarOpen(false);
+      navigate("/login", { replace: true });
+    }
+  }
+
   const contextValue = useMemo(() => ({ user, setUser }), [user]);
   const visiblePermissions = user?.isSuperuser ? [] : user?.permissions || [];
   const unreadCount = notifications.filter((item) => !item.isRead).length;
@@ -185,6 +209,8 @@ export function DashboardLayout() {
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           user={user}
+          onLogout={handleLogout}
+          isLoggingOut={isLoggingOut}
         />
 
         <div className="flex min-h-screen flex-col bg-[#FAFBFC] lg:mr-72">

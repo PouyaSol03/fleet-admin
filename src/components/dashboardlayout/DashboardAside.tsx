@@ -12,6 +12,7 @@ import {
   HiOutlineClipboardDocumentList,
   HiOutlineCalendarDays,
   HiOutlineChartBar,
+  HiOutlineArrowRightOnRectangle,
   HiXMark,
 } from "react-icons/hi2";
 import type { AuthUser } from "../../context/AuthContext";
@@ -46,13 +47,17 @@ type DashboardAsideProps = {
   isOpen?: boolean;
   onClose?: () => void;
   user: AuthUser | null;
+  onLogout: () => void;
+  isLoggingOut?: boolean;
 };
 
 export function DashboardAside({
   permissions = [],
   isOpen = false,
   onClose,
-  user
+  user,
+  onLogout,
+  isLoggingOut = false,
 }: DashboardAsideProps) {
   const visibleMenuItems =
     permissions.length > 0
@@ -128,10 +133,10 @@ export function DashboardAside({
                   to={item.to}
                   end={item.to === "/dashboard"}
                   className={({ isActive }) =>
-                    `flex items-center gap-3.5 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-150 active:scale-[0.98] group ${
+                    `flex items-center gap-3.5 rounded-lg px-4 py-3 text-sm font-medium transition-all duration-150 active:scale-[0.98] group ${
                       isActive
-                        ? "bg-[#206AB4] text-white shadow-md shadow-[#206AB4]/10 font-semibold border border-transparent"
-                        : "text-slate-600 border border-(--fleet-border) hover:bg-slate-50 hover:text-[#206AB4] hover:border-[#206AB4]/20"
+                        ? "bg-[#206AB4] text-white shadow-md shadow-[#206AB4]/10 font-semibold"
+                        : "text-slate-600 hover:bg-slate-50 hover:text-[#206AB4]"
                     }`
                   }
                 >
@@ -141,6 +146,19 @@ export function DashboardAside({
               );
             })}
           </nav>
+
+          <div className="shrink-0 border-t border-(--fleet-border) bg-white/95 px-4 py-4">
+            <button
+              type="button"
+              onClick={onLogout}
+              disabled={isLoggingOut}
+              className="group flex w-full items-center justify-center gap-2.5 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600 transition-all duration-150 hover:border-red-200 hover:bg-red-100 hover:text-red-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100"
+              title="خروج از حساب کاربری"
+            >
+              <HiOutlineArrowRightOnRectangle className="h-5 w-5 shrink-0 transition-transform duration-200 group-hover:-translate-x-0.5" />
+              <span>{isLoggingOut ? "در حال خروج..." : "خروج از حساب"}</span>
+            </button>
+          </div>
         </div>
       </aside>
     </>
