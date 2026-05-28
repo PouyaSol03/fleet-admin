@@ -95,8 +95,8 @@ function DriverAvatar({ name }) {
 
 function DriverModalField({ label, children, className = "", withInfo = false }) {
   return (
-    <label className={`flex min-w-0 flex-col gap-2 text-right ${className}`}>
-      <span className="flex h-6 items-center justify-end gap-2 text-base font-medium text-[#7D7D7D]">
+    <label className={`fleet-field flex min-w-0 flex-col gap-2 text-right ${className}`} dir="rtl">
+      <span className="flex min-h-6 items-center justify-start gap-2 text-right text-sm font-semibold leading-6 text-[#606060]">
         {withInfo ? <HiOutlineInformationCircle className="h-5 w-5 text-[#7D7D7D]" /> : null}
         <span>{label}</span>
       </span>
@@ -106,7 +106,7 @@ function DriverModalField({ label, children, className = "", withInfo = false })
 }
 
 const driverInputClass =
-  "h-14 w-full rounded-md border border-[#D9D9D9] bg-white px-[13px] text-right text-sm font-normal text-[#222222] outline-none placeholder:text-[#BFC4D5] focus:border-[#206AB4]";
+  "fleet-control h-14 w-full rounded-xl border border-[#D9D9D9] bg-white px-[13px] text-right text-sm font-normal text-[#222222] outline-none transition placeholder:text-[#BFC4D5] focus:border-[#206AB4] focus:ring-4 focus:ring-[#EAF3FC]";
 
 function DriverModalInput({ label, className = "", ...props }) {
   return (
@@ -143,7 +143,7 @@ function DriverModalTextarea({ label, className = "", ...props }) {
       <textarea
         {...props}
         dir="rtl"
-        className="min-h-[100px] w-full resize-none rounded-md border border-[#D9D9D9] bg-white px-[13px] py-3 text-right text-sm font-normal text-[#222222] outline-none placeholder:text-[#7D7D7D] focus:border-[#206AB4]"
+        className="fleet-control min-h-[112px] w-full resize-y rounded-xl border border-[#D9D9D9] bg-white px-[13px] py-3 text-right text-sm font-normal leading-6 text-[#222222] outline-none transition placeholder:text-[#BFC4D5] focus:border-[#206AB4] focus:ring-4 focus:ring-[#EAF3FC]"
       />
     </DriverModalField>
   );
@@ -165,16 +165,25 @@ function CreateDriverModal({
   const title = mode === "edit" ? "ویرایش راننده" : "اضافه کردن راننده";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-8">
-      <div className="w-full max-w-[1118px] overflow-hidden rounded-[10px] border border-[#D9D9D9] bg-white" dir="rtl">
-        <div className="flex h-16 items-center justify-center rounded-bl-[50px] rounded-br-[15px] bg-[#206AB4] px-3">
-          <h3 className="text-2xl font-medium text-white">{title}</h3>
+    <div className="fleet-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-3 py-4 backdrop-blur-sm sm:px-6">
+      <div className="fleet-modal-panel flex max-h-[92dvh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-[#D9D9D9] bg-white shadow-2xl shadow-slate-950/20" dir="rtl">
+        <div className="fleet-modal-header flex shrink-0 items-center justify-between border-b border-[#D9D9D9] bg-white px-5 py-4 sm:px-6">
+          <h3 className="min-w-0 truncate text-right text-lg font-bold text-[#011627]">{title}</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[#737373] transition hover:bg-[#EFEFEF] hover:text-[#011627]"
+            aria-label="بستن"
+          >
+            ×
+          </button>
         </div>
 
-        <form onSubmit={onSubmit} className="p-4 md:p-8">
+        <div className="fleet-modal-body min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6">
+        <form onSubmit={onSubmit}>
           <ErrorAlert message={formError} />
 
-          <div dir="ltr" className="grid grid-cols-1 gap-x-4 gap-y-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-x-4 gap-y-4 md:grid-cols-2 xl:grid-cols-3">
             <DriverModalInput
               label="نام راننده"
               placeholder="نام راننده را وارد کنید"
@@ -249,6 +258,7 @@ function CreateDriverModal({
             </button>
           </div>
         </form>
+        </div>
       </div>
     </div>
   );

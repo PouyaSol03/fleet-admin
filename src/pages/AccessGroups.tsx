@@ -260,7 +260,7 @@ export default function AccessGroups() {
                 ))}
               </Select>
             </Field>
-            <label className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700">
+            <label className="fleet-check-field">
               <input type="checkbox" checked={formData.isActive} onChange={(event) => setFormData((prev) => ({ ...prev, isActive: event.target.checked }))} />
               گروه فعال باشد
             </label>
@@ -271,7 +271,8 @@ export default function AccessGroups() {
               multiple
               value={formData.permissionCodes}
               onChange={handlePermissionCodesChange}
-              className="h-56 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+              dir="rtl"
+              className="fleet-control h-56 w-full rounded-xl border border-[#D9D9D9] bg-white px-4 py-3 text-right text-sm outline-none transition focus:border-[#206AB4] focus:ring-4 focus:ring-[#EAF3FC]"
             >
               {permissionCodes.map((code) => (
                 <option key={code} value={code}>{code}</option>

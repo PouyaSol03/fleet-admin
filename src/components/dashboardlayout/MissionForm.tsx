@@ -124,7 +124,7 @@ export default function MissionForm({
               </Field>
             </div>
             <div className="grid grid-cols-2 gap-4 items-center pt-2">
-              <label className="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-2.5 text-xs text-slate-600 cursor-pointer h-[42px]">
+              <label className="fleet-check-field cursor-pointer">
                 <input type="checkbox" checked={formData.isSpecial} onChange={(e) => setFormData((p) => ({ ...p, isSpecial: e.target.checked }))} />
                 <span>ماموریت ویژه اختصاصی</span>
               </label>
@@ -173,7 +173,7 @@ export default function MissionForm({
         {formTab === 'passengers' && (
           <div className="space-y-4">
             <Field label="مسافران تخصیص یافته" hint="برای انتخاب چندگانه Ctrl را نگه‌دارید">
-              <select multiple value={formData.passengerIds} onChange={handlePassengerChange} className="h-24 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
+              <select multiple dir="rtl" value={formData.passengerIds} onChange={handlePassengerChange} className="fleet-control h-28 w-full rounded-xl border border-[#D9D9D9] bg-white px-4 py-2.5 text-right text-xs outline-none transition focus:border-[#206AB4] focus:ring-4 focus:ring-[#EAF3FC]">
                 {users.map((u) => <option key={u.id} value={String(u.id)}>{u.fullName || u.userName}</option>)}
               </select>
             </Field>

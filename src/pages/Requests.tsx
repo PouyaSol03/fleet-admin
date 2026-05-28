@@ -346,11 +346,11 @@ export default function Requests() {
               <Input type="date" value={formData.endDate} onChange={(event) => setFormData((prev) => ({ ...prev, endDate: event.target.value }))} />
             </Field>
             <Field label="مسافران ماموریت" hint="برای انتخاب چند نفر Ctrl یا Cmd را نگه دارید.">
-              <select multiple value={formData.passengerIds} onChange={handlePassengerChange} className="h-40 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
+              <select multiple dir="rtl" value={formData.passengerIds} onChange={handlePassengerChange} className="fleet-control h-40 w-full rounded-xl border border-[#D9D9D9] bg-white px-4 py-3 text-right text-sm outline-none transition focus:border-[#206AB4] focus:ring-4 focus:ring-[#EAF3FC]">
                 {users.map((option) => <option key={option.id} value={String(option.id)}>{option.fullName || option.userName}</option>)}
               </select>
             </Field>
-            <label className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700">
+            <label className="fleet-check-field">
               <input type="checkbox" checked={formData.isSpecial} onChange={(event) => setFormData((prev) => ({ ...prev, isSpecial: event.target.checked }))} />
               درخواست ویژه
             </label>

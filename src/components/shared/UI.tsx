@@ -496,7 +496,8 @@ function CustomSelect({
     return (
       <select
         {...props}
-        className={`h-40 w-full rounded-md border border-[#D9D9D9] bg-white px-[13px] py-3 text-right text-sm text-[#222222] outline-none transition focus:border-[#206AB4] ${props.className || ""}`.trim()}
+        dir={props.dir || "rtl"}
+        className={`fleet-control h-40 w-full rounded-xl border border-[#D9D9D9] bg-white px-[13px] py-3 text-right text-sm text-[#222222] outline-none transition focus:border-[#206AB4] focus:ring-4 focus:ring-[#EAF3FC] ${props.className || ""}`.trim()}
       />
     );
   }
@@ -504,7 +505,7 @@ function CustomSelect({
   const triggerClass =
     variant === "toolbar"
       ? "h-10 rounded-[10px] px-3 text-sm"
-      : "h-14 rounded-md px-[13px] text-sm";
+      : "h-14 rounded-xl px-[13px] text-sm";
 
   return (
     <div ref={rootRef} className={`relative w-full ${props.className || ""}`.trim()}>
@@ -515,11 +516,12 @@ function CustomSelect({
           if (!open) updateMenuPosition();
           setOpen((current) => !current);
         }}
-        className={`flex w-full items-center justify-between gap-2 border border-[#D9D9D9] bg-white text-right font-normal text-[#222222] outline-none transition focus:border-[#206AB4] disabled:cursor-not-allowed disabled:opacity-60 ${triggerClass}`}
+        className={`fleet-control flex w-full flex-row-reverse items-center justify-between gap-2 border border-[#D9D9D9] bg-white text-right font-normal text-[#222222] outline-none transition focus:border-[#206AB4] focus:ring-4 focus:ring-[#EAF3FC] disabled:cursor-not-allowed disabled:opacity-60 ${triggerClass}`}
         aria-haspopup="listbox"
         aria-expanded={open}
+        dir="rtl"
       >
-        <span className={selectedValue ? "text-[#222222]" : "text-[#BFC4D5]"}>
+        <span className={`min-w-0 flex-1 truncate text-right ${selectedValue ? "text-[#222222]" : "text-[#BFC4D5]"}`}>
           {selectedOption?.label || options[0]?.label || "انتخاب کنید"}
         </span>
         <svg
@@ -541,9 +543,10 @@ function CustomSelect({
       {open && typeof document !== "undefined" ? createPortal(
         <div
           ref={menuRef}
-          className="overflow-y-auto rounded-[10px] border border-[#D9D9D9] bg-white p-1 text-right shadow-lg"
+          className="overflow-y-auto rounded-xl border border-[#D9D9D9] bg-white p-1 text-right shadow-lg"
           role="listbox"
           style={menuStyle}
+          dir="rtl"
         >
           {options.map((option) => (
             <button
@@ -554,7 +557,7 @@ function CustomSelect({
                 emitSelectChange(props.onChange, option.value);
                 setOpen(false);
               }}
-              className={`flex min-h-9 w-full items-center justify-end rounded-[8px] px-3 text-sm transition hover:bg-[#EAF3FC] hover:text-[#206AB4] disabled:cursor-not-allowed disabled:opacity-50 ${selectedValue === option.value
+              className={`flex min-h-9 w-full items-center justify-start rounded-lg px-3 text-right text-sm transition hover:bg-[#EAF3FC] hover:text-[#206AB4] disabled:cursor-not-allowed disabled:opacity-50 ${selectedValue === option.value
                 ? "bg-[#EAF3FC] font-bold text-[#206AB4]"
                 : "text-[#222222]"
                 }`}
@@ -577,16 +580,16 @@ export function ToolbarSelect(props: SelectHTMLAttributes<HTMLSelectElement>) {
 
 export function Field({ label, error, children, hint }: FieldProps) {
   return (
-    <label className="flex min-w-0 flex-col gap-2 text-right">
-      <span className="flex h-6 items-center justify-end text-base font-medium text-[#7D7D7D]">
+    <label className="fleet-field flex min-w-0 flex-col gap-2 text-right" dir="rtl">
+      <span className="block min-h-6 text-right text-sm font-semibold leading-6 text-[#606060]">
         {label}
       </span>
       {children}
       {hint ? (
-        <span className="block text-xs text-[#737373]">{hint}</span>
+        <span className="block text-right text-xs leading-5 text-[#737373]">{hint}</span>
       ) : null}
       {error ? (
-        <span className="block text-xs text-[#A30000]">{error}</span>
+        <span className="block text-right text-xs leading-5 text-[#A30000]">{error}</span>
       ) : null}
     </label>
   );
@@ -615,11 +618,11 @@ export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
           locale={persian_fa}
           calendarPosition="bottom-right"
           format="YYYY/MM/DD"
-          inputClass="h-14 w-full rounded-md border border-[#D9D9D9] bg-white pr-14 pl-[13px] text-right text-sm font-normal text-[#222222] outline-none transition placeholder:text-[#BFC4D5] focus:border-[#206AB4]"
+          inputClass="fleet-control h-14 w-full rounded-xl border border-[#D9D9D9] bg-white pr-14 pl-[13px] text-right text-sm font-normal text-[#222222] outline-none transition placeholder:text-[#BFC4D5] focus:border-[#206AB4] focus:ring-4 focus:ring-[#EAF3FC]"
           placeholder={props.placeholder || "تاریخ را انتخاب کنید"}
           disabled={props.disabled}
         />
-        <span className="pointer-events-none absolute right-px top-px flex h-[54px] w-11 items-center justify-center rounded-r-md bg-[#D9D9D9] text-[#222222]">
+        <span className="pointer-events-none absolute right-px top-px flex h-[54px] w-11 items-center justify-center rounded-r-xl bg-[#EFEFEF] text-[#222222]">
           <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path
               d="M7 3v3m10-3v3M4 9h16M6 5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"
@@ -637,7 +640,8 @@ export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
-      className={`h-14 w-full rounded-md border border-[#D9D9D9] bg-white px-[13px] text-right text-sm font-normal text-[#222222] outline-none transition placeholder:text-[#BFC4D5] focus:border-[#206AB4] ${props.className || ""}`.trim()}
+      dir={props.dir || "rtl"}
+      className={`fleet-control h-14 w-full rounded-xl border border-[#D9D9D9] bg-white px-[13px] text-right text-sm font-normal text-[#222222] outline-none transition placeholder:text-[#BFC4D5] focus:border-[#206AB4] focus:ring-4 focus:ring-[#EAF3FC] ${props.className || ""}`.trim()}
     />
   );
 }
@@ -646,7 +650,8 @@ export function Textarea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
     <textarea
       {...props}
-      className={`min-h-[100px] w-full resize-none rounded-md border border-[#D9D9D9] bg-white px-[13px] py-3 text-right text-sm font-normal text-[#222222] outline-none transition placeholder:text-[#7D7D7D] focus:border-[#206AB4] ${props.className || ""}`.trim()}
+      dir={props.dir || "rtl"}
+      className={`fleet-control min-h-[112px] w-full resize-y rounded-xl border border-[#D9D9D9] bg-white px-[13px] py-3 text-right text-sm font-normal leading-6 text-[#222222] outline-none transition placeholder:text-[#BFC4D5] focus:border-[#206AB4] focus:ring-4 focus:ring-[#EAF3FC] ${props.className || ""}`.trim()}
     />
   );
 }
@@ -1117,19 +1122,20 @@ export function Modal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 px-4 py-8">
-      <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-[10px] bg-white shadow-xl">
-        <div className="sticky top-0 flex items-center justify-between border-b border-[#D9D9D9] bg-white/95 px-5 py-4 backdrop-blur">
-          <h3 className="text-base font-bold text-[#011627]">{title}</h3>
+    <div className="fleet-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-3 py-4 backdrop-blur-sm sm:px-6">
+      <div className="fleet-modal-panel flex max-h-[92dvh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-[#D9D9D9] bg-white shadow-2xl shadow-slate-950/20" dir="rtl">
+        <div className="fleet-modal-header flex shrink-0 items-center justify-between border-b border-[#D9D9D9] bg-white px-5 py-4 sm:px-6">
+          <h3 className="min-w-0 truncate text-right text-lg font-bold text-[#011627]">{title}</h3>
           <button
             type="button"
             onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-[10px] text-[#737373] transition hover:bg-[#EFEFEF] hover:text-[#011627]"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[#737373] transition hover:bg-[#EFEFEF] hover:text-[#011627]"
+            aria-label="بستن"
           >
             ×
           </button>
         </div>
-        <div className="p-5">{children}</div>
+        <div className="fleet-modal-body min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6">{children}</div>
       </div>
     </div>
   );

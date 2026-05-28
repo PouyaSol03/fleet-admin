@@ -333,7 +333,7 @@ export default function Users() {
               <Input type="password" value={formData.password} onChange={(event) => setFormData((prev) => ({ ...prev, password: event.target.value }))} required={formMode === 'create'} />
             </Field>
             {canAssignSuperuser ? (
-              <label className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700">
+              <label className="fleet-check-field">
                 <input
                   type="checkbox"
                   checked={formData.isSuperuser}
@@ -346,7 +346,7 @@ export default function Users() {
                 کاربر سوپر ادمین باشد
               </label>
             ) : null}
-            <label className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700">
+            <label className="fleet-check-field">
               <input type="checkbox" checked={formData.isActive} onChange={(event) => setFormData((prev) => ({ ...prev, isActive: event.target.checked }))} />
               کاربر فعال باشد
             </label>

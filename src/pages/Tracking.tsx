@@ -202,7 +202,7 @@ export default function Tracking() {
             <Field label="رمز عبور">
               <Input type="password" value={config.password} onChange={(event) => setConfig((prev) => ({ ...prev, password: event.target.value }))} />
             </Field>
-            <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-800">
+            <label className="fleet-check-field text-sm font-medium">
               <input
                 type="checkbox"
                 checked={config.is_active}
