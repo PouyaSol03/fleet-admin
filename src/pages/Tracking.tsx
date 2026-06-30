@@ -5,6 +5,7 @@ import { vehiclesAPI } from '../api/vehicles';
 import { useAuth } from '../context/AuthContext';
 import { hasPermission } from '../utils/permissions';
 import { extractApiError, formatDate, formatNumber, normalizeCollection } from '../utils/formatters';
+import { IranPlateDisplay } from '../components/shared/IranPlate';
 import {
   AccessDenied,
   Badge,
@@ -136,7 +137,7 @@ export default function Tracking() {
 
   const columns = [
     { key: 'model', title: 'خودرو' },
-    { key: 'plateNumber', title: 'پلاک' },
+    { key: 'plateNumber', title: 'پلاک', render: (value) => <IranPlateDisplay value={value} /> },
     { key: 'imei', title: 'IMEI' },
     { key: 'driverName', title: 'راننده' },
     { key: 'trackingStatus', title: 'وضعیت ردیابی', render: (_, row) => trackingBadge(row) },
@@ -202,7 +203,7 @@ export default function Tracking() {
             <Field label="رمز عبور">
               <Input type="password" value={config.password} onChange={(event) => setConfig((prev) => ({ ...prev, password: event.target.value }))} />
             </Field>
-            <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-800">
+            <label className="fleet-check-field text-sm font-medium">
               <input
                 type="checkbox"
                 checked={config.is_active}

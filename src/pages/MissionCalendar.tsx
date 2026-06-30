@@ -61,6 +61,7 @@ const emptyForm = {
   startDate: '',
   endDate: '',
   status: 'planned',
+  firstCost: '0',
   notes: '',
 };
 
@@ -275,6 +276,7 @@ export default function MissionCalendar() {
       startDate: formatDateOnly(mission.startDate),
       endDate: mission.endDate ? formatDateOnly(mission.endDate) : '',
       status: mission.status || 'planned',
+      firstCost: String(mission.firstCost ?? 0),
       notes: mission.notes || '',
     });
     setStatusError('');
@@ -420,6 +422,27 @@ export default function MissionCalendar() {
     if (!isCreateMode && (!selectedMission || !canUpdate)) return;
     if (isCreateMode && !canCreate) return;
 
+    if (!formData.driverId || !formData.vehicleId) {
+      setStatusError('انتخاب راننده و خودروی مربوط برای ساخت ماموریت الزامی است.');
+      return;
+    }
+    if (!formData.origin.trim() || !formData.destination.trim() || !formData.startDate) {
+      setStatusError('مبدا، مقصد و تاریخ شروع ماموریت را کامل کنید.');
+      return;
+    }
+    if (Number(formData.peopleCount || 0) < 1) {
+      setStatusError('تعداد نفرات باید حداقل ۱ باشد.');
+      return;
+    }
+    if (!formData.passengerIds.length) {
+      setStatusError('حداقل یک مسافر برای ماموریت انتخاب کنید.');
+      return;
+    }
+    if (Number(formData.firstCost || 0) < 0) {
+      setStatusError('هزینه اولیه نمی‌تواند منفی باشد.');
+      return;
+    }
+
     const payload = {
       title: formData.title.trim() || (isCreateMode ? 'ماموریت بدون عنوان' : selectedMission.title),
       driverId: formData.driverId ? Number(formData.driverId) : null,
@@ -436,6 +459,7 @@ export default function MissionCalendar() {
       startDate: formData.startDate,
       endDate: formData.endDate || null,
       status: formData.status,
+      firstCost: Number(formData.firstCost || 0),
       notes: formData.notes.trim(),
     };
 
@@ -483,6 +507,7 @@ export default function MissionCalendar() {
       startDate: targetDate,
       endDate: computedEnd,
       status: 'planned',
+      firstCost: Number(mission.firstCost || 0),
       notes: mission.notes || '',
     };
   };
@@ -679,7 +704,13 @@ export default function MissionCalendar() {
         ) : null}
       </div>
 
-      <Modal open={Boolean(selectedMission)} title={isCreateMode ? 'ایجاد ماموریت جدید' : 'مدیریت و ویرایش ماموریت'} onClose={() => { setSelectedMission(null); setIsCreateMode(false); }}>
+      <Modal
+        open={Boolean(selectedMission)}
+        title={isCreateMode ? 'ایجاد ماموریت جدید' : 'مدیریت و ویرایش ماموریت'}
+        onClose={() => { setSelectedMission(null); setIsCreateMode(false); }}
+        bodyClassName="flex flex-col overflow-hidden p-0"
+        panelClassName="h-[92dvh]"
+      >
         <ErrorAlert message={statusError} />
         <MissionForm
           formData={formData}

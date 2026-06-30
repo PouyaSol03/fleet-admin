@@ -6,14 +6,9 @@ import {
   HiOutlineCalendarDays,
   HiOutlineCheck,
   HiOutlineChevronDown,
-  HiOutlineCog6Tooth,
   HiOutlineFunnel,
-  HiOutlineInformationCircle,
-  HiOutlineKey,
   HiOutlineMagnifyingGlass,
-  HiOutlinePencilSquare,
   HiOutlinePlus,
-  HiOutlineTrash,
 } from "react-icons/hi2";
 import { usersAPI } from "../api/users";
 import { useAuth } from "../context/AuthContext";
@@ -26,13 +21,16 @@ import {
   Field,
   Input,
   LoadingState,
+  Modal,
   PrimaryButton,
+  RowActionMenu,
   SecondaryButton,
   Select,
 } from "../components/shared/UI";
 
 const emptyForm = {
   userId: "",
+  accessGroupId: "",
   name: "",
   phone: "",
   status: "active",
@@ -93,164 +91,325 @@ function DriverAvatar({ name }) {
   );
 }
 
-function DriverModalField({ label, children, className = "", withInfo = false }) {
+function WizardStep({ step, current, title }) {
+  const active = step === current;
+  const done = step < current;
+
   return (
-    <label className={`flex min-w-0 flex-col gap-2 text-right ${className}`}>
-      <span className="flex h-6 items-center justify-end gap-2 text-base font-medium text-[#7D7D7D]">
-        {withInfo ? <HiOutlineInformationCircle className="h-5 w-5 text-[#7D7D7D]" /> : null}
-        <span>{label}</span>
+    <div className={`flex min-w-0 items-center gap-3 rounded-xl border px-4 py-3 ${active ? "border-[#206AB4] bg-[#EAF3FC]" : done ? "border-[#BFE3CA] bg-[#E8F7EF]" : "border-[#D9D9D9] bg-white"}`}>
+      <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-bold ${active ? "bg-[#206AB4] text-white" : done ? "bg-[#16803C] text-white" : "bg-[#EFEFEF] text-[#606060]"}`}>
+        {step}
       </span>
-      {children}
-    </label>
+      <span className="truncate text-sm font-semibold text-[#222222]">{title}</span>
+    </div>
   );
 }
 
-const driverInputClass =
-  "h-14 w-full rounded-md border border-[#D9D9D9] bg-white px-[13px] text-right text-sm font-normal text-[#222222] outline-none placeholder:text-[#BFC4D5] focus:border-[#206AB4]";
-
-function DriverModalInput({ label, className = "", ...props }) {
+function DriverInfoPanel({ title, children }) {
   return (
-    <DriverModalField label={label} className={className}>
-      <input {...props} dir="rtl" className={driverInputClass} />
-    </DriverModalField>
+    <div className="rounded-xl border border-[#D9D9D9] bg-[#FAFBFC] p-4">
+      <div className="text-sm font-bold text-[#222222]">{title}</div>
+      <div className="mt-2 text-sm leading-7 text-[#606060]">{children}</div>
+    </div>
   );
 }
 
-function DriverModalDateInput({ label, className = "", ...props }) {
+function ToolbarSearchInput({ value, onChange }) {
   return (
-    <DriverModalField label={label} className={className}>
-      <Input {...props} type="date" />
-    </DriverModalField>
-  );
-}
-
-function DriverModalSelect({ label, children, className = "", ...props }) {
-  return (
-    <DriverModalField label={label} className={className}>
-      <div className="relative">
-        <select {...props} dir="rtl" className={`${driverInputClass} appearance-none pl-10`}>
-          {children}
-        </select>
-        <HiOutlineChevronDown className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[#7D7D7D]" />
-      </div>
-    </DriverModalField>
-  );
-}
-
-function DriverModalTextarea({ label, className = "", ...props }) {
-  return (
-    <DriverModalField label={label} className={className} withInfo>
-      <textarea
-        {...props}
-        dir="rtl"
-        className="min-h-[100px] w-full resize-none rounded-md border border-[#D9D9D9] bg-white px-[13px] py-3 text-right text-sm font-normal text-[#222222] outline-none placeholder:text-[#7D7D7D] focus:border-[#206AB4]"
+    <div className="relative">
+      <HiOutlineMagnifyingGlass className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[#7D7D7D]" />
+      <input
+        type="search"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder="جستجوی کاربر"
+        className="h-11 w-full rounded-xl border border-[#D9D9D9] bg-white pr-10 pl-3 text-right text-sm outline-none transition focus:border-[#206AB4] focus:ring-4 focus:ring-[#EAF3FC]"
       />
-    </DriverModalField>
+    </div>
   );
+}
+
+function getUserDriverName(user) {
+  return user?.fullName || [user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.userName || "";
+}
+
+function getUserDriverPhone(user) {
+  return user?.phone || "";
 }
 
 function CreateDriverModal({
   open,
   mode,
+  wizardStep,
+  setWizardStep,
   formData,
   driverUsers,
+  accessGroups,
   formError,
   submitting,
   onClose,
   onSubmit,
   onChange,
 }) {
-  if (!open) return null;
-
   const title = mode === "edit" ? "ویرایش راننده" : "اضافه کردن راننده";
+  const [userSearch, setUserSearch] = useState("");
+  const selectedUser = driverUsers.find((option) => String(option.id) === String(formData.userId));
+  const selectedAccessGroup = accessGroups.find((option) => String(option.id) === String(formData.accessGroupId));
+  const selectUser = (option) => {
+    onChange("userId", String(option.id));
+    onChange("accessGroupId", "");
+    onChange("name", getUserDriverName(option));
+    onChange("phone", getUserDriverPhone(option));
+  };
+  const unlinkUser = () => {
+    onChange("userId", "");
+    onChange("accessGroupId", "");
+  };
+  const filteredUsers = useMemo(() => {
+    const query = userSearch.trim().toLowerCase();
+    const matches = driverUsers
+      .filter((option) => {
+        if (!query) return true;
+        return [option.fullName, option.userName, option.phone, option.nationalCode]
+          .some((value) => String(value || "").toLowerCase().includes(query));
+      })
+      .slice(0, 40);
+    if (selectedUser && !matches.some((option) => String(option.id) === String(selectedUser.id))) {
+      return [selectedUser, ...matches];
+    }
+    return matches;
+  }, [driverUsers, selectedUser, userSearch]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-8">
-      <div className="w-full max-w-[1118px] overflow-hidden rounded-[10px] border border-[#D9D9D9] bg-white" dir="rtl">
-        <div className="flex h-16 items-center justify-center rounded-bl-[50px] rounded-br-[15px] bg-[#206AB4] px-3">
-          <h3 className="text-2xl font-medium text-white">{title}</h3>
-        </div>
-
-        <form onSubmit={onSubmit} className="p-4 md:p-8">
+    <Modal
+      open={open}
+      title={title}
+      onClose={onClose}
+      bodyClassName="flex flex-col overflow-hidden p-0 sm:p-0"
+      panelClassName="h-[92dvh]"
+    >
+      <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
+        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6">
           <ErrorAlert message={formError} />
 
-          <div dir="ltr" className="grid grid-cols-1 gap-x-4 gap-y-4 md:grid-cols-2 xl:grid-cols-3">
-            <DriverModalInput
-              label="نام راننده"
-              placeholder="نام راننده را وارد کنید"
-              value={formData.name}
-              onChange={(event) => onChange("name", event.target.value)}
-              required
-            />
-            <DriverModalSelect
-              label="کاربر راننده"
-              value={formData.userId}
-              onChange={(event) => onChange("userId", event.target.value)}
-            >
-              <option value="">بدون اتصال به کاربر</option>
-              {driverUsers.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.fullName || option.userName}
-                </option>
-              ))}
-            </DriverModalSelect>
-            <DriverModalInput
-              label="تلفن"
-              placeholder="تلفن را وارد کنید"
-              value={formData.phone}
-              onChange={(event) => onChange("phone", event.target.value)}
-            />
-            <DriverModalDateInput
-              label="تاریخ شروع"
-              value={formData.startDate}
-              onChange={(event) => onChange("startDate", event.target.value)}
-              required
-            />
-            <DriverModalInput
-              label="امتیاز"
-              type="number"
-              min="0"
-              max="10"
-              step="0.1"
-              placeholder="امتیاز را وارد کنید"
-              value={formData.score}
-              onChange={(event) => onChange("score", event.target.value)}
-              required
-            />
-            <DriverModalSelect
-              label="وضعیت"
-              value={formData.status}
-              onChange={(event) => onChange("status", event.target.value)}
-            >
-              <option value="active">فعال</option>
-              <option value="inactive">غیرفعال</option>
-            </DriverModalSelect>
-            <DriverModalTextarea
-              label="اطلاعات تکمیلی"
-              className="md:col-span-2 xl:col-span-3"
-              placeholder="اطلاعات تکمیلی راننده را اینجا بنویسید..."
-            />
+          <div className="grid gap-3 md:grid-cols-2">
+            <WizardStep step={1} current={wizardStep} title="حساب و مشخصات راننده" />
+            <WizardStep step={2} current={wizardStep} title="وضعیت راننده" />
           </div>
 
-          <div className="mt-8 flex flex-col-reverse items-center justify-center gap-4 md:flex-row">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex h-10 w-full max-w-[304px] items-center justify-center rounded-[10px] border border-[#A30000] bg-white px-3 text-base font-medium text-[#A30000]"
-            >
-              انصراف
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="flex h-10 w-full max-w-[304px] items-center justify-center rounded-[10px] border border-[#206AB4] bg-[#206AB4] px-3 text-base font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {submitting ? "در حال ذخیره..." : "تایید"}
-            </button>
+        {wizardStep === 1 ? (
+          <div className="grid gap-5 lg:grid-cols-[1fr_18rem]">
+            <div className="space-y-5">
+              <div className="rounded-2xl border border-[#D9D9D9] bg-white p-4">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <h4 className="text-sm font-bold text-[#222222]">حساب کاربری راننده</h4>
+                    <p className="mt-1 text-xs leading-5 text-[#737373]">
+                      اگر برای این راننده حساب کاربری ساخته‌اید، همان حساب را انتخاب کنید تا نام و موبایل خودکار ثبت شود.
+                    </p>
+                  </div>
+                  {formData.userId ? (
+                    <button
+                      type="button"
+                      onClick={unlinkUser}
+                      className="rounded-lg border border-[#D9D9D9] bg-white px-3 py-2 text-xs font-semibold text-[#A30000] transition hover:bg-[#FFE6E6]"
+                    >
+                      ثبت دستی بدون حساب
+                    </button>
+                  ) : null}
+                </div>
+
+                <div className="mt-4">
+                  <ToolbarSearchInput
+                    value={userSearch}
+                    onChange={setUserSearch}
+                  />
+                </div>
+
+                <div className="mt-3 max-h-56 overflow-y-auto rounded-xl border border-[#E8E8E8] bg-[#FAFBFC] p-2">
+                  <button
+                    type="button"
+                    onClick={unlinkUser}
+                    className={`mb-2 flex w-full items-center justify-between rounded-lg px-3 py-2 text-right text-sm transition ${!formData.userId ? "bg-[#EAF3FC] text-[#206AB4]" : "bg-white text-[#606060] hover:bg-[#EAF3FC]"}`}
+                  >
+                    <span>ثبت دستی بدون حساب کاربری</span>
+                    {!formData.userId ? <HiOutlineCheck className="h-5 w-5" /> : null}
+                  </button>
+                  {filteredUsers.map((option) => {
+                    const selected = String(option.id) === String(formData.userId);
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() => selectUser(option)}
+                        className={`mb-2 flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-right text-sm transition ${selected ? "bg-[#EAF3FC] text-[#206AB4]" : "bg-white text-[#606060] hover:bg-[#EAF3FC]"}`}
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate font-semibold">{getUserDriverName(option)}</span>
+                          <span className="block truncate text-xs text-[#737373]">
+                            {getUserDriverPhone(option) || "بدون موبایل"} · {option.userName}
+                          </span>
+                        </span>
+                        {selected ? <HiOutlineCheck className="h-5 w-5 shrink-0" /> : null}
+                      </button>
+                    );
+                  })}
+                  {!filteredUsers.length ? (
+                    <div className="px-3 py-6 text-center text-sm text-[#737373]">
+                      کاربری پیدا نشد.
+                    </div>
+                  ) : null}
+                </div>
+
+                {selectedUser ? (
+                  <div className="mt-4 rounded-xl border border-[#E8E8E8] bg-[#FAFBFC] p-3">
+                    <Field
+                      label="گروه دسترسی جدید کاربر"
+                      hint={
+                        selectedUser.accessGroupName
+                          ? `گروه قبلی ${selectedUser.accessGroupName} جایگزین می‌شود.`
+                          : "برای ورود راننده به پنل، یک گروه دسترسی انتخاب کنید."
+                      }
+                    >
+                      <Select
+                        value={formData.accessGroupId}
+                        onChange={(event) => onChange("accessGroupId", event.target.value)}
+                        required
+                      >
+                        <option value="">انتخاب گروه دسترسی</option>
+                        {accessGroups.map((option) => (
+                          <option key={option.id} value={option.id}>
+                            {option.name}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                    <p className="mt-2 text-xs leading-5 text-[#737373]">
+                      بعد از ذخیره، این گروه به عنوان گروه دسترسی همین کاربر ثبت می‌شود.
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="rounded-2xl border border-[#D9D9D9] bg-white p-4">
+                <h4 className="text-sm font-bold text-[#222222]">مشخصات نمایش راننده</h4>
+                <p className="mt-1 text-sm leading-6 text-[#737373]">
+                  {formData.userId
+                    ? "نام و موبایل از حساب کاربری انتخاب‌شده خوانده می‌شود."
+                    : "برای راننده بدون حساب، نام و موبایل را دستی وارد کنید."}
+                </p>
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <Field label="نام راننده">
+                    <Input
+                      value={formData.name}
+                      onChange={(event) => onChange("name", event.target.value)}
+                      placeholder="مثلا علی رضایی"
+                      readOnly={Boolean(formData.userId)}
+                      required={!formData.userId}
+                    />
+                  </Field>
+                  <Field label="شماره موبایل">
+                    <Input
+                      type="tel"
+                      inputMode="tel"
+                      dir="ltr"
+                      value={formData.phone}
+                      onChange={(event) => onChange("phone", event.target.value)}
+                      placeholder="09123456789"
+                      readOnly={Boolean(formData.userId)}
+                    />
+                  </Field>
+                  <Field label="تاریخ شروع">
+                    <Input
+                      type="date"
+                      value={formData.startDate}
+                      onChange={(event) => onChange("startDate", event.target.value)}
+                      required
+                    />
+                  </Field>
+                </div>
+              </div>
+            </div>
+
+            <aside className="space-y-4">
+              <DriverInfoPanel title="راهنما">
+                راننده بدون حساب هم می‌تواند در خودروها، ماموریت‌ها و گزارش‌ها استفاده شود.
+              </DriverInfoPanel>
+              <DriverInfoPanel title="اتصال به کاربر">
+                بعدا هم می‌توانید همین راننده را ویرایش کنید و به یک حساب کاربری وصل کنید؛ سوابق قبلی او حفظ می‌شود.
+              </DriverInfoPanel>
+            </aside>
           </div>
-        </form>
-      </div>
-    </div>
+        ) : (
+          <div className="grid gap-5 lg:grid-cols-[1fr_18rem]">
+            <div className="space-y-5">
+              <div className="rounded-2xl border border-[#D9D9D9] bg-white p-4">
+                <h4 className="text-sm font-bold text-[#222222]">وضعیت راننده</h4>
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <Field label="وضعیت">
+                    <Select
+                      value={formData.status}
+                      onChange={(event) => onChange("status", event.target.value)}
+                    >
+                      <option value="active">فعال</option>
+                      <option value="inactive">غیرفعال</option>
+                    </Select>
+                  </Field>
+                  <Field label="امتیاز">
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      max="10"
+                      step="0.1"
+                      value={formData.score}
+                      onChange={(event) => onChange("score", event.target.value)}
+                      required
+                    />
+                  </Field>
+                </div>
+              </div>
+
+            </div>
+
+            <aside className="space-y-4">
+              <DriverInfoPanel title="خلاصه">
+                <div>راننده: <strong className="text-[#222222]">{formData.name || "بدون نام"}</strong></div>
+                <div>وضعیت: <strong className="text-[#222222]">{statusLabelMap[formData.status] || "-"}</strong></div>
+                <div>امتیاز: <strong className="text-[#222222]">{Number(formData.score || 0).toFixed(1)}</strong></div>
+              </DriverInfoPanel>
+              <DriverInfoPanel title="حساب کاربری">
+                {selectedUser ? (
+                  <div className="space-y-1">
+                    <div>
+                      به حساب <strong className="text-[#222222]">{selectedUser.fullName || selectedUser.userName}</strong> وصل می‌شود.
+                    </div>
+                    <div>
+                      گروه جدید: <strong className="text-[#222222]">{selectedAccessGroup?.name || "انتخاب نشده"}</strong>
+                    </div>
+                  </div>
+                ) : (
+                  <>این راننده فعلا حساب ورود جداگانه ندارد.</>
+                )}
+              </DriverInfoPanel>
+            </aside>
+          </div>
+        )}
+
+        </div>
+
+        <div className="shrink-0 border-t border-[#D9D9D9] bg-white px-5 py-4 sm:px-6">
+          <div className="flex flex-wrap justify-end gap-3">
+            <SecondaryButton type="button" onClick={wizardStep === 1 ? onClose : () => setWizardStep(1)}>
+              {wizardStep === 1 ? "انصراف" : "مرحله قبل"}
+            </SecondaryButton>
+            <PrimaryButton type="submit" disabled={submitting}>
+              {wizardStep === 1 ? "مرحله بعد" : submitting ? "در حال ذخیره..." : "ذخیره راننده"}
+            </PrimaryButton>
+          </div>
+        </div>
+      </form>
+    </Modal>
   );
 }
 
@@ -258,6 +417,7 @@ export default function Drivers() {
   const { user } = useAuth();
   const [rows, setRows] = useState([]);
   const [driverUsers, setDriverUsers] = useState([]);
+  const [accessGroups, setAccessGroups] = useState([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -274,6 +434,7 @@ export default function Drivers() {
   const [error, setError] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [formMode, setFormMode] = useState("create");
+  const [wizardStep, setWizardStep] = useState(1);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState(emptyForm);
   const [formError, setFormError] = useState("");
@@ -287,12 +448,14 @@ export default function Drivers() {
   const canDelete = hasPermission(user, "drivers.delete");
 
   const loadData = async () => {
-    const [driversResponse, usersResponse] = await Promise.all([
+    const [driversResponse, usersResponse, accessGroupsResponse] = await Promise.all([
       usersAPI.listDrivers(),
       usersAPI.list(),
+      usersAPI.listAccessGroups(),
     ]);
     setRows(normalizeCollection(driversResponse.data));
     setDriverUsers(normalizeCollection(usersResponse.data).filter((row) => !row.isSuperuser));
+    setAccessGroups(normalizeCollection(accessGroupsResponse.data).filter((row) => row.isActive !== false));
   };
 
   useEffect(() => {
@@ -399,6 +562,7 @@ export default function Drivers() {
 
   const openCreateModal = () => {
     setFormMode("create");
+    setWizardStep(1);
     setEditingId(null);
     setFormData({ ...emptyForm, startDate: new Date().toISOString().slice(0, 10) });
     setFormError("");
@@ -407,9 +571,11 @@ export default function Drivers() {
 
   const openEditModal = (row) => {
     setFormMode("edit");
+    setWizardStep(1);
     setEditingId(row.id);
     setFormData({
       userId: row.userId ? String(row.userId) : "",
+      accessGroupId: "",
       name: row.name || "",
       phone: row.phone || "",
       status: row.status || "active",
@@ -419,6 +585,12 @@ export default function Drivers() {
     setFormError("");
     setModalOpen(true);
     setActionMenuId(null);
+  };
+
+  const closeDriverModal = () => {
+    setModalOpen(false);
+    setWizardStep(1);
+    setFormError("");
   };
 
   const handleDelete = (row) => {
@@ -442,11 +614,31 @@ export default function Drivers() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+
+    if (wizardStep === 1) {
+      if (!formData.userId && !formData.name.trim()) {
+        setFormError("نام راننده را وارد کنید.");
+        return;
+      }
+      if (!formData.startDate) {
+        setFormError("تاریخ شروع را انتخاب کنید.");
+        return;
+      }
+      if (formData.userId && !formData.accessGroupId) {
+        setFormError("گروه دسترسی جدید کاربر را انتخاب کنید.");
+        return;
+      }
+      setFormError("");
+      setWizardStep(2);
+      return;
+    }
+
     setSubmitting(true);
     setFormError("");
 
     const payload = {
       userId: formData.userId ? Number(formData.userId) : null,
+      accessGroupId: formData.userId ? Number(formData.accessGroupId) : null,
       name: formData.name.trim(),
       phone: formData.phone.trim(),
       status: formData.status,
@@ -1006,62 +1198,27 @@ export default function Drivers() {
                       {shouldRenderColumn('startDate') && <td className="border-b border-r border-gray-300 px-4 py-2 text-center">{formatDate(row.startDate)}</td>}
                       {shouldRenderColumn('score') && <td className="border-b border-r border-gray-300 px-4 py-2 text-center">{toNumber(row.score).toFixed(1)}</td>}
                       {(canUpdate || canDelete) && shouldRenderColumn('actions') ? (
-                        <td className="relative border-b border-r border-gray-300 px-4 py-2 text-center">
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setActionMenuId((current) => (current === row.id ? null : row.id));
-                            }}
-                            className="mx-auto flex h-8 items-center justify-center gap-1 rounded-[10px] border border-[#D9D9D9] bg-white px-2 text-[#222222]"
-                            aria-label="اقدامات"
-                          >
-                            <HiOutlineCog6Tooth className="h-5 w-5" />
-                            <HiOutlineChevronDown
-                              className={`h-4 w-4 transition ${actionMenuId === row.id ? "rotate-180" : ""}`}
+                        <td className="border-b border-r border-gray-300 px-4 py-2 text-center">
+                          <div onClick={(event) => event.stopPropagation()}>
+                            <RowActionMenu
+                              items={[
+                                canUpdate && {
+                                  label: "ویرایش",
+                                  onClick: () => openEditModal(row),
+                                },
+                                {
+                                  label: "تغییر رمز",
+                                  tone: "blue",
+                                  onClick: () => setActionMenuId(null),
+                                },
+                                canDelete && {
+                                  label: "حذف",
+                                  tone: "delete",
+                                  onClick: () => handleDelete(row),
+                                },
+                              ]}
                             />
-                          </button>
-                          {actionMenuId === row.id ? (
-                            <div
-                              className="absolute left-4 top-11 z-20 flex w-[120px] flex-col gap-1 rounded-tl-[10px] rounded-bl-[10px] rounded-br-[10px] border border-[#D9D9D9] bg-white/85 px-2 py-1 text-[#222222] shadow-lg backdrop-blur-sm before:absolute before:-top-[7px] before:left-3 before:h-3 before:w-3 before:rotate-45 before:border-l before:border-t before:border-[#D9D9D9] before:bg-white/85"
-                              onClick={(event) => event.stopPropagation()}
-                            >
-                              {canUpdate ? (
-                                <button
-                                  type="button"
-                                  onClick={() => openEditModal(row)}
-                                  className="flex items-center justify-between rounded-[10px] px-1 py-1 text-xs hover:bg-[#FFF6E6]"
-                                >
-                                  <span>ویرایش</span>
-                                  <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#FFF6E6] text-[#FFB031]">
-                                    <HiOutlinePencilSquare className="h-5 w-5" />
-                                  </span>
-                                </button>
-                              ) : null}
-                              <button
-                                type="button"
-                                onClick={() => setActionMenuId(null)}
-                                className="flex items-center justify-between rounded-[10px] px-1 py-1 text-xs hover:bg-[#EAF3FC]"
-                              >
-                                <span>تغییر رمز</span>
-                                <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#EAF3FC] text-[#206AB4]">
-                                  <HiOutlineKey className="h-5 w-5" />
-                                </span>
-                              </button>
-                              {canDelete ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handleDelete(row)}
-                                  className="flex items-center justify-between rounded-[10px] px-1 py-1 text-xs hover:bg-[#FFE6E6]"
-                                >
-                                  <span>حذف</span>
-                                  <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#FFE6E6] text-[#FA5454]">
-                                    <HiOutlineTrash className="h-5 w-5" />
-                                  </span>
-                                </button>
-                              ) : null}
-                            </div>
-                          ) : null}
+                          </div>
                         </td>
                       ) : null}
                     </tr>
@@ -1138,11 +1295,14 @@ export default function Drivers() {
       <CreateDriverModal
         open={modalOpen}
         mode={formMode}
+        wizardStep={wizardStep}
+        setWizardStep={setWizardStep}
         formData={formData}
         driverUsers={driverUsers}
+        accessGroups={accessGroups}
         formError={formError}
         submitting={submitting}
-        onClose={() => setModalOpen(false)}
+        onClose={closeDriverModal}
         onSubmit={handleSubmit}
         onChange={(field, value) => setFormData((prev) => ({ ...prev, [field]: value }))}
       />

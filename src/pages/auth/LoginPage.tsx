@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { FaRegEye, FaRegEyeSlash, FaUser } from "react-icons/fa";
+import { FiPhone, FiUserCheck } from "react-icons/fi";
 import { RiLockPasswordLine } from "react-icons/ri";
 import { useNavigate } from "react-router";
 import { authAPI } from "../../api/auth";
@@ -11,6 +12,11 @@ import { extractApiError } from "../../utils/formatters";
 type LoginForm = {
   username: string;
   password: string;
+  confirmPassword: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  nationalCode: string;
 };
 
 type LoginErrors = Partial<LoginForm>;
@@ -26,6 +32,11 @@ export function LoginPage() {
   const [form, setForm] = useState<LoginForm>({
     username: "",
     password: "",
+    confirmPassword: "",
+    firstName: "",
+    lastName: "",
+    phone: "",
+    nationalCode: "",
   });
 
   const [errors , setErrors] = useState<LoginErrors>({});
@@ -60,12 +71,38 @@ export function LoginPage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    setIsLoading(true);
+    const nextErrors: LoginErrors = {};
+    if (!form.username.trim()) nextErrors.username = "نام کاربری را وارد کنید.";
+    if (!form.password.trim()) nextErrors.password = "رمز عبور را وارد کنید.";
+    if (requiresSetup && form.password !== form.confirmPassword) {
+      nextErrors.confirmPassword = "تکرار رمز عبور با رمز اصلی یکسان نیست.";
+    }
+    if (requiresSetup && form.phone && !/^09\d{9}$/.test(form.phone.trim())) {
+      nextErrors.phone = "شماره موبایل را به صورت 09123456789 وارد کنید.";
+    }
+    if (requiresSetup && form.nationalCode && !/^\d{10}$/.test(form.nationalCode.trim())) {
+      nextErrors.nationalCode = "کد ملی باید ۱۰ رقم باشد.";
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
+      return;
+    }
+
+    setErrors({});
     setApiError("");
+    setIsLoading(true);
 
     try {
       const request = requiresSetup ? authAPI.bootstrap : authAPI.login;
-      const response = await request(form);
+      const response = await request({
+        username: form.username.trim(),
+        password: form.password,
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        phone: form.phone.trim(),
+        nationalCode: form.nationalCode.trim(),
+      });
       const data = response.data as AuthResponse;
 
       if (data.access) {
@@ -100,7 +137,7 @@ export function LoginPage() {
   }
 
   return (
-    <div className="w-full max-w-md" dir="rtl">
+    <div className={`w-full ${requiresSetup ? "max-w-2xl" : "max-w-md"}`} dir="rtl">
       <div className="mb-10 text-center">
         <img
           src="/ExirLogo.png"
@@ -109,12 +146,12 @@ export function LoginPage() {
         />
 
         <h1 className="mt-6 text-3xl font-bold tracking-tight text-sky-950">
-          {requiresSetup ? "راه‌اندازی اولیه سامانه" : "ورود به پنل مدیریت"}
+          {requiresSetup ? "ثبت مالک سامانه" : "ورود به پنل مدیریت"}
         </h1>
 
         <p className="mt-3 text-sm leading-7 text-sky-800">
           {requiresSetup
-            ? "برای ساخت اولین مدیر سامانه، نام کاربری و رمز عبور را وارد کنید."
+            ? "برای شروع، حساب مالک اصلی سامانه را بسازید. این فرم فقط یک بار نمایش داده می‌شود."
             : "برای دسترسی به داشبورد مدیریت ناوگان، نام کاربری و رمز عبور خود را وارد کنید."}
         </p>
       </div>
@@ -122,11 +159,65 @@ export function LoginPage() {
       <form onSubmit={handleSubmit} className="space-y-5">
         <ErrorAlert message={apiError} />
 
+        {requiresSetup ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input
+              label="نام"
+              type="text"
+              placeholder="نام"
+              value={form.firstName}
+              error={errors.firstName}
+              startIcon={<FiUserCheck size={18} />}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, firstName: event.target.value }))
+              }
+            />
+            <Input
+              label="نام خانوادگی"
+              type="text"
+              placeholder="نام خانوادگی"
+              value={form.lastName}
+              error={errors.lastName}
+              startIcon={<FiUserCheck size={18} />}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, lastName: event.target.value }))
+              }
+            />
+            <Input
+              label="شماره موبایل"
+              type="tel"
+              inputMode="tel"
+              dir="ltr"
+              placeholder="09123456789"
+              value={form.phone}
+              error={errors.phone}
+              startIcon={<FiPhone size={18} />}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, phone: event.target.value }))
+              }
+            />
+            <Input
+              label="کد ملی"
+              type="text"
+              inputMode="numeric"
+              dir="ltr"
+              maxLength={10}
+              placeholder="0012345678"
+              value={form.nationalCode}
+              error={errors.nationalCode}
+              startIcon={<FiUserCheck size={18} />}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, nationalCode: event.target.value }))
+              }
+            />
+          </div>
+        ) : null}
+
         <Input
-          label="نام کاربری"
+          label={requiresSetup ? "نام کاربری مالک" : "نام کاربری"}
           type="text"
           dir="ltr"
-          placeholder="نام کاربری"
+          placeholder={requiresSetup ? "مثلا owner" : "نام کاربری"}
           value={form.username}
           error={errors.username}
           startIcon={<FaUser size={18} />}
@@ -135,22 +226,39 @@ export function LoginPage() {
           }
         />
 
-        <Input
-          label="رمز عبور"
-          type={showPassword ? "text" : "password"}
-          dir="ltr"
-          placeholder="رمز عبور"
-          value={form.password}
-          error={errors.password}
-          startIcon={<RiLockPasswordLine size={22} />}
-          endIcon={
-            showPassword ? <FaRegEyeSlash size={18} /> : <FaRegEye size={18} />
-          }
-          onEndIconClick={() => setShowPassword((prev) => !prev)}
-          onChange={(event) =>
-            setForm((prev) => ({ ...prev, password: event.target.value }))
-          }
-        />
+        <div className={requiresSetup ? "grid gap-4 sm:grid-cols-2" : ""}>
+          <Input
+            label="رمز عبور"
+            type={showPassword ? "text" : "password"}
+            dir="ltr"
+            placeholder="رمز عبور"
+            value={form.password}
+            error={errors.password}
+            startIcon={<RiLockPasswordLine size={22} />}
+            endIcon={
+              showPassword ? <FaRegEyeSlash size={18} /> : <FaRegEye size={18} />
+            }
+            onEndIconClick={() => setShowPassword((prev) => !prev)}
+            onChange={(event) =>
+              setForm((prev) => ({ ...prev, password: event.target.value }))
+            }
+          />
+
+          {requiresSetup ? (
+            <Input
+              label="تکرار رمز عبور"
+              type={showPassword ? "text" : "password"}
+              dir="ltr"
+              placeholder="تکرار رمز عبور"
+              value={form.confirmPassword}
+              error={errors.confirmPassword}
+              startIcon={<RiLockPasswordLine size={22} />}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, confirmPassword: event.target.value }))
+              }
+            />
+          ) : null}
+        </div>
 
         {!requiresSetup ? (
           <div className="flex items-center justify-between text-sm">
@@ -177,13 +285,15 @@ export function LoginPage() {
               ? "در حال راه‌اندازی..."
               : "در حال ورود..."
             : requiresSetup
-              ? "ساخت مدیر و ورود"
+              ? "ساخت مالک و ورود"
               : "ورود"}
         </Button>
       </form>
 
       <p className="mt-8 text-center text-sm leading-7 text-sky-700">
-        اطلاعات ورود از سرویس احراز هویت سامانه ناوگان بررسی می‌شود.
+        {requiresSetup
+          ? "بعد از ساخت مالک، ورود عمومی بسته می‌شود و کاربران بعدی از داخل پنل ساخته می‌شوند."
+          : "اطلاعات ورود از سرویس احراز هویت سامانه ناوگان بررسی می‌شود."}
       </p>
     </div>
   );

@@ -4,13 +4,12 @@ import { useEffect, useRef, useState } from 'react';
 import { vehiclesAPI } from '../api/vehicles';
 import { useAuth } from '../context/AuthContext';
 import { hasPermission } from '../utils/permissions';
-import { extractApiError, formatDate, formatNumber, normalizeCollection } from '../utils/formatters';
+import { extractApiError, formatNumber, normalizeCollection } from '../utils/formatters';
+import { formatPlateForDisplay } from '../utils/iranPlate';
 import {
   AccessDenied,
-  Badge,
   ErrorAlert,
   LoadingState,
-  SecondaryButton,
 } from '../components/shared/UI';
 
 const TILE_URL = 'https://map.exirfirm.com/tile/{z}/{x}/{y}.png';
@@ -139,6 +138,7 @@ function VehicleIcon() {
 function VehicleListItem({ row, isSelected, onSelect }) {
   const status = vehicleStatus(row);
   const speed = Number(row.traccarSpeedKmh || 0);
+  const plateNumber = formatPlateForDisplay(row.plateNumber) || 'بدون پلاک';
 
   return (
     <div
@@ -160,7 +160,7 @@ function VehicleListItem({ row, isSelected, onSelect }) {
 
       <div className="flex items-center justify-between mt-1">
         <span className="font-semibold text-xs px-2.5 py-1 bg-slate-100 rounded-xl text-slate-700 tracking-wide" dir="ltr">
-          {row.plateNumber || 'بدون پلاک'}
+          {plateNumber}
         </span>
         <div className="flex items-baseline gap-0.5">
           <span className="font-bold text-sm text-slate-800" dir="ltr">{formatNumber(speed)}</span>
@@ -174,6 +174,7 @@ function VehicleListItem({ row, isSelected, onSelect }) {
 function VehicleMarker({ row, left, top, isSelected, rotation }) {
   const status = vehicleStatus(row);
   const speed = Number(row.traccarSpeedKmh || 0);
+  const plateNumber = formatPlateForDisplay(row.plateNumber) || '-';
 
   return (
     <div
@@ -219,7 +220,7 @@ function VehicleMarker({ row, left, top, isSelected, rotation }) {
           <div className="grid grid-cols-2 gap-2 px-4 py-3">
             <div className="min-w-0 rounded-xl bg-slate-50 px-3 py-2">
               <div className="text-[11px] font-medium text-slate-400">پلاک</div>
-              <div className="mt-1 truncate text-xs font-bold text-slate-800" dir="ltr">{row.plateNumber || '-'}</div>
+              <div className="mt-1 truncate text-xs font-bold text-slate-800" dir="ltr">{plateNumber}</div>
             </div>
             <div className="min-w-0 rounded-xl bg-slate-50 px-3 py-2">
               <div className="text-[11px] font-medium text-slate-400">سرعت</div>

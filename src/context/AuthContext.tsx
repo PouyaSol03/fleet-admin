@@ -7,9 +7,11 @@ export type AuthUser = {
   isDriver?: boolean;
   isSuperuser?: boolean;
   permissions?: string[];
+  accessGroupId?: number | null;
   accessGroupName?: string;
+  parentId?: number | null;
+  userType?: string;
   userTypeLabel?: string;
-  roleLabel?: string;
 };
 
 type AuthContextValue = {
