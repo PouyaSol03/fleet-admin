@@ -21,6 +21,7 @@ import type {
   ButtonHTMLAttributes,
   ChangeEvent,
   CSSProperties,
+  FormEvent,
   InputHTMLAttributes,
   ReactNode,
   SelectHTMLAttributes,
@@ -55,6 +56,19 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   className?: string;
 };
 
+type ModalFormProps = {
+  open: boolean;
+  title: string;
+  onClose: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  children?: ReactNode;
+  cancelLabel?: string;
+  submitLabel?: string;
+  submitting?: boolean;
+  footer?: ReactNode;
+  bodyClassName?: string;
+};
+
 type ToastTone = "error" | "success";
 
 type SelectOption = {
@@ -70,8 +84,34 @@ type RowActionItem = {
   tone?: "edit" | "delete" | "blue" | "neutral";
 };
 
-const DateObject = (DateObjectModule as any).default || DateObjectModule;
-const DatePicker = (DatePickerModule as any).default || DatePickerModule;
+type ModuleWithDefault<T> = {
+  default?: T;
+};
+
+type DataTableRow = Record<string, unknown>;
+type DataTableColumn = {
+  key: string;
+  title: ReactNode;
+  render?: (value: unknown, row: DataTableRow) => ReactNode;
+};
+
+const DateObject =
+  (DateObjectModule as ModuleWithDefault<typeof DateObjectModule>).default ||
+  DateObjectModule;
+const DatePicker =
+  (DatePickerModule as ModuleWithDefault<typeof DatePickerModule>).default ||
+  DatePickerModule;
+
+const requiredDataTableColumnKeys = [
+  'plateNumber',
+  'fullName',
+  'name',
+  'actions',
+  'inspectorName',
+  'title',
+  'requesterName',
+  'driverName'
+];
 
 const panelShadow = "2px 2px 7px 0px rgba(0, 0, 0, 0.08)";
 const toastToneClass: Record<ToastTone, {
@@ -617,6 +657,10 @@ export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
           calendar={persian}
           locale={persian_fa}
           calendarPosition="bottom-right"
+          fixMainPosition
+          portal
+          portalTarget={typeof document !== "undefined" ? document.body : undefined}
+          zIndex={10000}
           format="YYYY/MM/DD"
           inputClass="fleet-control h-14 w-full rounded-xl border border-[#D9D9D9] bg-white pr-14 pl-[13px] text-right text-sm font-normal text-[#222222] outline-none transition placeholder:text-[#BFC4D5] focus:border-[#206AB4] focus:ring-4 focus:ring-[#EAF3FC]"
           placeholder={props.placeholder || "تاریخ را انتخاب کنید"}
@@ -755,21 +799,70 @@ export function RowActionMenu({
   label?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
+  const [opensAbove, setOpensAbove] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const visibleItems = items.filter(Boolean) as RowActionItem[];
+
+  const updateMenuPosition = useCallback(() => {
+    if (typeof window === "undefined") return;
+
+    const rect = rootRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const gap = 8;
+    const viewportPadding = 8;
+    const menuWidth = 132;
+    const menuHeight = menuRef.current?.offsetHeight ?? Math.min(220, visibleItems.length * 42 + 12);
+    const spaceBelow = window.innerHeight - rect.bottom - viewportPadding;
+    const spaceAbove = rect.top - viewportPadding;
+    const shouldOpenAbove = spaceBelow < menuHeight + gap && spaceAbove > spaceBelow;
+
+    setOpensAbove(shouldOpenAbove);
+    setMenuStyle({
+      position: "fixed",
+      top: shouldOpenAbove
+        ? Math.max(viewportPadding, rect.top - menuHeight - gap)
+        : Math.min(window.innerHeight - menuHeight - viewportPadding, rect.bottom + gap),
+      left: Math.min(
+        Math.max(viewportPadding, rect.left + rect.width / 2 - menuWidth / 2),
+        Math.max(viewportPadding, window.innerWidth - menuWidth - viewportPadding),
+      ),
+      width: menuWidth,
+      zIndex: 9999,
+    });
+  }, [visibleItems.length]);
 
   useEffect(() => {
     if (!open) return;
 
     const handlePointerDown = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (!rootRef.current?.contains(target) && !menuRef.current?.contains(target)) {
         setOpen(false);
       }
     };
 
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+
+    updateMenuPosition();
+    const frame = window.requestAnimationFrame(updateMenuPosition);
     document.addEventListener("mousedown", handlePointerDown);
-    return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [open]);
+    document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("resize", updateMenuPosition);
+    window.addEventListener("scroll", updateMenuPosition, true);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("resize", updateMenuPosition);
+      window.removeEventListener("scroll", updateMenuPosition, true);
+    };
+  }, [open, updateMenuPosition]);
 
   if (!visibleItems.length) return null;
 
@@ -788,7 +881,10 @@ export function RowActionMenu({
         type="button"
         onClick={(event) => {
           event.stopPropagation();
-          setOpen((current) => !current);
+          setOpen((current) => {
+            if (!current) updateMenuPosition();
+            return !current;
+          });
         }}
         className="mx-auto flex h-8 items-center justify-center gap-1 rounded-[10px] border border-[#D9D9D9] bg-white px-2 text-[#222222]"
         aria-label={label}
@@ -824,10 +920,16 @@ export function RowActionMenu({
         </svg>
       </button>
 
-      {open ? (
+      {open && typeof document !== "undefined" ? createPortal(
         <div
-          className="absolute left-1/2 top-11 z-20 flex w-[120px] -translate-x-1/2 flex-col gap-1 rounded-tl-[10px] rounded-bl-[10px] rounded-br-[10px] border border-[#D9D9D9] bg-white/85 px-2 py-1 text-[#222222] shadow-lg backdrop-blur-sm before:absolute before:-top-[7px] before:left-4 before:h-3 before:w-3 before:rotate-45 before:border-l before:border-t before:border-[#D9D9D9] before:bg-white/85"
+          ref={menuRef}
+          className={`flex flex-col gap-1 border border-[#D9D9D9] bg-white/95 px-2 py-1 text-[#222222] shadow-lg backdrop-blur-sm ${
+            opensAbove
+              ? "rounded-tl-[10px] rounded-tr-[10px] rounded-bl-[10px] before:absolute before:-bottom-[7px] before:left-4 before:h-3 before:w-3 before:rotate-45 before:border-b before:border-r before:border-[#D9D9D9] before:bg-white/95"
+              : "rounded-tl-[10px] rounded-bl-[10px] rounded-br-[10px] before:absolute before:-top-[7px] before:left-4 before:h-3 before:w-3 before:rotate-45 before:border-l before:border-t before:border-[#D9D9D9] before:bg-white/95"
+          }`}
           role="menu"
+          style={menuStyle}
           onClick={(event) => event.stopPropagation()}
         >
           {visibleItems.map((item) => (
@@ -850,7 +952,8 @@ export function RowActionMenu({
               </span>
             </button>
           ))}
-        </div>
+        </div>,
+        document.body,
       ) : null}
     </div>
   );
@@ -862,22 +965,11 @@ export function DataTable({
   keyField = "id",
   emptyTitle = "داده ای یافت نشد.",
 }: {
-  columns: any[];
-  rows: any[];
+  columns: DataTableColumn[];
+  rows: DataTableRow[];
   keyField?: string;
   emptyTitle?: string;
 }) {
-  const requiredColumnKeys = [
-    'plateNumber',
-    'fullName',
-    'name',
-    'actions',
-    'inspectorName',
-    'title',
-    'requesterName',
-    'driverName'
-  ];
-
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [rowCountOpen, setRowCountOpen] = useState(false);
@@ -908,17 +1000,17 @@ export function DataTable({
   }, []);
 
   const middleColumns = useMemo(() => {
-    return columns.filter(col => !requiredColumnKeys.includes(col.key));
+    return columns.filter(col => !requiredDataTableColumnKeys.includes(col.key));
   }, [columns]);
 
-  const [visibleKeys, setVisibleKeys] = useState<string[]>(requiredColumnKeys);
+  const [visibleKeys, setVisibleKeys] = useState<string[]>(requiredDataTableColumnKeys);
 
   const finalColumns = useMemo(() => {
     if (!isMobile) {
       return columns;
     }
     return columns.filter(col =>
-      requiredColumnKeys.includes(col.key) || visibleKeys.includes(col.key)
+      requiredDataTableColumnKeys.includes(col.key) || visibleKeys.includes(col.key)
     );
   }, [columns, visibleKeys, isMobile]);
 
@@ -998,7 +1090,7 @@ export function DataTable({
                     >
                       {column.render
                         ? column.render(row[column.key], row)
-                        : (row[column.key] ?? "-")}
+                        : ((row[column.key] as ReactNode) ?? "-")}
                     </td>
                   ))}
                 </tr>
@@ -1113,17 +1205,35 @@ export function Modal({
   title,
   onClose,
   children,
+  bodyClassName,
+  panelClassName,
 }: {
   open: boolean;
   title: string;
   onClose: () => void;
   children?: ReactNode;
+  bodyClassName?: string;
+  panelClassName?: string;
 }) {
+  useEffect(() => {
+    if (!open) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose, open]);
+
   if (!open) return null;
 
-  return (
-    <div className="fleet-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-3 py-4 backdrop-blur-sm sm:px-6">
-      <div className="fleet-modal-panel flex max-h-[92dvh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-[#D9D9D9] bg-white shadow-2xl shadow-slate-950/20" dir="rtl">
+  const modal = (
+    <div className="fleet-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-3 py-4 sm:px-6">
+      <div
+        className={`fleet-modal-panel flex max-h-[92dvh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-[#D9D9D9] bg-white shadow-2xl shadow-slate-950/20 ${panelClassName || ""}`.trim()}
+        dir="rtl"
+      >
         <div className="fleet-modal-header flex shrink-0 items-center justify-between border-b border-[#D9D9D9] bg-white px-5 py-4 sm:px-6">
           <h3 className="min-w-0 truncate text-right text-lg font-bold text-[#011627]">{title}</h3>
           <button
@@ -1135,9 +1245,62 @@ export function Modal({
             ×
           </button>
         </div>
-        <div className="fleet-modal-body min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6">{children}</div>
+        <div
+          className={
+            bodyClassName
+              ? `fleet-modal-body min-h-0 flex-1 ${bodyClassName}`
+              : "fleet-modal-body min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6"
+          }
+        >
+          {children}
+        </div>
       </div>
     </div>
+  );
+
+  return typeof document === "undefined" ? modal : createPortal(modal, document.body);
+}
+
+export function ModalForm({
+  open,
+  title,
+  onClose,
+  onSubmit,
+  children,
+  cancelLabel = "انصراف",
+  submitLabel = "ذخیره",
+  submitting = false,
+  footer,
+  bodyClassName = "",
+}: ModalFormProps) {
+  return (
+    <Modal
+      open={open}
+      title={title}
+      onClose={onClose}
+      bodyClassName="overflow-hidden p-0"
+      panelClassName="h-[92dvh]"
+    >
+      <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
+        <div
+          className={`min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6 ${bodyClassName}`.trim()}
+        >
+          {children}
+        </div>
+        <div className="flex shrink-0 justify-end gap-3 border-t border-[#EFEFEF] bg-white px-5 py-4 sm:px-6">
+          {footer || (
+            <>
+              <SecondaryButton type="button" onClick={onClose} disabled={submitting}>
+                {cancelLabel}
+              </SecondaryButton>
+              <PrimaryButton type="submit" disabled={submitting}>
+                {submitting ? "در حال ذخیره..." : submitLabel}
+              </PrimaryButton>
+            </>
+          )}
+        </div>
+      </form>
+    </Modal>
   );
 }
 

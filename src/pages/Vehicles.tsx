@@ -6,6 +6,8 @@ import { vehiclesAPI } from '../api/vehicles';
 import { useAuth } from '../context/AuthContext';
 import { hasPermission } from '../utils/permissions';
 import { extractApiError, formatNumber, normalizeCollection } from '../utils/formatters';
+import { formatPlateForStorage } from '../utils/iranPlate';
+import { IranPlateDisplay, IranPlateInput } from '../components/shared/IranPlate';
 import {
   AccessDenied,
   Badge,
@@ -166,7 +168,7 @@ export default function Vehicles() {
 
     const payload = {
       model: formData.model.trim(),
-      plateNumber: formData.plateNumber.trim(),
+      plateNumber: formatPlateForStorage(formData.plateNumber),
       typeId: formData.typeId ? Number(formData.typeId) : null,
       groupId: formData.groupId ? Number(formData.groupId) : null,
       driverId: formData.driverId ? Number(formData.driverId) : null,
@@ -214,7 +216,7 @@ export default function Vehicles() {
 
   const columns = [
     { key: 'model', title: 'مدل' },
-    { key: 'plateNumber', title: 'پلاک' },
+    { key: 'plateNumber', title: 'پلاک', render: (value) => <IranPlateDisplay value={value} /> },
     { key: 'imei', title: 'IMEI' },
     { key: 'typeName', title: 'نوع' },
     { key: 'groupName', title: 'گروه' },
@@ -266,7 +268,7 @@ export default function Vehicles() {
               <Input value={formData.model} onChange={(event) => setFormData((prev) => ({ ...prev, model: event.target.value }))} required />
             </Field>
             <Field label="پلاک">
-              <Input value={formData.plateNumber} onChange={(event) => setFormData((prev) => ({ ...prev, plateNumber: event.target.value }))} />
+              <IranPlateInput value={formData.plateNumber} onChange={(plateNumber) => setFormData((prev) => ({ ...prev, plateNumber }))} />
             </Field>
             <Field label="نوع خودرو">
               <Select value={formData.typeId} onChange={(event) => setFormData((prev) => ({ ...prev, typeId: event.target.value }))}>

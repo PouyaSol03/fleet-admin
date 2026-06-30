@@ -1,5 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, Outlet, useLocation, useNavigate } from "react-router";
+import {
+  HiOutlineArrowPath,
+  HiOutlineArrowRightOnRectangle,
+  HiOutlineShieldExclamation,
+} from "react-icons/hi2";
 import { authAPI } from "../api/auth";
 import { API_BASE_URL, clearAuthTokens, getAccessToken } from "../api/client";
 import { notificationsAPI } from "../api/notifications";
@@ -19,8 +24,39 @@ type Notification = {
   readAt?: string;
 };
 
+type LoadNotificationsOptions = {
+  silent?: boolean;
+};
+
+type NoPermissionsStateProps = {
+  user: AuthUser | null;
+  refreshing: boolean;
+  isLoggingOut: boolean;
+  onRefresh: () => void;
+  onLogout: () => void;
+};
+
+const NOTIFICATION_POLL_INTERVAL_MS = 60_000;
+
+function appendTokenParam(url: string, token: string) {
+  const websocketUrl = new URL(url, window.location.origin);
+  websocketUrl.searchParams.set("token", token);
+  return websocketUrl.toString();
+}
+
+function realtimeNotificationsEnabled() {
+  return import.meta.env.VITE_ENABLE_NOTIFICATION_WS === "true";
+}
+
 function buildWebsocketUrl(token: string | null) {
-  if (!token || typeof window === "undefined") return null;
+  if (!token || typeof window === "undefined" || !realtimeNotificationsEnabled()) {
+    return null;
+  }
+
+  const configuredUrl = import.meta.env.VITE_NOTIFICATION_WS_URL;
+  if (configuredUrl) {
+    return appendTokenParam(configuredUrl, token);
+  }
 
   const apiUrl = new URL(API_BASE_URL, window.location.origin);
   const protocol = apiUrl.protocol === "https:" ? "wss:" : "ws:";
@@ -28,10 +64,64 @@ function buildWebsocketUrl(token: string | null) {
   return `${protocol}//${apiUrl.host}/ws/notifications/?token=${encodeURIComponent(token)}`;
 }
 
+function NoPermissionsState({
+  user,
+  refreshing,
+  isLoggingOut,
+  onRefresh,
+  onLogout,
+}: NoPermissionsStateProps) {
+  const displayName = user?.fullName || user?.userName || "کاربر";
+  const accessLabel = user?.accessGroupName || user?.userTypeLabel || "بدون گروه دسترسی";
+
+  return (
+    <div className="flex min-h-0 w-full items-center justify-center px-4 py-6">
+      <section className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white px-6 py-8 text-center shadow-sm sm:px-10 sm:py-10">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
+          <HiOutlineShieldExclamation className="h-9 w-9" />
+        </div>
+        <h1 className="mt-6 text-2xl font-bold leading-9 text-slate-950 sm:text-3xl">
+          دسترسی برای حساب شما فعال نشده است
+        </h1>
+        <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-slate-600 sm:text-base">
+          برای استفاده از سامانه، از ابرمدیر بخواهید گروه دسترسی و مجوزهای لازم
+          را برای حساب شما تنظیم کند.
+        </p>
+        <div className="mt-6 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm leading-7 text-slate-600">
+          <span className="font-semibold text-slate-900">{displayName}</span>
+          <span className="mx-2 text-slate-300">|</span>
+          <span>{accessLabel}</span>
+        </div>
+        <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={refreshing || isLoggingOut}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#206AB4] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#185692] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100"
+          >
+            <HiOutlineArrowPath className={`h-5 w-5 ${refreshing ? "animate-spin" : ""}`} />
+            <span>{refreshing ? "در حال بررسی..." : "بررسی دوباره دسترسی"}</span>
+          </button>
+          <button
+            type="button"
+            onClick={onLogout}
+            disabled={refreshing || isLoggingOut}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-100 bg-red-50 px-5 py-3 text-sm font-semibold text-red-600 transition hover:border-red-200 hover:bg-red-100 hover:text-red-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100"
+          >
+            <HiOutlineArrowRightOnRectangle className="h-5 w-5" />
+            <span>{isLoggingOut ? "در حال خروج..." : "خروج از حساب"}</span>
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export function DashboardLayout() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshingProfile, setRefreshingProfile] = useState(false);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
   const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
   const [notificationError, setNotificationError] = useState("");
@@ -40,10 +130,27 @@ export function DashboardLayout() {
   const socketRef = useRef<WebSocket | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const canUseProtectedFeatures = Boolean(
+    user?.isSuperuser || (user?.permissions?.length ?? 0) > 0,
+  );
 
-  useEffect(() => {
-    setSidebarOpen(false);
-  }, [location.pathname]);
+  const loadNotifications = useCallback(
+    async ({ silent = false }: LoadNotificationsOptions = {}) => {
+      try {
+        if (!silent) setLoadingNotifications(true);
+        const response = await notificationsAPI.list();
+        setNotifications(normalizeCollection<Notification>(response.data));
+        setNotificationError("");
+      } catch (err) {
+        if (!silent) {
+          setNotificationError(extractApiError(err, "بارگذاری اعلان ها انجام نشد."));
+        }
+      } finally {
+        if (!silent) setLoadingNotifications(false);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -82,33 +189,22 @@ export function DashboardLayout() {
   }, [navigate]);
 
   useEffect(() => {
-    if (!user) return undefined;
+    if (!canUseProtectedFeatures) return undefined;
 
-    let mounted = true;
-
-    async function loadNotifications() {
-      try {
-        setLoadingNotifications(true);
-        const response = await notificationsAPI.list();
-        if (mounted) setNotifications(normalizeCollection<Notification>(response.data));
-      } catch (err) {
-        if (mounted) {
-          setNotificationError(extractApiError(err, "بارگذاری اعلان ها انجام نشد."));
-        }
-      } finally {
-        if (mounted) setLoadingNotifications(false);
-      }
-    }
-
-    loadNotifications();
+    const timeoutId = window.setTimeout(() => loadNotifications(), 0);
+    const intervalId = window.setInterval(
+      () => loadNotifications({ silent: true }),
+      NOTIFICATION_POLL_INTERVAL_MS,
+    );
 
     return () => {
-      mounted = false;
+      window.clearTimeout(timeoutId);
+      window.clearInterval(intervalId);
     };
-  }, [user]);
+  }, [canUseProtectedFeatures, loadNotifications]);
 
   useEffect(() => {
-    if (!user) return undefined;
+    if (!canUseProtectedFeatures) return undefined;
 
     const websocketUrl = buildWebsocketUrl(getAccessToken());
     if (!websocketUrl) return undefined;
@@ -132,14 +228,14 @@ export function DashboardLayout() {
     };
 
     socket.onerror = () => {
-      setNotificationError("ارتباط بلادرنگ اعلان ها برقرار نشد.");
+      socket.close();
     };
 
     return () => {
       socket.close();
       socketRef.current = null;
     };
-  }, [user]);
+  }, [canUseProtectedFeatures]);
 
   async function handleMarkRead(notificationId: number | string) {
     try {
@@ -169,6 +265,31 @@ export function DashboardLayout() {
     }
   }
 
+  async function handleRefreshProfile() {
+    if (refreshingProfile || isLoggingOut) return;
+
+    setRefreshingProfile(true);
+
+    try {
+      const response = await authAPI.getProfile();
+      const profile = response.data as AuthUser;
+
+      if (profile?.isDriver) {
+        clearAuthTokens();
+        navigate("/unauthorized", { replace: true });
+        return;
+      }
+
+      setUser(profile);
+      setNotificationError("");
+    } catch {
+      clearAuthTokens();
+      navigate("/login", { replace: true });
+    } finally {
+      setRefreshingProfile(false);
+    }
+  }
+
   async function handleLogout() {
     if (isLoggingOut) return;
 
@@ -193,7 +314,8 @@ export function DashboardLayout() {
   }
 
   const contextValue = useMemo(() => ({ user, setUser }), [user]);
-  const visiblePermissions = user?.isSuperuser ? [] : user?.permissions || [];
+  const visiblePermissions = user?.permissions || [];
+  const hasNoPermissions = Boolean(user && !canUseProtectedFeatures);
   const unreadCount = notifications.filter((item) => !item.isRead).length;
   const fullBleedMain = location.pathname === "/vehicle-map" || location.pathname === "/missions-calendar";
 
@@ -205,7 +327,7 @@ export function DashboardLayout() {
     <AuthContext.Provider value={contextValue}>
       <div className="min-h-screen bg-[#FAFBFC]" dir="rtl">
         <DashboardAside
-          permissions={visiblePermissions} 
+          permissions={visiblePermissions}
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           user={user}
@@ -234,6 +356,14 @@ export function DashboardLayout() {
               <div className="flex min-h-0 w-full">
                 <LoadingState message="در حال آماده سازی داشبورد..." />
               </div>
+            ) : hasNoPermissions ? (
+              <NoPermissionsState
+                user={user}
+                refreshing={refreshingProfile}
+                isLoggingOut={isLoggingOut}
+                onRefresh={handleRefreshProfile}
+                onLogout={handleLogout}
+              />
             ) : (
               <Outlet />
             )}

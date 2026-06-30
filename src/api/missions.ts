@@ -10,6 +10,8 @@ export const missionsAPI = {
   update: (id: number | string, data: Payload) =>
     apiClient.patch(`/missions/${id}/`, data),
   delete: (id: number | string) => apiClient.delete(`/missions/${id}/`),
+  submitManagerReport: (id: number | string, data: Payload) =>
+    apiClient.post(`/missions/${id}/manager-report/`, data),
 
   listRequests: (params?: Params) =>
     apiClient.get("/missions/requests/", { params }),

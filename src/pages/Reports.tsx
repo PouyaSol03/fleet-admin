@@ -1,6 +1,6 @@
 ﻿// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { missionsAPI } from '../api/missions';
 import { reportsAPI } from '../api/reports';
 import { usersAPI } from '../api/users';
@@ -40,6 +40,28 @@ const emptyForm = {
   description: '',
 };
 
+const emptyReviewForm = {
+  reviewNote: '',
+};
+
+const offenseTypeLabel = {
+  overspeed: 'سرعت بیش از حد',
+  harsh_driving: 'رانندگی خشن',
+  dangerous_cornering: 'پیچ خطرناک',
+  speeding: 'سرعت غیرمجاز',
+  route_deviation: 'انحراف از مسیر',
+  unauthorized_stop: 'توقف غیرمجاز',
+  fuel_anomaly: 'ناهنجاری سوخت',
+  other: 'سایر',
+};
+
+const severityLabel = {
+  low: 'کم',
+  medium: 'متوسط',
+  high: 'زیاد',
+  critical: 'بحرانی',
+};
+
 function RiskDriverCard({ row }) {
   return (
     <div
@@ -77,21 +99,29 @@ export default function Reports() {
   const [downloading, setDownloading] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [violationReports, setViolationReports] = useState([]);
+  const [reviewTarget, setReviewTarget] = useState(null);
+  const [reviewMode, setReviewMode] = useState('approve');
+  const [reviewForm, setReviewForm] = useState(emptyReviewForm);
+  const [reviewError, setReviewError] = useState('');
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
 
   const canView = hasPermission(user, 'reports.operational.view');
 
   const queryParams = useMemo(() => Object.fromEntries(Object.entries(filters).filter(([, value]) => value)), [filters]);
 
-  const loadData = async () => {
-    const [reportResponse, driversResponse, missionsResponse] = await Promise.all([
+  const loadData = useCallback(async () => {
+    const [reportResponse, driversResponse, missionsResponse, violationReportsResponse] = await Promise.all([
       reportsAPI.getOperational(queryParams),
       usersAPI.listDrivers(),
       missionsAPI.list(),
+      reportsAPI.listMissionViolations({ status: 'pending' }),
     ]);
     setData(reportResponse.data);
     setDrivers(normalizeCollection(driversResponse.data));
     setMissions(normalizeCollection(missionsResponse.data));
-  };
+    setViolationReports(normalizeCollection(violationReportsResponse.data));
+  }, [queryParams]);
 
   useEffect(() => {
     if (!canView) return;
@@ -110,7 +140,7 @@ export default function Reports() {
     return () => {
       mounted = false;
     };
-  }, [canView, queryParams.driverId, queryParams.missionId, queryParams.offenseType, queryParams.severity]);
+  }, [canView, loadData]);
 
   const openCreateModal = () => {
     setEditingId(null);
@@ -139,6 +169,13 @@ export default function Reports() {
 
   const handleDelete = (row) => {
     setDeleteTarget(row);
+  };
+
+  const openReviewModal = (mode, row) => {
+    setReviewMode(mode);
+    setReviewTarget(row);
+    setReviewForm(emptyReviewForm);
+    setReviewError('');
   };
 
   const confirmDelete = async () => {
@@ -184,6 +221,28 @@ export default function Reports() {
       setFormError(extractApiError(err, 'ذخیره تخلف انجام نشد.'));
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleReviewSubmit = async (event) => {
+    event.preventDefault();
+    if (!reviewTarget) return;
+    setReviewSubmitting(true);
+    setReviewError('');
+
+    try {
+      const payload = { reviewNote: reviewForm.reviewNote.trim() };
+      if (reviewMode === 'approve') {
+        await reportsAPI.approveMissionViolation(reviewTarget.id, payload);
+      } else {
+        await reportsAPI.rejectMissionViolation(reviewTarget.id, payload);
+      }
+      setReviewTarget(null);
+      await loadData();
+    } catch (err) {
+      setReviewError(extractApiError(err, 'ثبت نتیجه بررسی انجام نشد.'));
+    } finally {
+      setReviewSubmitting(false);
     }
   };
 
@@ -236,6 +295,28 @@ export default function Reports() {
           items={[
             { label: 'ویرایش', tone: 'edit', onClick: () => openEditModal(row) },
             { label: 'حذف', tone: 'delete', onClick: () => handleDelete(row) },
+          ]}
+        />
+      ),
+    },
+  ];
+
+  const violationColumns = [
+    { key: 'reportedByName', title: 'گزارش‌دهنده' },
+    { key: 'driverName', title: 'راننده' },
+    { key: 'missionTitle', title: 'ماموریت' },
+    { key: 'violationType', title: 'نوع تخلف', render: (value) => offenseTypeLabel[value] || value },
+    { key: 'severity', title: 'شدت', render: (value) => <Badge tone={severityTone[value]}>{severityLabel[value] || value}</Badge> },
+    { key: 'occurredAt', title: 'زمان', render: (value) => formatDate(value, true) },
+    { key: 'description', title: 'شرح', render: (value) => <span className="line-clamp-2">{value || '-'}</span> },
+    {
+      key: 'actions',
+      title: 'اقدام',
+      render: (_, row) => (
+        <RowActionMenu
+          items={[
+            { label: 'تایید و ثبت تخلف', tone: 'blue', onClick: () => openReviewModal('approve', row) },
+            { label: 'رد گزارش', tone: 'delete', onClick: () => openReviewModal('reject', row) },
           ]}
         />
       ),
@@ -342,6 +423,17 @@ export default function Reports() {
             />
           </SectionCard>
 
+          <SectionCard
+            title="گزارش‌های تخلف در انتظار بررسی"
+            actions={<Badge tone={violationReports.length ? 'amber' : 'slate'}>{formatNumber(violationReports.length)} مورد</Badge>}
+          >
+            <DataTable
+              columns={violationColumns}
+              rows={violationReports}
+              emptyTitle="گزارش تخلفی در انتظار بررسی وجود ندارد."
+            />
+          </SectionCard>
+
           <SectionCard title="لیست تخلفات ثبت شده">
             <DataTable columns={columns} rows={offenses} emptyTitle="تخلفی برای نمایش وجود ندارد." />
           </SectionCard>
@@ -412,6 +504,39 @@ export default function Reports() {
         onCancel={() => setDeleteTarget(null)}
         onConfirm={confirmDelete}
       />
+
+      <Modal
+        open={Boolean(reviewTarget)}
+        title={reviewMode === 'approve' ? 'تایید گزارش تخلف' : 'رد گزارش تخلف'}
+        onClose={() => setReviewTarget(null)}
+      >
+        <form onSubmit={handleReviewSubmit} className="space-y-5">
+          <ErrorAlert message={reviewError} />
+          {reviewTarget ? (
+            <div className="rounded-2xl border border-[#D9D9D9] bg-[#FAFBFC] p-4 text-right text-sm leading-7 text-[#606060]">
+              <div className="flex justify-between gap-3"><span>ماموریت</span><strong>{reviewTarget.missionTitle || '-'}</strong></div>
+              <div className="flex justify-between gap-3"><span>راننده</span><strong>{reviewTarget.driverName || '-'}</strong></div>
+              <div className="flex justify-between gap-3"><span>نوع تخلف</span><strong>{offenseTypeLabel[reviewTarget.violationType] || reviewTarget.violationType}</strong></div>
+              <div className="mt-3 rounded-xl bg-white px-3 py-2 text-[#222222]">
+                {reviewTarget.description || '-'}
+              </div>
+            </div>
+          ) : null}
+          <Field label="یادداشت بررسی">
+            <Textarea
+              rows="5"
+              value={reviewForm.reviewNote}
+              onChange={(event) => setReviewForm((prev) => ({ ...prev, reviewNote: event.target.value }))}
+            />
+          </Field>
+          <div className="flex justify-end gap-3">
+            <SecondaryButton type="button" onClick={() => setReviewTarget(null)}>انصراف</SecondaryButton>
+            <PrimaryButton type="submit" disabled={reviewSubmitting}>
+              {reviewSubmitting ? 'در حال ثبت...' : reviewMode === 'approve' ? 'تایید و تبدیل به تخلف' : 'رد گزارش'}
+            </PrimaryButton>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

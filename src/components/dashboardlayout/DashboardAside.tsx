@@ -59,10 +59,9 @@ export function DashboardAside({
   onLogout,
   isLoggingOut = false,
 }: DashboardAsideProps) {
-  const visibleMenuItems =
-    permissions.length > 0
-      ? menuItems.filter((item) => permissions.includes(item.permission))
-      : menuItems;
+  const visibleMenuItems = user?.isSuperuser
+    ? menuItems
+    : menuItems.filter((item) => permissions.includes(item.permission));
 
   const { displayName, avatarLetter, jalaliDate } = getProfileDetails(user);
 
@@ -124,27 +123,34 @@ export function DashboardAside({
           </div>
 
           <nav className="flex-1 space-y-1 overflow-y-auto px-4 py-4 scrollbar-none">
-            {visibleMenuItems.map((item) => {
-              const Icon = item.icon;
+            {visibleMenuItems.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-center text-xs leading-6 text-slate-500">
+                هنوز دسترسی فعالی برای نمایش منو وجود ندارد.
+              </div>
+            ) : (
+              visibleMenuItems.map((item) => {
+                const Icon = item.icon;
 
-              return (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  end={item.to === "/dashboard"}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3.5 rounded-lg px-4 py-3 text-sm font-medium transition-all duration-150 active:scale-[0.98] group ${
-                      isActive
-                        ? "bg-[#206AB4] text-white shadow-md shadow-[#206AB4]/10 font-semibold"
-                        : "text-slate-600 hover:bg-slate-50 hover:text-[#206AB4]"
-                    }`
-                  }
-                >
-                  <Icon className="h-5 w-5 shrink-0 transition-transform duration-200 group-hover:scale-105" />
-                  <span>{item.label}</span>
-                </NavLink>
-              );
-            })}
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={item.to === "/dashboard"}
+                    onClick={onClose}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3.5 rounded-lg px-4 py-3 text-sm font-medium transition-all duration-150 active:scale-[0.98] group ${
+                        isActive
+                          ? "bg-[#206AB4] text-white shadow-md shadow-[#206AB4]/10 font-semibold"
+                          : "text-slate-600 hover:bg-slate-50 hover:text-[#206AB4]"
+                      }`
+                    }
+                  >
+                    <Icon className="h-5 w-5 shrink-0 transition-transform duration-200 group-hover:scale-105" />
+                    <span>{item.label}</span>
+                  </NavLink>
+                );
+              })
+            )}
           </nav>
 
           <div className="shrink-0 border-t border-(--fleet-border) bg-white/95 px-4 py-4">
