@@ -1,10 +1,18 @@
 import { type ComponentType, useEffect, useMemo, useState } from "react";
 import {
-  HiOutlineCalendarDays,
-  HiOutlineTruck,
-  HiOutlineUserGroup,
-  HiOutlineUsers,
-} from "react-icons/hi2";
+  Activity,
+  BarChart3,
+  CalendarDays,
+  CreditCard,
+  DollarSign,
+  FileText,
+  Info,
+  TrendingDown,
+  TrendingUp,
+  Truck,
+  User,
+  Users,
+} from "lucide-react";
 import { usersAPI } from "../api/users";
 import { useAuth } from "../context/AuthContext";
 import { hasPermission } from "../utils/permissions";
@@ -59,11 +67,11 @@ type ChartPoint = {
 };
 
 const topCardsConfig: TopCardConfig[] = [
-  { key: "users", sourceKey: "users", text: "کاربران", icon: HiOutlineUsers },
-  { key: "drivers", sourceKey: "drivers", text: "رانندگان", icon: HiOutlineUserGroup },
-  { key: "vehicles", sourceKey: "vehicles", text: "وسایل نقلیه", icon: HiOutlineTruck },
-  { key: "activeVehicles", sourceKey: "activeVehicles", text: "وسایل فعال", icon: HiOutlineTruck },
-  { key: "inspections", sourceKey: "inspections", text: "بازرسی", icon: HiOutlineCalendarDays },
+  { key: "users", sourceKey: "users", text: "کاربران", icon: Users },
+  { key: "drivers", sourceKey: "drivers", text: "رانندگان", icon: User },
+  { key: "vehicles", sourceKey: "vehicles", text: "وسایل نقلیه", icon: Truck },
+  { key: "activeVehicles", sourceKey: "activeVehicles", text: "وسایل فعال", icon: Activity },
+  { key: "inspections", sourceKey: "inspections", text: "بازرسی", icon: CalendarDays },
 ];
 
 const fallbackDashboard: Required<Pick<DashboardData, "cards" | "fuelCards" | "chart" | "announcements">> = {
@@ -188,92 +196,39 @@ function buildSmoothPath(points: ChartPoint[]) {
   }, "");
 }
 
-function InfoIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path d="M8 14.6667C11.6819 14.6667 14.6667 11.6819 14.6667 8C14.6667 4.3181 11.6819 1.33334 8 1.33334C4.3181 1.33334 1.33334 4.3181 1.33334 8C1.33334 11.6819 4.3181 14.6667 8 14.6667Z" stroke="#222222" strokeWidth="1.5" />
-      <path d="M8 7.33334V11.3333" stroke="#222222" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M8.006 5.33334H8" stroke="#222222" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function TrendIcon({ positive }: { positive: boolean }) {
-  const color = positive ? "#00992E" : "#A30000";
-
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      {positive ? (
-        <>
-          <path d="M21 21H10C6.7 21 5.05 21 4.02 19.97C3 18.95 3 17.3 3 14V3" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
-          <path d="M7 17C13.5 17 17.75 13.25 17.75 7M15.5 7H17.75V9.25" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </>
-      ) : (
-        <>
-          <path d="M21 21H10C6.7 21 5.05 21 4.02 19.97C3 18.95 3 17.3 3 14V3" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
-          <path d="M7 6C13.5 6 17.75 9.75 17.75 16M15.5 16H17.75V13.75" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </>
-      )}
-    </svg>
-  );
-}
-
-function ChartLineIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path d="M14 14H6.66667C4.46667 14 3.36667 14 2.68 13.3133C2 12.6333 2 11.5333 2 9.33333V2" stroke="#222222" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M4.66666 10.6667C6.17333 10.6667 7.18 9.33333 8.33333 9.33333C9.48666 9.33333 10.5133 11.3333 11.6667 11.3333C12.82 11.3333 13.3333 9.33333 13.3333 9.33333" stroke="#222222" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
 function ChartDetailIcon({ type }: { type: "contact" | "money" | "card" | "user" }) {
-  if (type === "money") {
-    return (
-      <svg width="36" height="36" viewBox="0 0 36 36" fill="none" aria-hidden="true">
-        <path d="M6 24.75C8.4 27.15 12.6 28.5 18 28.5C23.4 28.5 27.6 27.15 30 24.75" stroke="white" strokeWidth="1.8" strokeLinecap="round" />
-        <path d="M5.25 17.25C5.25 10.25 10.25 5.25 17.25 5.25H18.75C25.75 5.25 30.75 10.25 30.75 17.25V18.75C30.75 25.75 25.75 30.75 18.75 30.75H17.25C10.25 30.75 5.25 25.75 5.25 18.75V17.25Z" stroke="white" strokeWidth="1.8" />
-        <circle cx="18" cy="18" r="3.75" stroke="white" strokeWidth="1.8" />
-      </svg>
-    );
-  }
+  const Icon = type === "money" ? DollarSign : type === "card" ? CreditCard : type === "user" ? User : FileText;
 
-  if (type === "card") {
-    return (
-      <svg width="36" height="36" viewBox="0 0 36 36" fill="none" aria-hidden="true">
-        <path d="M5.25 12.75H30.75" stroke="white" strokeWidth="1.8" strokeLinecap="round" />
-        <path d="M8.25 7.5H27.75C29.4 7.5 30.75 8.85 30.75 10.5V25.5C30.75 27.15 29.4 28.5 27.75 28.5H8.25C6.6 28.5 5.25 27.15 5.25 25.5V10.5C5.25 8.85 6.6 7.5 8.25 7.5Z" stroke="white" strokeWidth="1.8" />
-        <path d="M10.5 22.5H12.75M18 22.5H23.25" stroke="white" strokeWidth="1.8" strokeLinecap="round" />
-      </svg>
-    );
-  }
+  return <Icon className="h-7 w-7 text-[#206AB4]" strokeWidth={2.35} aria-hidden="true" />;
+}
 
-  if (type === "user") {
-    return (
-      <svg width="36" height="36" viewBox="0 0 36 36" fill="none" aria-hidden="true">
-        <path d="M6 9.75C6 7.68 7.68 6 9.75 6H26.25C28.32 6 30 7.68 30 9.75V26.25C30 28.32 28.32 30 26.25 30H9.75C7.68 30 6 28.32 6 26.25V9.75Z" stroke="white" strokeWidth="1.8" />
-        <path d="M18 18.75C20.49 18.75 22.5 16.74 22.5 14.25C22.5 11.76 20.49 9.75 18 9.75C15.51 9.75 13.5 11.76 13.5 14.25C13.5 16.74 15.51 18.75 18 18.75Z" stroke="white" strokeWidth="1.8" />
-        <path d="M10.5 27C11.85 23.85 14.43 22.5 18 22.5C21.57 22.5 24.15 23.85 25.5 27" stroke="white" strokeWidth="1.8" strokeLinecap="round" />
-      </svg>
-    );
-  }
-
+function TooltipHint({ label, className = "" }: { label: string; className?: string }) {
   return (
-    <svg width="36" height="36" viewBox="0 0 36 36" fill="none" aria-hidden="true">
-      <path d="M9.75 6H25.5C27.15 6 28.5 7.35 28.5 9V30L18 25.5L7.5 30V8.25C7.5 7.01 8.51 6 9.75 6Z" stroke="white" strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="M13.5 13.5H22.5M13.5 18H21" stroke="white" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
+    <button
+      aria-label={label}
+      className={`group/tooltip relative inline-flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-sm transition hover:border-[#206AB4]/30 hover:bg-[#EEF4FF] hover:text-[#206AB4] focus:outline-none focus:ring-2 focus:ring-[#206AB4]/20 ${className}`}
+      type="button"
+    >
+      <Info className="h-4 w-4" strokeWidth={2.35} aria-hidden="true" />
+      <span
+        className="pointer-events-none absolute right-1/2 top-full z-50 mt-3 w-max max-w-[260px] translate-x-1/2 translate-y-1 rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-right text-xs font-bold leading-6 text-slate-700 opacity-0 shadow-[0_12px_28px_rgba(15,23,42,0.12)] transition duration-150 group-hover/tooltip:translate-y-0 group-hover/tooltip:opacity-100 group-focus/tooltip:translate-y-0 group-focus/tooltip:opacity-100"
+        role="tooltip"
+      >
+        <span className="absolute -top-1.5 right-1/2 h-3 w-3 translate-x-1/2 rotate-45 border-l border-t border-slate-200 bg-white" />
+        {label}
+      </span>
+    </button>
   );
 }
 
 function LegendItem({ color, label }: { color: string; label: string }) {
   return (
-    <div className="flex h-[26px] items-center gap-1 px-1 py-1">
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-        <rect y="7" width="16" height="2" fill={color} />
-        <circle cx="8" cy="8" r="4" fill="white" stroke={color} />
-      </svg>
-      <span className="text-xs font-medium text-black/70">{label}</span>
+    <div className="flex h-[26px] items-center gap-1 px-1.5 py-1">
+      <span className="relative h-4 w-4 shrink-0" aria-hidden="true">
+        <span className="absolute left-0 top-1/2 h-0.5 w-full -translate-y-1/2 rounded-full" style={{ backgroundColor: color }} />
+        <span className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 bg-white" style={{ borderColor: color }} />
+      </span>
+      <span className="text-xs font-bold text-slate-600">{label}</span>
     </div>
   );
 }
@@ -287,18 +242,20 @@ function ChartMetricCard({ item, index }: { item: ChartDetail; index: number }) 
 
   return (
     <div
-      className="relative flex h-20 w-full overflow-hidden rounded-[15px] border border-[#D9D9D9] bg-white px-4 py-2"
-      style={{ boxShadow: "2px 2px 7px 0px rgba(0, 0, 0, 0.08)" }}
+      className="group relative flex min-h-[84px] w-full overflow-hidden rounded-2xl border border-white/70 bg-white/60 px-4 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.07)] backdrop-blur-sm transition duration-150 hover:border-white hover:bg-white/75 hover:shadow-[0_14px_30px_rgba(32,106,180,0.12)]"
     >
-      <div className="absolute -left-2.5 -top-[15px] h-[49px] w-[49px] rounded-full bg-[#CDF05F]/50" />
-      <div className="flex w-full items-start justify-between">
-        <div className="mt-3.5 flex min-w-0 flex-col items-start">
-          <span className="text-2xl font-bold leading-9 text-[#222222]">{formatNumber(item?.value)}</span>
-          <span className="text-xs font-bold leading-[18px] text-[#222222]">{unit}</span>
+      <div className="absolute -left-8 -top-8 h-20 w-20 rounded-full bg-[#206AB4]/10 blur-lg transition duration-150 group-hover:bg-[#206AB4]/16" />
+      <div className="absolute -bottom-10 right-6 h-20 w-20 rounded-full bg-sky-200/25 blur-lg" />
+      <div className="relative flex w-full items-center justify-between gap-4">
+        <div className="flex min-w-0 flex-col items-start">
+          <span className="text-[26px] font-black leading-8 text-slate-950">{formatNumber(item?.value)}</span>
+          <span className="mt-1 rounded-full border border-white/70 bg-white/55 px-2.5 py-1 text-[11px] font-bold leading-none text-slate-600 shadow-sm backdrop-blur-sm">{unit}</span>
         </div>
-        <div className="flex h-16 w-20 shrink-0 flex-col items-end justify-start">
-          <ChartDetailIcon type={config.icon} />
-          <span className={`mt-[-2px] text-xl font-medium leading-[30px] text-[#222222] ${index === 3 ? "whitespace-nowrap" : ""}`}>
+        <div className="flex min-w-[88px] shrink-0 flex-col items-end justify-center">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/80 bg-white/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.75),0_8px_18px_rgba(32,106,180,0.12)] backdrop-blur-sm transition duration-150 group-hover:bg-white/75 [&_svg]:h-6 [&_svg]:w-6">
+            <ChartDetailIcon type={config.icon} />
+          </div>
+          <span className={`mt-2 text-sm font-bold leading-5 text-slate-700 ${index === 3 ? "whitespace-nowrap" : ""}`}>
             {config.label}
           </span>
         </div>
@@ -318,23 +275,25 @@ function DcardInfo({
 }) {
   return (
     <div
-      className="relative flex h-25 w-full min-w-55 max-w-81.5 items-center justify-between overflow-hidden rounded-[15px] border border-[#D9D9D9] bg-white px-4 py-2"
-      style={{ boxShadow: "2px 2px 7px 0px rgba(0, 0, 0, 0.08)" }}
+      className="group relative flex min-h-[96px] w-full items-center justify-between overflow-hidden rounded-2xl border border-white/70 bg-white/60 px-4 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.07)] backdrop-blur-sm transition duration-150 hover:border-white hover:bg-white/75 hover:shadow-[0_14px_30px_rgba(32,106,180,0.12)]"
       dir="rtl"
     >
       <div
-        className="absolute -left-3 -top-3.75 h-12.5 w-12.5"
+        className="absolute -left-10 -top-10 h-24 w-24 rounded-full transition duration-150"
         style={{
-          background: "rgba(32, 106, 180, 0.20)",
-          filter: "blur(18px)",
+          background: "rgba(32, 106, 180, 0.10)",
+          filter: "blur(16px)",
         }}
       />
-      <div className="flex h-full flex-col items-start justify-between">
-        <Icon className="h-9 w-9 text-[#222222]" />
-        <p className="whitespace-nowrap text-2xl text-black">{text}</p>
+      <div className="absolute -bottom-12 right-8 h-24 w-24 rounded-full bg-sky-200/25 blur-lg" />
+      <div className="relative flex h-full min-w-0 flex-col items-start justify-between gap-3">
+        <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/80 bg-white/55 text-[#206AB4] shadow-[inset_0_1px_0_rgba(255,255,255,0.75),0_8px_18px_rgba(32,106,180,0.12)] backdrop-blur-sm transition duration-150 group-hover:bg-white/75">
+          <Icon className="h-6 w-6" />
+        </div>
+        <p className="truncate text-lg font-bold text-slate-700">{text}</p>
       </div>
-      <div className="flex items-center justify-center">
-        <span className="text-4xl text-black">{formatNumber(value)}</span>
+      <div className="relative flex items-center justify-center pr-3">
+        <span className="text-[30px] font-black leading-none text-slate-950">{formatNumber(value)}</span>
       </div>
     </div>
   );
@@ -352,25 +311,25 @@ function FuelCard({
 
   return (
     <div
-      className="flex h-[134px] w-full min-w-[362px] flex-col items-start justify-between rounded-[15px] border border-[#D9D9D9] bg-white px-4 py-2"
-      style={{ boxShadow: "2px 2px 7px 0px rgba(0, 0, 0, 0.08)" }}
-      title={desc}
+      className="group relative flex min-h-[136px] w-full min-w-0 flex-col items-start justify-between overflow-visible rounded-2xl border border-white/70 bg-white/60 px-4 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.07)] backdrop-blur-sm transition duration-150 hover:z-20 hover:border-white hover:bg-white/75 hover:shadow-[0_14px_30px_rgba(32,106,180,0.12)] focus-within:z-20"
       dir="rtl"
     >
-      <div className="relative h-8 w-full">
-        <div className="absolute right-0 top-0 flex h-[30px] max-w-[218px] items-center justify-start gap-1">
-          <p className="min-w-0 truncate text-xl font-bold text-[#222222]" title={title}>
+      <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
+        <div className="absolute -left-8 -top-10 h-24 w-24 rounded-full bg-[#206AB4]/10 blur-lg transition duration-150 group-hover:bg-[#206AB4]/16" />
+        <div className="absolute -bottom-12 right-8 h-24 w-24 rounded-full bg-sky-200/25 blur-lg" />
+      </div>
+      <div className="relative flex min-h-9 w-full items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center justify-start gap-2">
+          <p className="min-w-0 truncate text-lg font-black text-slate-950">
             {title}
           </p>
-          <span className="shrink-0 cursor-pointer" title={desc}>
-            <InfoIcon />
-          </span>
+          <TooltipHint label={String(desc || "")} />
         </div>
-        <div className="absolute left-0 top-0 h-8 w-24">
+        <div className="h-8 w-24 shrink-0">
           <ToolbarSelect
             value={period}
             onChange={(event) => setPeriod(event.target.value)}
-            className="[&>button]:h-8 [&>button]:rounded-[10px] [&>button]:bg-white/60 [&>button]:px-2 [&>button]:text-base [&>button]:font-medium [&>button_span]:whitespace-nowrap [&>button_svg]:h-6 [&>button_svg]:w-6"
+            className="[&>button]:h-8 [&>button]:cursor-pointer [&>button]:rounded-xl [&>button]:border [&>button]:border-white/70 [&>button]:bg-white/55 [&>button]:px-2 [&>button]:text-sm [&>button]:font-bold [&>button]:text-slate-700 [&>button]:shadow-sm [&>button]:backdrop-blur-sm [&>button_span]:whitespace-nowrap [&>button_svg]:h-5 [&>button_svg]:w-5"
           >
             <option value="daily">روزانه</option>
             <option value="weekly">هفتگی</option>
@@ -380,21 +339,31 @@ function FuelCard({
         </div>
       </div>
 
-      <div className="flex h-9 w-full flex-row items-center justify-between">
-        <div className="flex items-center justify-center gap-1">
-          <span className={`text-base font-medium ${positive ? "text-[#00992E]" : "text-[#A30000]"}`}>
+      <div className="relative flex w-full flex-row items-center justify-between gap-4">
+        <div
+          className={`flex items-center justify-center gap-1 rounded-full px-2.5 py-1 ${positive ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
+            }`}
+        >
+          <span className="text-sm font-black">
             {Math.abs(normalizedPercent)}%
           </span>
-          <TrendIcon positive={positive} />
+          {positive ? (
+            <TrendingUp className="h-5 w-5" strokeWidth={2.35} aria-hidden="true" />
+          ) : (
+            <TrendingDown className="h-5 w-5" strokeWidth={2.35} aria-hidden="true" />
+          )}
         </div>
-        <span className="text-2xl font-bold text-[#222222]">{formatNumber(price)}</span>
+        <span className="min-w-0 truncate text-[26px] font-black leading-8 text-slate-950">{formatNumber(price)}</span>
       </div>
 
-      <div className="flex h-[18px] w-full items-center justify-center gap-2">
-        <button type="button" className="text-xs font-medium text-[#222222]">
+      <div className="relative flex w-full items-center justify-center">
+        <button
+          type="button"
+          className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-white/70 bg-white/55 px-4 py-2 text-xs font-black text-slate-700 shadow-sm backdrop-blur-sm transition hover:bg-[#206AB4] hover:text-white focus:outline-none focus:ring-2 focus:ring-[#206AB4]/30"
+        >
           نمایش چارت
+          <BarChart3 className="h-4 w-4" strokeWidth={2.35} aria-hidden="true" />
         </button>
-        <ChartLineIcon />
       </div>
     </div>
   );
@@ -441,14 +410,20 @@ function LineChart({ chart }: { chart: DashboardChart }) {
   const costPoints = makePoints(cost);
 
   return (
-    <div className="h-full w-full bg-transparent" dir="ltr">
-      <svg viewBox={`0 0 ${width} ${height}`} className="h-full w-full" preserveAspectRatio="none" role="img" aria-label="نمودار درآمد و هزینه">
+    <div className="h-full w-full rounded-2xl border border-white/70 bg-white/45 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] backdrop-blur-sm" dir="ltr">
+      <svg viewBox={`0 0 ${width} ${height}`} className="h-full w-full overflow-visible" preserveAspectRatio="none" role="img" aria-label="نمودار درآمد و هزینه">
+        <defs>
+          <linearGradient id="incomeLineGradient" x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0%" stopColor="#206AB4" />
+            <stop offset="100%" stopColor="#7C3AED" />
+          </linearGradient>
+        </defs>
         {ticks.map((tick) => {
           const y = plotY + plotHeight - (tick / chartMax) * plotHeight;
           return (
             <g key={tick}>
-              <line x1={plotX} x2={plotX + plotWidth - 2} y1={y} y2={y} stroke="rgba(0,0,0,0.30)" />
-              <text x={chartX + axisWidth - 4} y={y + 4} textAnchor="end" className="fill-black/70 text-xs">
+              <line x1={plotX} x2={plotX + plotWidth - 2} y1={y} y2={y} stroke="rgba(15,23,42,0.10)" strokeDasharray="5 7" />
+              <text x={chartX + axisWidth - 4} y={y + 4} textAnchor="end" className="fill-slate-500 text-xs font-medium">
                 {formatCompactChartValue(tick)}
               </text>
             </g>
@@ -459,27 +434,27 @@ function LineChart({ chart }: { chart: DashboardChart }) {
           const x = plotX + xStep * index;
           return (
             <g key={`x-${index}`}>
-              <line x1={x} x2={x} y1={plotY} y2={plotY + plotHeight} stroke="rgba(0,0,0,0.16)" />
-              <text x={x} y={labelY + 15} textAnchor="middle" className="fill-black/70 text-xs">
+              <line x1={x} x2={x} y1={plotY} y2={plotY + plotHeight} stroke="rgba(15,23,42,0.06)" />
+              <text x={x} y={labelY + 15} textAnchor="middle" className="fill-slate-600 text-xs font-semibold">
                 {getLabel(index)}
               </text>
             </g>
           );
         })}
 
-        <path d={buildSmoothPath(incomePoints)} fill="none" stroke="#206AB4" strokeWidth="2" />
-        <path d={buildSmoothPath(costPoints)} fill="none" stroke="#9D3400" strokeWidth="2" />
+        <path d={buildSmoothPath(incomePoints)} fill="none" stroke="url(#incomeLineGradient)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" />
+        <path d={buildSmoothPath(costPoints)} fill="none" stroke="#E05B1A" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" />
 
         {incomePoints.map((point, index) => (
-          <circle key={`income-${index}`} cx={point.x} cy={point.y} r="4" fill="#ffffff" stroke="#206AB4" strokeWidth="2" />
+          <circle key={`income-${index}`} cx={point.x} cy={point.y} r="5.5" fill="#ffffff" stroke="#206AB4" strokeWidth="3" />
         ))}
         {costPoints.map((point, index) => (
-          <circle key={`cost-${index}`} cx={point.x} cy={point.y} r="4" fill="#ffffff" stroke="#9D3400" strokeWidth="2" />
+          <circle key={`cost-${index}`} cx={point.x} cy={point.y} r="5.5" fill="#ffffff" stroke="#E05B1A" strokeWidth="3" />
         ))}
 
         <foreignObject x="335.5" y="388" width="133" height="26">
-          <div className="flex h-[26px] items-center gap-2" dir="rtl">
-            <LegendItem color="#9D3400" label="هزینه" />
+          <div className="flex h-[26px] items-center justify-center gap-2 rounded-full bg-white/80 shadow-[0_8px_22px_rgba(15,23,42,0.08)]" dir="rtl">
+            <LegendItem color="#E05B1A" label="هزینه" />
             <LegendItem color="#206AB4" label="درآمد" />
           </div>
         </foreignObject>
@@ -495,23 +470,21 @@ function ChartWithDetails({ chart = fallbackDashboard.chart }: { chart?: Dashboa
 
   return (
     <div
-      className="flex h-full w-full flex-col gap-4 rounded-[15px] border border-[#D9D9D9] bg-white px-4 py-2"
-      style={{ boxShadow: "2px 2px 7px 0px rgba(0, 0, 0, 0.08)" }}
+      className="relative flex h-full w-full flex-col gap-3 overflow-visible rounded-3xl border border-white/70 bg-white/55 p-3 shadow-[0_12px_30px_rgba(15,23,42,0.08)] backdrop-blur-sm sm:p-4 lg:gap-4"
       dir="rtl"
     >
-      <div className="flex min-h-9 w-full flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex h-[30px] min-w-fit items-center justify-start gap-1">
-          <h2 className="text-xl font-bold leading-[30px] text-[#222222]">نمودار بر اساس تاریخ</h2>
-          <span title="لورم ایپسوم متن ساختگی با تولید سادگی نامفهوم از صنعت چاپ و با استفاده از طراحان گرافیک است">
-            <InfoIcon />
-          </span>
+      <div className="flex min-h-9 w-full flex-col gap-3 border-b border-slate-100 pb-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex min-w-fit items-center justify-start gap-2">
+          <span className="h-3 w-3 rounded-full bg-[#206AB4] shadow-[0_0_0_6px_rgba(32,106,180,0.10)]" aria-hidden="true" />
+          <h2 className="text-xl font-black leading-[30px] text-slate-950">نمودار بر اساس تاریخ</h2>
+          <TooltipHint label="نمودار درآمد و هزینه را در بازه انتخابی نشان می دهد." />
         </div>
-        <div className="flex h-9 w-full items-center justify-start gap-4 lg:w-[312px]">
-          <div className="h-8 w-[132px]">
+        <div className="flex w-full flex-wrap items-center justify-start gap-2 sm:gap-3 lg:w-auto lg:flex-nowrap">
+          <div className="h-8 min-w-[126px] flex-1 sm:w-[132px] sm:flex-none">
             <ToolbarSelect
               value={startDate}
               onChange={(event) => setStartDate(event.target.value)}
-              className="[&>button]:h-8 [&>button]:rounded-[10px] [&>button]:bg-white/60 [&>button]:px-2 [&>button]:text-base [&>button]:font-medium [&>button_span]:whitespace-nowrap [&>button_svg]:h-6 [&>button_svg]:w-6"
+              className="[&>button]:h-8 [&>button]:cursor-pointer [&>button]:rounded-xl [&>button]:border [&>button]:border-white/70 [&>button]:bg-white/55 [&>button]:px-2 [&>button]:text-sm [&>button]:font-bold [&>button]:text-slate-700 [&>button]:shadow-sm [&>button]:backdrop-blur-sm [&>button_span]:whitespace-nowrap [&>button_svg]:h-5 [&>button_svg]:w-5"
             >
               <option value="select">انتخاب تاریخ</option>
               <option value="daily">روزانه</option>
@@ -520,12 +493,12 @@ function ChartWithDetails({ chart = fallbackDashboard.chart }: { chart?: Dashboa
               <option value="year">سالیانه</option>
             </ToolbarSelect>
           </div>
-          <span className="text-2xl font-bold leading-9 text-[#222222]">تا</span>
-          <div className="h-8 w-[132px]">
+          <span className="rounded-full border border-white/70 bg-white/55 px-3 py-1 text-sm font-black leading-6 text-slate-600 shadow-sm backdrop-blur-sm">تا</span>
+          <div className="h-8 min-w-[126px] flex-1 sm:w-[132px] sm:flex-none">
             <ToolbarSelect
               value={endDate}
               onChange={(event) => setEndDate(event.target.value)}
-              className="[&>button]:h-8 [&>button]:rounded-[10px] [&>button]:bg-white/60 [&>button]:px-2 [&>button]:text-base [&>button]:font-medium [&>button_span]:whitespace-nowrap [&>button_svg]:h-6 [&>button_svg]:w-6"
+              className="[&>button]:h-8 [&>button]:cursor-pointer [&>button]:rounded-xl [&>button]:border [&>button]:border-white/70 [&>button]:bg-white/55 [&>button]:px-2 [&>button]:text-sm [&>button]:font-bold [&>button]:text-slate-700 [&>button]:shadow-sm [&>button]:backdrop-blur-sm [&>button_span]:whitespace-nowrap [&>button_svg]:h-5 [&>button_svg]:w-5"
             >
               <option value="select">انتخاب تاریخ</option>
               <option value="daily">روزانه</option>
@@ -537,48 +510,17 @@ function ChartWithDetails({ chart = fallbackDashboard.chart }: { chart?: Dashboa
         </div>
       </div>
 
-      <div className="flex w-full h-full flex-col gap-4 xl:h-105.5 xl:flex-row xl:items-center xl:justify-between">
-        <div className="order-2 h-120 min-w-0 flex-1 xl:order-2">
-          <LineChart chart={chart} />
+      <div className="flex h-full min-h-0 w-full flex-col gap-3 xl:flex-row xl:items-stretch xl:justify-between xl:gap-4">
+        <div className="order-2 min-h-[250px] min-w-0 flex-1 overflow-x-auto pb-1 sm:min-h-[320px] lg:min-h-0 xl:order-2 xl:overflow-visible">
+          <div className="h-full min-w-[620px] xl:min-w-0">
+            <LineChart chart={chart} />
+          </div>
         </div>
-        <div className="order-1 grid w-full grid-cols-1 gap-5 sm:grid-cols-2 xl:order-1 xl:flex xl:w-66.5 xl:shrink-0 xl:grid-cols-none xl:flex-col">
+        <div className="order-1 grid w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:order-1 xl:flex xl:w-72 xl:shrink-0 xl:grid-cols-none xl:flex-col">
           {details.map((item, index) => (
             <ChartMetricCard key={item?.key || index} item={item} index={index} />
           ))}
         </div>
-      </div>
-    </div>
-  );
-}
-
-function ScrollingText({ texts, speed = 45 }: { texts: string[]; speed?: number }) {
-  const normalizedTexts = texts.length ? texts : fallbackDashboard.announcements;
-  const marqueeItems = [...normalizedTexts, ...normalizedTexts, ...normalizedTexts];
-
-  return (
-    <div
-      className="relative h-16 w-full overflow-hidden rounded-[15px] border border-[#D9D9D9] bg-white"
-      dir="rtl"
-    >
-      <div
-        className="fleet-dashboard-marquee absolute top-0 flex h-full w-max items-center whitespace-nowrap"
-        style={{ animationDuration: `${speed}s` }}
-      >
-        {marqueeItems.map((text, index) => (
-          <div key={`${text}-${index}`} className="flex h-full items-center py-2">
-            <div
-              className={`flex h-full items-center justify-center whitespace-nowrap px-5 text-center text-sm font-black ${
-                index % 4 === 2 ? "text-[#E0C600]" : "text-[#222222]"
-              }`}
-            >
-              {text}
-            </div>
-            <span className="h-full w-px shrink-0 bg-[#D9D9D9]" aria-hidden="true" />
-          </div>
-        ))}
-      </div>
-      <div className="absolute right-0 top-0 z-10 flex h-full w-[105px] items-center justify-center border-l border-[#D9D9D9] bg-white px-2.5">
-        <span className="whitespace-nowrap text-xl font-medium text-[#222222]">اطلاعیه ها</span>
       </div>
     </div>
   );
@@ -646,10 +588,15 @@ export default function Dashboard() {
   if (loading) return <LoadingState message="در حال بارگذاری..." />;
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col items-start justify-between gap-3" dir="rtl">
-      <ErrorAlert message={error} />
+    <div className="relative isolate flex h-full min-h-screen w-full flex-col items-start gap-3 overflow-x-hidden overflow-y-auto bg-gradient-to-br from-slate-50 via-white to-[#EEF4FF] p-3 sm:gap-4 sm:p-4 lg:min-h-0 lg:overflow-y-hidden" dir="rtl">
+      <div className="pointer-events-none absolute -right-20 -top-20 h-48 w-48 rounded-full bg-[#206AB4]/8 blur-xl" />
+      <div className="pointer-events-none absolute -bottom-24 left-8 h-52 w-52 rounded-full bg-sky-200/25 blur-xl" />
 
-      <div className="flex w-full items-center justify-between gap-4 overflow-x-auto">
+      <div className="relative z-10 w-full">
+        <ErrorAlert message={error} />
+      </div>
+
+      <div className="relative z-10 grid w-full grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-5">
         {topCardsConfig.map((card) => (
           <DcardInfo
             key={card.key}
@@ -660,18 +607,14 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div className="flex w-full items-center justify-center gap-4 overflow-x-auto">
+      <div className="relative z-20 grid w-full grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 2xl:grid-cols-4">
         {fuelCards.map((card, index) => (
           <FuelCard key={`${card.title}-${index}`} {...card} />
         ))}
       </div>
 
-      <div className="w-full h-full flex-1 items-center justify-center">
+      <div className="relative z-10 flex min-h-[420px] w-full flex-1 items-stretch justify-center sm:min-h-[480px] lg:min-h-0">
         <ChartWithDetails chart={dashboardData.chart} />
-      </div>
-
-      <div className="w-full">
-        <ScrollingText texts={announcements} />
       </div>
     </div>
   );

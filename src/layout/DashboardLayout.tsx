@@ -126,6 +126,7 @@ export function DashboardLayout() {
   const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
   const [notificationError, setNotificationError] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const socketRef = useRef<WebSocket | null>(null);
   const navigate = useNavigate();
@@ -329,13 +330,19 @@ export function DashboardLayout() {
         <DashboardAside
           permissions={visiblePermissions}
           isOpen={sidebarOpen}
+          isCollapsed={sidebarCollapsed}
           onClose={() => setSidebarOpen(false)}
+          onToggleCollapse={() => setSidebarCollapsed((current) => !current)}
           user={user}
           onLogout={handleLogout}
           isLoggingOut={isLoggingOut}
         />
 
-        <div className="flex min-h-screen flex-col bg-[#FAFBFC] lg:mr-72">
+        <div
+          className={`flex min-h-screen flex-col bg-[#FAFBFC] transition-all duration-300 ease-in-out ${
+            sidebarCollapsed ? "lg:mr-20" : "lg:mr-72"
+          }`}
+        >
           <DashboardHeader
             user={user}
             notifications={notifications}
