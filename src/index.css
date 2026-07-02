@@ -157,18 +157,79 @@ textarea {
 
 @keyframes fleet-dashboard-scroll {
   0% {
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
   }
 
   100% {
-    transform: translateX(50%);
+    transform: translate3d(-33.333%, 0, 0);
   }
 }
 
 .fleet-dashboard-marquee {
-  animation-name: fleet-dashboard-scroll;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
+  transform: none;
+  will-change: transform;
+}
+
+@keyframes fleet-dashboard-skeleton-shimmer {
+  0% {
+    transform: translate3d(110%, 0, 0);
+  }
+
+  100% {
+    transform: translate3d(-110%, 0, 0);
+  }
+}
+
+.fleet-dashboard-skeleton {
+  contain: paint;
+  background: rgba(248, 250, 252, 0.92);
+}
+
+.fleet-dashboard-skeleton::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.72), transparent);
+  transform: translate3d(110%, 0, 0);
+  animation: none;
+  display: none;
+}
+
+.fleet-dashboard-marquee {
+  animation: none;
+}
+
+.fleet-dashboard-card {
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.05),
+    0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.fleet-dashboard-card:hover {
+  box-shadow:
+    0 2px 4px rgba(15, 23, 42, 0.06),
+    0 14px 28px rgba(32, 106, 180, 0.11);
+}
+
+.fleet-dashboard-low-gpu .backdrop-blur,
+.fleet-dashboard-low-gpu .backdrop-blur-sm,
+.fleet-dashboard-low-gpu .backdrop-blur-md {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+.fleet-dashboard-low-gpu .blur-lg,
+.fleet-dashboard-low-gpu .blur-xl,
+.fleet-dashboard-low-gpu [style*="blur"] {
+  filter: none !important;
+  opacity: 0.18;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fleet-dashboard-marquee,
+  .fleet-dashboard-skeleton::after {
+    animation: none;
+  }
 }
 
 .mission-calendar-board .fc {

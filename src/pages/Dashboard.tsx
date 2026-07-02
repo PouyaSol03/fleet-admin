@@ -1,4 +1,4 @@
-import { type ComponentType, useEffect, useMemo, useState } from "react";
+import { memo, type ComponentType, useCallback, useEffect, useMemo, useState } from "react";
 import {
   Activity,
   BarChart3,
@@ -13,11 +13,22 @@ import {
   User,
   Users,
 } from "lucide-react";
+import {
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart as RechartsLineChart,
+  ResponsiveContainer,
+  Tooltip as RechartsTooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { motion, useReducedMotion } from "motion/react";
 import { usersAPI } from "../api/users";
 import { useAuth } from "../context/AuthContext";
 import { hasPermission } from "../utils/permissions";
 import { extractApiError, formatNumber } from "../utils/formatters";
-import { AccessDenied, ErrorAlert, LoadingState, ToolbarSelect } from "../components/shared/UI";
+import { AccessDenied, ErrorAlert, ToolbarSelect } from "../components/shared/UI";
 
 type IconComponent = ComponentType<{ className?: string }>;
 
@@ -59,11 +70,6 @@ type TopCardConfig = {
   sourceKey: string;
   text: string;
   icon: IconComponent;
-};
-
-type ChartPoint = {
-  x: number;
-  y: number;
 };
 
 const topCardsConfig: TopCardConfig[] = [
@@ -175,27 +181,6 @@ function formatCompactChartValue(value: number) {
   return formatNumber(value);
 }
 
-function getNiceChartMax(values: number[]) {
-  const maxValue = Math.max(...values.filter(Number.isFinite), 0);
-  if (maxValue <= 850) return 850;
-
-  const magnitude = 10 ** Math.floor(Math.log10(maxValue));
-  return Math.ceil(maxValue / magnitude) * magnitude;
-}
-
-function buildSmoothPath(points: ChartPoint[]) {
-  if (!points.length) return "";
-  if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
-
-  return points.reduce((path, point, index) => {
-    if (index === 0) return `M ${point.x} ${point.y}`;
-
-    const previous = points[index - 1];
-    const controlDistance = (point.x - previous.x) / 2;
-    return `${path} C ${previous.x + controlDistance} ${previous.y}, ${point.x - controlDistance} ${point.y}, ${point.x} ${point.y}`;
-  }, "");
-}
-
 function ChartDetailIcon({ type }: { type: "contact" | "money" | "card" | "user" }) {
   const Icon = type === "money" ? DollarSign : type === "card" ? CreditCard : type === "user" ? User : FileText;
 
@@ -221,14 +206,46 @@ function TooltipHint({ label, className = "" }: { label: string; className?: str
   );
 }
 
-function LegendItem({ color, label }: { color: string; label: string }) {
+const SkeletonBlock = memo(function SkeletonBlock({ className = "" }: { className?: string }) {
   return (
-    <div className="flex h-[26px] items-center gap-1 px-1.5 py-1">
-      <span className="relative h-4 w-4 shrink-0" aria-hidden="true">
-        <span className="absolute left-0 top-1/2 h-0.5 w-full -translate-y-1/2 rounded-full" style={{ backgroundColor: color }} />
-        <span className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 bg-white" style={{ borderColor: color }} />
-      </span>
-      <span className="text-xs font-bold text-slate-600">{label}</span>
+    <div
+      className={`fleet-dashboard-card fleet-dashboard-skeleton relative overflow-hidden rounded-2xl bg-white/70 ${className}`.trim()}
+      aria-hidden="true"
+    />
+  );
+});
+
+function DashboardSkeleton() {
+  return (
+    <div className="fleet-dashboard-low-gpu relative isolate flex w-full flex-col items-start gap-3" dir="rtl" aria-label="در حال بارگذاری داشبورد">
+      <div className="pointer-events-none absolute -right-20 -top-20 h-48 w-48 rounded-full bg-[#206AB4]/8 blur-xl" />
+      <div className="pointer-events-none absolute -bottom-24 left-8 h-52 w-52 rounded-full bg-sky-200/20 blur-xl" />
+
+      <SkeletonBlock className="relative z-10 h-14 w-full sm:h-16" />
+
+      <div className="relative z-10 grid w-full grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-3">
+        {fallbackDashboard.fuelCards.slice(0, 3).map((card, index) => (
+          <SkeletonBlock key={`${card.title}-${index}`} className="h-[136px]" />
+        ))}
+      </div>
+
+      <div className="fleet-dashboard-card relative z-10 grid min-h-[420px] w-full grid-cols-1 gap-3 rounded-3xl border border-white/70 bg-white/55 p-3 sm:min-h-[480px] sm:p-4 xl:grid-cols-[1fr_18rem] xl:gap-4">
+        <div className="order-2 flex min-h-[280px] flex-col gap-3 rounded-2xl border border-white/75 bg-white/55 p-3 xl:order-1">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <SkeletonBlock className="h-9 w-52 max-w-full" />
+            <div className="flex gap-2">
+              <SkeletonBlock className="h-8 w-24" />
+              <SkeletonBlock className="h-8 w-24" />
+            </div>
+          </div>
+          <SkeletonBlock className="min-h-[250px] flex-1" />
+        </div>
+        <div className="order-1 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:order-2 xl:grid-cols-1">
+          {(fallbackDashboard.chart.details ?? []).map((detail, index) => (
+            <SkeletonBlock key={detail.key || index} className="h-[84px]" />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -242,7 +259,7 @@ function ChartMetricCard({ item, index }: { item: ChartDetail; index: number }) 
 
   return (
     <div
-      className="group relative flex min-h-[84px] w-full overflow-hidden rounded-2xl border border-white/70 bg-white/60 px-4 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.07)] backdrop-blur-sm transition duration-150 hover:border-white hover:bg-white/75 hover:shadow-[0_14px_30px_rgba(32,106,180,0.12)]"
+      className="fleet-dashboard-card group relative flex min-h-[84px] w-full overflow-hidden rounded-2xl border border-white/70 bg-white/60 px-4 py-3 transition duration-150 hover:border-white hover:bg-white/75"
     >
       <div className="absolute -left-8 -top-8 h-20 w-20 rounded-full bg-[#206AB4]/10 blur-lg transition duration-150 group-hover:bg-[#206AB4]/16" />
       <div className="absolute -bottom-10 right-6 h-20 w-20 rounded-full bg-sky-200/25 blur-lg" />
@@ -275,7 +292,7 @@ function DcardInfo({
 }) {
   return (
     <div
-      className="group relative flex min-h-[96px] w-full items-center justify-between overflow-hidden rounded-2xl border border-white/70 bg-white/60 px-4 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.07)] backdrop-blur-sm transition duration-150 hover:border-white hover:bg-white/75 hover:shadow-[0_14px_30px_rgba(32,106,180,0.12)]"
+      className="fleet-dashboard-card group relative flex min-h-[96px] w-full items-center justify-between overflow-hidden rounded-2xl border border-white/70 bg-white/60 px-4 py-3 transition duration-150 hover:border-white hover:bg-white/75"
       dir="rtl"
     >
       <div
@@ -311,7 +328,7 @@ function FuelCard({
 
   return (
     <div
-      className="group relative flex min-h-[136px] w-full min-w-0 flex-col items-start justify-between overflow-visible rounded-2xl border border-white/70 bg-white/60 px-4 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.07)] backdrop-blur-sm transition duration-150 hover:z-20 hover:border-white hover:bg-white/75 hover:shadow-[0_14px_30px_rgba(32,106,180,0.12)] focus-within:z-20"
+      className="fleet-dashboard-card group relative flex min-h-[136px] w-full min-w-0 flex-col items-start justify-between overflow-visible rounded-2xl border border-white/70 bg-white/60 px-4 py-3 transition duration-150 hover:z-20 hover:border-white hover:bg-white/75 focus-within:z-20"
       dir="rtl"
     >
       <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
@@ -373,92 +390,109 @@ function LineChart({ chart }: { chart: DashboardChart }) {
   const fallbackCategories = fallbackDashboard.chart.categories ?? [];
   const fallbackIncome = fallbackDashboard.chart.income ?? [];
   const fallbackCost = fallbackDashboard.chart.cost ?? [];
-  const displayFallbackCategories = ["Technology", "Car Brands", "Airlines", "Energy", "Technology"];
-  const maxVisiblePoints = 5;
-  const categories = (chart.categories?.length ? chart.categories : fallbackCategories).slice(0, maxVisiblePoints);
-  const income = toNumericArray(chart.income, fallbackIncome).slice(0, maxVisiblePoints);
-  const cost = toNumericArray(chart.cost, fallbackCost).slice(0, maxVisiblePoints);
-  const chartMax = getNiceChartMax([...income, ...cost]);
-  const ticks = Array.from({ length: 6 }, (_, index) => chartMax - (chartMax / 5) * index);
-  const width = 804;
-  const height = 422;
-  const chartX = 8;
-  const chartY = 24;
-  const axisWidth = 31;
-  const plotX = chartX + axisWidth;
-  const plotY = chartY + 6;
-  const plotWidth = 757;
-  const plotHeight = 331;
-  const labelY = chartY + 341;
-  const count = Math.min(maxVisiblePoints, Math.max(categories.length, income.length, cost.length, 2));
-  const denominator = Math.max(count - 1, 1);
-  const xStep = plotWidth / denominator;
-
-  const getLabel = (index: number) => {
-    const label = categories[index];
-    return label ? String(label) : displayFallbackCategories[index % displayFallbackCategories.length];
-  };
-
-  const makePoints = (values: number[]) =>
-    values.slice(0, count).map((value, index) => ({
-      x: plotX + xStep * index,
-      y: plotY + plotHeight - (Math.min(Math.max(Number(value || 0), 0), chartMax) / chartMax) * plotHeight,
-      value: Number(value || 0),
+  const categories = useMemo(
+    () => (chart.categories?.length ? chart.categories : fallbackCategories),
+    [chart.categories, fallbackCategories],
+  );
+  const income = useMemo(() => toNumericArray(chart.income, fallbackIncome), [chart.income, fallbackIncome]);
+  const cost = useMemo(() => toNumericArray(chart.cost, fallbackCost), [chart.cost, fallbackCost]);
+  const chartData = useMemo(() => {
+    const chartLength = Math.max(categories.length, income.length, cost.length, 1);
+    return Array.from({ length: chartLength }, (_, index) => ({
+      category: String(categories[index] || `#${index + 1}`),
+      income: Number(income[index] || 0),
+      cost: Number(cost[index] || 0),
     }));
+  }, [categories, cost, income]);
+  const incomeTotal = useMemo(() => income.reduce((sum, value) => sum + Number(value || 0), 0), [income]);
+  const costTotal = useMemo(() => cost.reduce((sum, value) => sum + Number(value || 0), 0), [cost]);
+  const hasRealValue = useMemo(() => chartData.some((item) => item.income > 0 || item.cost > 0), [chartData]);
+  const yDomain: [number, number | "auto"] = hasRealValue ? [0, "auto"] : [0, 10];
 
-  const incomePoints = makePoints(income);
-  const costPoints = makePoints(cost);
+  const renderTooltip = useCallback(({ active, payload, label }: { active?: boolean; payload?: ReadonlyArray<{ color?: string; name?: string | number; value?: unknown }>; label?: string | number }) => {
+    if (!active || !payload?.length) return null;
+    return (
+      <div className="min-w-[140px] rounded-2xl border border-white/80 bg-white/95 px-3 py-2 text-right shadow-[0_14px_30px_rgba(15,23,42,0.14)] backdrop-blur-md" dir="rtl">
+        <div className="mb-1 text-xs font-black text-slate-500">{label}</div>
+        {payload.map((item) => (
+          <div key={item.name} className="flex items-center justify-between gap-4 text-xs font-black text-slate-700">
+            <span className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+              {item.name}
+            </span>
+            <span>{formatCompactChartValue(Number(item.value || 0))}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }, []);
 
   return (
-    <div className="h-full w-full rounded-2xl border border-white/70 bg-white/45 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] backdrop-blur-sm" dir="ltr">
-      <svg viewBox={`0 0 ${width} ${height}`} className="h-full w-full overflow-visible" preserveAspectRatio="none" role="img" aria-label="نمودار درآمد و هزینه">
-        <defs>
-          <linearGradient id="incomeLineGradient" x1="0" x2="1" y1="0" y2="0">
-            <stop offset="0%" stopColor="#206AB4" />
-            <stop offset="100%" stopColor="#7C3AED" />
-          </linearGradient>
-        </defs>
-        {ticks.map((tick) => {
-          const y = plotY + plotHeight - (tick / chartMax) * plotHeight;
-          return (
-            <g key={tick}>
-              <line x1={plotX} x2={plotX + plotWidth - 2} y1={y} y2={y} stroke="rgba(15,23,42,0.10)" strokeDasharray="5 7" />
-              <text x={chartX + axisWidth - 4} y={y + 4} textAnchor="end" className="fill-slate-500 text-xs font-medium">
-                {formatCompactChartValue(tick)}
-              </text>
-            </g>
-          );
-        })}
-
-        {Array.from({ length: count }, (_, index) => {
-          const x = plotX + xStep * index;
-          return (
-            <g key={`x-${index}`}>
-              <line x1={x} x2={x} y1={plotY} y2={plotY + plotHeight} stroke="rgba(15,23,42,0.06)" />
-              <text x={x} y={labelY + 15} textAnchor="middle" className="fill-slate-600 text-xs font-semibold">
-                {getLabel(index)}
-              </text>
-            </g>
-          );
-        })}
-
-        <path d={buildSmoothPath(incomePoints)} fill="none" stroke="url(#incomeLineGradient)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" />
-        <path d={buildSmoothPath(costPoints)} fill="none" stroke="#E05B1A" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" />
-
-        {incomePoints.map((point, index) => (
-          <circle key={`income-${index}`} cx={point.x} cy={point.y} r="5.5" fill="#ffffff" stroke="#206AB4" strokeWidth="3" />
-        ))}
-        {costPoints.map((point, index) => (
-          <circle key={`cost-${index}`} cx={point.x} cy={point.y} r="5.5" fill="#ffffff" stroke="#E05B1A" strokeWidth="3" />
-        ))}
-
-        <foreignObject x="335.5" y="388" width="133" height="26">
-          <div className="flex h-[26px] items-center justify-center gap-2 rounded-full bg-white/80 shadow-[0_8px_22px_rgba(15,23,42,0.08)]" dir="rtl">
-            <LegendItem color="#E05B1A" label="هزینه" />
-            <LegendItem color="#206AB4" label="درآمد" />
+    <div className="fleet-dashboard-card flex h-full w-full flex-col overflow-hidden rounded-2xl border border-white/75 bg-white/65 p-3" dir="rtl">
+      <div className="flex flex-col gap-3 border-b border-slate-100/80 pb-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-base font-black text-slate-950">روند درآمد و هزینه</p>
+          <p className="mt-1 text-xs font-bold text-slate-500">مقایسه سریع وضعیت مالی در بازه انتخابی</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="rounded-full border border-[#206AB4]/15 bg-[#206AB4]/8 px-3 py-1.5 text-xs font-black text-[#206AB4]">
+            درآمد: {formatCompactChartValue(incomeTotal)}
           </div>
-        </foreignObject>
-      </svg>
+          <div className="rounded-full border border-[#E05B1A]/15 bg-[#E05B1A]/8 px-3 py-1.5 text-xs font-black text-[#C94D12]">
+            هزینه: {formatCompactChartValue(costTotal)}
+          </div>
+        </div>
+      </div>
+
+      <div className="min-h-[280px] flex-1 pt-3" dir="ltr">
+        <ResponsiveContainer width="100%" height="100%">
+          <RechartsLineChart data={chartData} margin={{ top: 18, right: 18, bottom: 8, left: 10 }}>
+            <CartesianGrid stroke="rgba(15,23,42,0.08)" strokeDasharray="4 10" vertical={false} />
+            <XAxis
+              dataKey="category"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: "#475569", fontSize: 12, fontWeight: 800 }}
+              dy={10}
+            />
+            <YAxis
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={(value) => formatCompactChartValue(Number(value || 0))}
+              tick={{ fill: "#94A3B8", fontSize: 11, fontWeight: 800 }}
+              width={48}
+              domain={yDomain}
+            />
+            <RechartsTooltip content={renderTooltip} cursor={{ stroke: "#206AB4", strokeDasharray: "5 7", strokeOpacity: 0.35 }} />
+            <Legend
+              verticalAlign="bottom"
+              align="center"
+              iconType="circle"
+              formatter={(value) => <span className="text-xs font-black text-slate-600">{value}</span>}
+            />
+            <Line
+              type="monotone"
+              dataKey="income"
+              name="درآمد"
+              stroke="#206AB4"
+              strokeWidth={3}
+              dot={false}
+              activeDot={false}
+              isAnimationActive={false}
+            />
+            <Line
+              type="monotone"
+              dataKey="cost"
+              name="هزینه"
+              stroke="#E05B1A"
+              strokeWidth={3}
+              dot={false}
+              activeDot={false}
+              isAnimationActive={false}
+            />
+          </RechartsLineChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
@@ -470,12 +504,11 @@ function ChartWithDetails({ chart = fallbackDashboard.chart }: { chart?: Dashboa
 
   return (
     <div
-      className="relative flex h-full w-full flex-col gap-3 overflow-visible rounded-3xl border border-white/70 bg-white/55 p-3 shadow-[0_12px_30px_rgba(15,23,42,0.08)] backdrop-blur-sm sm:p-4 lg:gap-4"
+      className="fleet-dashboard-card relative flex h-full w-full flex-col gap-3 overflow-visible rounded-3xl border border-white/70 bg-white/55 p-3 sm:p-4 lg:gap-4"
       dir="rtl"
     >
       <div className="flex min-h-9 w-full flex-col gap-3 border-b border-slate-100 pb-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-fit items-center justify-start gap-2">
-          <span className="h-3 w-3 rounded-full bg-[#206AB4] shadow-[0_0_0_6px_rgba(32,106,180,0.10)]" aria-hidden="true" />
           <h2 className="text-xl font-black leading-[30px] text-slate-950">نمودار بر اساس تاریخ</h2>
           <TooltipHint label="نمودار درآمد و هزینه را در بازه انتخابی نشان می دهد." />
         </div>
@@ -521,6 +554,41 @@ function ChartWithDetails({ chart = fallbackDashboard.chart }: { chart?: Dashboa
             <ChartMetricCard key={item?.key || index} item={item} index={index} />
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function ScrollingText({ texts, speed = 45 }: { texts: string[]; speed?: number }) {
+  const normalizedTexts = texts.length ? texts : fallbackDashboard.announcements;
+  const marqueeItems = useMemo(() => [...normalizedTexts, ...normalizedTexts, ...normalizedTexts], [normalizedTexts]);
+  const reduceMotion = useReducedMotion();
+
+  return (
+    <div
+      className="fleet-dashboard-card relative h-14 w-full overflow-hidden rounded-2xl border border-white/70 bg-white/55 sm:h-16"
+      dir="rtl"
+    >
+      <motion.div
+        className="fleet-dashboard-marquee absolute left-0 top-0 flex h-full w-max items-center whitespace-nowrap"
+        animate={reduceMotion ? { x: "0%" } : { x: ["0%", "-33.333%"] }}
+        transition={reduceMotion ? undefined : { duration: speed, ease: "linear", repeat: Infinity }}
+      >
+        {marqueeItems.map((text, index) => (
+          <div key={`${text}-${index}`} className="flex h-full items-center py-2">
+            <div
+              className={`flex h-full items-center justify-center whitespace-nowrap px-6 text-center text-sm font-black ${index % 4 === 2 ? "text-[#B69A00]" : "text-slate-700"
+                }`}
+            >
+              {text}
+            </div>
+            <span className="h-8 w-px shrink-0 bg-slate-200" aria-hidden="true" />
+          </div>
+        ))}
+      </motion.div>
+      <div className="pointer-events-none absolute left-0 top-0 z-10 h-full w-20 bg-gradient-to-r from-white/85 to-transparent" />
+      <div className="absolute right-0 top-0 z-10 flex h-full w-[116px] items-center justify-center border-l border-white/70 bg-white/75 px-2.5 shadow-[-10px_0_18px_rgba(255,255,255,0.62)] backdrop-blur-sm">
+        <span className="whitespace-nowrap text-lg font-black text-slate-900">اطلاعیه ها</span>
       </div>
     </div>
   );
@@ -585,10 +653,10 @@ export default function Dashboard() {
     return <AccessDenied />;
   }
 
-  if (loading) return <LoadingState message="در حال بارگذاری..." />;
+  if (loading) return <DashboardSkeleton />;
 
   return (
-    <div className="relative isolate flex h-full min-h-screen w-full flex-col items-start gap-3 overflow-x-hidden overflow-y-auto bg-gradient-to-br from-slate-50 via-white to-[#EEF4FF] p-3 sm:gap-4 sm:p-4 lg:min-h-0 lg:overflow-y-hidden" dir="rtl">
+    <div className="fleet-dashboard-low-gpu relative isolate flex w-full flex-col items-start gap-3" dir="rtl">
       <div className="pointer-events-none absolute -right-20 -top-20 h-48 w-48 rounded-full bg-[#206AB4]/8 blur-xl" />
       <div className="pointer-events-none absolute -bottom-24 left-8 h-52 w-52 rounded-full bg-sky-200/25 blur-xl" />
 
@@ -615,6 +683,10 @@ export default function Dashboard() {
 
       <div className="relative z-10 flex min-h-[420px] w-full flex-1 items-stretch justify-center sm:min-h-[480px] lg:min-h-0">
         <ChartWithDetails chart={dashboardData.chart} />
+      </div>
+
+      <div className="relative z-20 w-full">
+        <ScrollingText texts={announcements} />
       </div>
     </div>
   );
