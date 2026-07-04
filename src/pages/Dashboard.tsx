@@ -221,16 +221,16 @@ function DashboardSkeleton() {
       <div className="pointer-events-none absolute -right-20 -top-20 h-48 w-48 rounded-full bg-[#206AB4]/8 blur-xl" />
       <div className="pointer-events-none absolute -bottom-24 left-8 h-52 w-52 rounded-full bg-sky-200/20 blur-xl" />
 
-      <SkeletonBlock className="relative z-10 h-14 w-full sm:h-16" />
+      <SkeletonBlock className="relative z-10 h-11 w-full sm:h-16" />
 
-      <div className="relative z-10 grid w-full grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-3">
+      <div className="relative z-10 grid w-full grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-3">
         {fallbackDashboard.fuelCards.slice(0, 3).map((card, index) => (
-          <SkeletonBlock key={`${card.title}-${index}`} className="h-[136px]" />
+          <SkeletonBlock key={`${card.title}-${index}`} className="h-[108px] sm:h-[136px]" />
         ))}
       </div>
 
-      <div className="fleet-dashboard-card relative z-10 grid min-h-[420px] w-full grid-cols-1 gap-3 rounded-3xl border border-white/70 bg-white/55 p-3 sm:min-h-[480px] sm:p-4 xl:grid-cols-[1fr_18rem] xl:gap-4">
-        <div className="order-2 flex min-h-[280px] flex-col gap-3 rounded-2xl border border-white/75 bg-white/55 p-3 xl:order-1">
+      <div className="fleet-dashboard-card relative z-10 grid min-h-[360px] w-full grid-cols-1 gap-3 rounded-2xl border border-white/70 bg-white/55 p-2.5 sm:min-h-[480px] sm:rounded-3xl sm:p-4 xl:grid-cols-[1fr_18rem] xl:gap-4">
+        <div className="order-2 flex min-h-[240px] flex-col gap-3 rounded-xl border border-white/75 bg-white/55 p-2.5 sm:min-h-[280px] sm:rounded-2xl sm:p-3 xl:order-1">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <SkeletonBlock className="h-9 w-52 max-w-full" />
             <div className="flex gap-2">
@@ -238,11 +238,11 @@ function DashboardSkeleton() {
               <SkeletonBlock className="h-8 w-24" />
             </div>
           </div>
-          <SkeletonBlock className="min-h-[250px] flex-1" />
+          <SkeletonBlock className="min-h-[220px] flex-1 sm:min-h-[250px]" />
         </div>
         <div className="order-1 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:order-2 xl:grid-cols-1">
           {(fallbackDashboard.chart.details ?? []).map((detail, index) => (
-            <SkeletonBlock key={detail.key || index} className="h-[84px]" />
+            <SkeletonBlock key={detail.key || index} className="h-[72px] sm:h-[84px]" />
           ))}
         </div>
       </div>
@@ -259,20 +259,20 @@ function ChartMetricCard({ item, index }: { item: ChartDetail; index: number }) 
 
   return (
     <div
-      className="fleet-dashboard-card group relative flex min-h-[84px] w-full overflow-hidden rounded-2xl border border-white/70 bg-white/60 px-4 py-3 transition duration-150 hover:border-white hover:bg-white/75"
+      className="fleet-dashboard-card group relative flex min-h-[72px] w-full overflow-hidden rounded-xl border border-white/70 bg-white/60 px-3 py-2.5 transition duration-150 hover:border-white hover:bg-white/75 sm:min-h-[84px] sm:rounded-2xl sm:px-4 sm:py-3"
     >
       <div className="absolute -left-8 -top-8 h-20 w-20 rounded-full bg-[#206AB4]/10 blur-lg transition duration-150 group-hover:bg-[#206AB4]/16" />
       <div className="absolute -bottom-10 right-6 h-20 w-20 rounded-full bg-sky-200/25 blur-lg" />
       <div className="relative flex w-full items-center justify-between gap-4">
         <div className="flex min-w-0 flex-col items-start">
-          <span className="text-[26px] font-black leading-8 text-slate-950">{formatNumber(item?.value)}</span>
-          <span className="mt-1 rounded-full border border-white/70 bg-white/55 px-2.5 py-1 text-[11px] font-bold leading-none text-slate-600 shadow-sm backdrop-blur-sm">{unit}</span>
+          <span className="text-xl font-black leading-7 text-slate-950 sm:text-[26px] sm:leading-8">{formatNumber(item?.value)}</span>
+          <span className="mt-1 rounded-full border border-white/70 bg-white/55 px-2 py-1 text-[10px] font-bold leading-none text-slate-600 shadow-sm backdrop-blur-sm sm:px-2.5 sm:text-[11px]">{unit}</span>
         </div>
-        <div className="flex min-w-[88px] shrink-0 flex-col items-end justify-center">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/80 bg-white/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.75),0_8px_18px_rgba(32,106,180,0.12)] backdrop-blur-sm transition duration-150 group-hover:bg-white/75 [&_svg]:h-6 [&_svg]:w-6">
+        <div className="flex min-w-[68px] shrink-0 flex-col items-end justify-center sm:min-w-[88px]">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/80 bg-white/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.75),0_8px_18px_rgba(32,106,180,0.12)] backdrop-blur-sm transition duration-150 group-hover:bg-white/75 sm:h-10 sm:w-10 sm:rounded-2xl [&_svg]:h-5 [&_svg]:w-5 sm:[&_svg]:h-6 sm:[&_svg]:w-6">
             <ChartDetailIcon type={config.icon} />
           </div>
-          <span className={`mt-2 text-sm font-bold leading-5 text-slate-700 ${index === 3 ? "whitespace-nowrap" : ""}`}>
+          <span className={`mt-1.5 text-xs font-bold leading-5 text-slate-700 sm:mt-2 sm:text-sm ${index === 3 ? "whitespace-nowrap" : ""}`}>
             {config.label}
           </span>
         </div>
@@ -292,7 +292,7 @@ function DcardInfo({
 }) {
   return (
     <div
-      className="fleet-dashboard-card group relative flex min-h-[96px] w-full items-center justify-between overflow-hidden rounded-2xl border border-white/70 bg-white/60 px-4 py-3 transition duration-150 hover:border-white hover:bg-white/75"
+      className="fleet-dashboard-card group relative flex min-h-[78px] w-full items-center justify-between overflow-hidden rounded-xl border border-white/70 bg-white/60 px-3 py-2.5 transition duration-150 hover:border-white hover:bg-white/75 sm:min-h-[96px] sm:rounded-2xl sm:px-4 sm:py-3"
       dir="rtl"
     >
       <div
@@ -303,14 +303,14 @@ function DcardInfo({
         }}
       />
       <div className="absolute -bottom-12 right-8 h-24 w-24 rounded-full bg-sky-200/25 blur-lg" />
-      <div className="relative flex h-full min-w-0 flex-col items-start justify-between gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/80 bg-white/55 text-[#206AB4] shadow-[inset_0_1px_0_rgba(255,255,255,0.75),0_8px_18px_rgba(32,106,180,0.12)] backdrop-blur-sm transition duration-150 group-hover:bg-white/75">
-          <Icon className="h-6 w-6" />
+      <div className="relative flex h-full min-w-0 flex-col items-start justify-between gap-2 sm:gap-3">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/80 bg-white/55 text-[#206AB4] shadow-[inset_0_1px_0_rgba(255,255,255,0.75),0_8px_18px_rgba(32,106,180,0.12)] backdrop-blur-sm transition duration-150 group-hover:bg-white/75 sm:h-11 sm:w-11 sm:rounded-2xl">
+          <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
         </div>
-        <p className="truncate text-lg font-bold text-slate-700">{text}</p>
+        <p className="truncate text-xs font-bold text-slate-700 sm:text-lg">{text}</p>
       </div>
-      <div className="relative flex items-center justify-center pr-3">
-        <span className="text-[30px] font-black leading-none text-slate-950">{formatNumber(value)}</span>
+      <div className="relative flex min-w-0 items-center justify-center pr-2 sm:pr-3">
+        <span className="truncate text-[22px] font-black leading-none text-slate-950 sm:text-[30px]">{formatNumber(value)}</span>
       </div>
     </div>
   );
@@ -328,25 +328,25 @@ function FuelCard({
 
   return (
     <div
-      className="fleet-dashboard-card group relative flex min-h-[136px] w-full min-w-0 flex-col items-start justify-between overflow-visible rounded-2xl border border-white/70 bg-white/60 px-4 py-3 transition duration-150 hover:z-20 hover:border-white hover:bg-white/75 focus-within:z-20"
+      className="fleet-dashboard-card group relative flex min-h-[122px] w-full min-w-0 flex-col items-start justify-between overflow-visible rounded-xl border border-white/70 bg-white/60 px-3 py-2.5 transition duration-150 hover:z-20 hover:border-white hover:bg-white/75 focus-within:z-20 sm:min-h-[136px] sm:rounded-2xl sm:px-4 sm:py-3"
       dir="rtl"
     >
       <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
         <div className="absolute -left-8 -top-10 h-24 w-24 rounded-full bg-[#206AB4]/10 blur-lg transition duration-150 group-hover:bg-[#206AB4]/16" />
         <div className="absolute -bottom-12 right-8 h-24 w-24 rounded-full bg-sky-200/25 blur-lg" />
       </div>
-      <div className="relative flex min-h-9 w-full items-start justify-between gap-3">
+      <div className="relative flex min-h-8 w-full items-start justify-between gap-2 sm:min-h-9 sm:gap-3">
         <div className="flex min-w-0 items-center justify-start gap-2">
-          <p className="min-w-0 truncate text-lg font-black text-slate-950">
+          <p className="min-w-0 truncate text-sm font-black text-slate-950 sm:text-lg">
             {title}
           </p>
-          <TooltipHint label={String(desc || "")} />
+          <TooltipHint label={String(desc || "")} className="h-6 w-6 sm:h-7 sm:w-7 [&_svg]:h-3.5 [&_svg]:w-3.5 sm:[&_svg]:h-4 sm:[&_svg]:w-4" />
         </div>
-        <div className="h-8 w-24 shrink-0">
+        <div className="h-7 w-[86px] shrink-0 sm:h-8 sm:w-24">
           <ToolbarSelect
             value={period}
             onChange={(event) => setPeriod(event.target.value)}
-            className="[&>button]:h-8 [&>button]:cursor-pointer [&>button]:rounded-xl [&>button]:border [&>button]:border-white/70 [&>button]:bg-white/55 [&>button]:px-2 [&>button]:text-sm [&>button]:font-bold [&>button]:text-slate-700 [&>button]:shadow-sm [&>button]:backdrop-blur-sm [&>button_span]:whitespace-nowrap [&>button_svg]:h-5 [&>button_svg]:w-5"
+            className="[&>button]:h-7 sm:[&>button]:h-8 [&>button]:cursor-pointer [&>button]:rounded-lg sm:[&>button]:rounded-xl [&>button]:border [&>button]:border-white/70 [&>button]:bg-white/55 [&>button]:px-2 [&>button]:text-xs sm:[&>button]:text-sm [&>button]:font-bold [&>button]:text-slate-700 [&>button]:shadow-sm [&>button]:backdrop-blur-sm [&>button_span]:whitespace-nowrap [&>button_svg]:h-4 [&>button_svg]:w-4 sm:[&>button_svg]:h-5 sm:[&>button_svg]:w-5"
           >
             <option value="daily">روزانه</option>
             <option value="weekly">هفتگی</option>
@@ -356,12 +356,12 @@ function FuelCard({
         </div>
       </div>
 
-      <div className="relative flex w-full flex-row items-center justify-between gap-4">
+      <div className="relative flex w-full flex-row items-center justify-between gap-3 sm:gap-4">
         <div
-          className={`flex items-center justify-center gap-1 rounded-full px-2.5 py-1 ${positive ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
+          className={`flex items-center justify-center gap-1 rounded-full px-2 py-1 sm:px-2.5 ${positive ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
             }`}
         >
-          <span className="text-sm font-black">
+          <span className="text-xs font-black sm:text-sm">
             {Math.abs(normalizedPercent)}%
           </span>
           {positive ? (
@@ -370,13 +370,13 @@ function FuelCard({
             <TrendingDown className="h-5 w-5" strokeWidth={2.35} aria-hidden="true" />
           )}
         </div>
-        <span className="min-w-0 truncate text-[26px] font-black leading-8 text-slate-950">{formatNumber(price)}</span>
+        <span className="min-w-0 truncate text-xl font-black leading-7 text-slate-950 sm:text-[26px] sm:leading-8">{formatNumber(price)}</span>
       </div>
 
       <div className="relative flex w-full items-center justify-center">
         <button
           type="button"
-          className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-white/70 bg-white/55 px-4 py-2 text-xs font-black text-slate-700 shadow-sm backdrop-blur-sm transition hover:bg-[#206AB4] hover:text-white focus:outline-none focus:ring-2 focus:ring-[#206AB4]/30"
+          className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-white/70 bg-white/55 px-3 py-1.5 text-[11px] font-black text-slate-700 shadow-sm backdrop-blur-sm transition hover:bg-[#206AB4] hover:text-white focus:outline-none focus:ring-2 focus:ring-[#206AB4]/30 sm:px-4 sm:py-2 sm:text-xs"
         >
           نمایش چارت
           <BarChart3 className="h-4 w-4" strokeWidth={2.35} aria-hidden="true" />
@@ -390,12 +390,15 @@ function LineChart({ chart }: { chart: DashboardChart }) {
   const fallbackCategories = fallbackDashboard.chart.categories ?? [];
   const fallbackIncome = fallbackDashboard.chart.income ?? [];
   const fallbackCost = fallbackDashboard.chart.cost ?? [];
+
   const categories = useMemo(
     () => (chart.categories?.length ? chart.categories : fallbackCategories),
     [chart.categories, fallbackCategories],
   );
+
   const income = useMemo(() => toNumericArray(chart.income, fallbackIncome), [chart.income, fallbackIncome]);
   const cost = useMemo(() => toNumericArray(chart.cost, fallbackCost), [chart.cost, fallbackCost]);
+
   const chartData = useMemo(() => {
     const chartLength = Math.max(categories.length, income.length, cost.length, 1);
     return Array.from({ length: chartLength }, (_, index) => ({
@@ -404,6 +407,7 @@ function LineChart({ chart }: { chart: DashboardChart }) {
       cost: Number(cost[index] || 0),
     }));
   }, [categories, cost, income]);
+
   const incomeTotal = useMemo(() => income.reduce((sum, value) => sum + Number(value || 0), 0), [income]);
   const costTotal = useMemo(() => cost.reduce((sum, value) => sum + Number(value || 0), 0), [cost]);
   const hasRealValue = useMemo(() => chartData.some((item) => item.income > 0 || item.cost > 0), [chartData]);
@@ -411,8 +415,9 @@ function LineChart({ chart }: { chart: DashboardChart }) {
 
   const renderTooltip = useCallback(({ active, payload, label }: { active?: boolean; payload?: ReadonlyArray<{ color?: string; name?: string | number; value?: unknown }>; label?: string | number }) => {
     if (!active || !payload?.length) return null;
+
     return (
-      <div className="min-w-[140px] rounded-2xl border border-white/80 bg-white/95 px-3 py-2 text-right shadow-[0_14px_30px_rgba(15,23,42,0.14)] backdrop-blur-md" dir="rtl">
+      <div className="min-w-[140px] rounded-xl border border-white/80 bg-white/95 px-3 py-2 text-right shadow-[0_14px_30px_rgba(15,23,42,0.14)] backdrop-blur-md" dir="rtl">
         <div className="mb-1 text-xs font-black text-slate-500">{label}</div>
         {payload.map((item) => (
           <div key={item.name} className="flex items-center justify-between gap-4 text-xs font-black text-slate-700">
@@ -428,70 +433,78 @@ function LineChart({ chart }: { chart: DashboardChart }) {
   }, []);
 
   return (
-    <div className="fleet-dashboard-card flex h-full w-full flex-col overflow-hidden rounded-2xl border border-white/75 bg-white/65 p-3" dir="rtl">
-      <div className="flex flex-col gap-3 border-b border-slate-100/80 pb-3 sm:flex-row sm:items-start sm:justify-between">
+    <div className="fleet-dashboard-card flex h-full w-full flex-col overflow-hidden rounded-xl border border-white/75 bg-white/65 p-2.5 sm:rounded-2xl sm:p-3" dir="rtl">
+      <div className="flex flex-col gap-2 border-b border-slate-100/80 pb-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <p className="text-base font-black text-slate-950">روند درآمد و هزینه</p>
-          <p className="mt-1 text-xs font-bold text-slate-500">مقایسه سریع وضعیت مالی در بازه انتخابی</p>
+          <p className="text-sm font-black text-slate-950 sm:text-base">روند درآمد و هزینه</p>
+          <p className="mt-1 text-[11px] font-bold text-slate-500 sm:text-xs">
+            مقایسه سریع وضعیت مالی در بازه انتخابی
+          </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="rounded-full border border-[#206AB4]/15 bg-[#206AB4]/8 px-3 py-1.5 text-xs font-black text-[#206AB4]">
+
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+          <div className="rounded-full border border-[#206AB4]/15 bg-[#206AB4]/8 px-2.5 py-1 text-[11px] font-black text-[#206AB4] sm:px-3 sm:py-1.5 sm:text-xs">
             درآمد: {formatCompactChartValue(incomeTotal)}
           </div>
-          <div className="rounded-full border border-[#E05B1A]/15 bg-[#E05B1A]/8 px-3 py-1.5 text-xs font-black text-[#C94D12]">
+          <div className="rounded-full border border-[#E05B1A]/15 bg-[#E05B1A]/8 px-2.5 py-1 text-[11px] font-black text-[#C94D12] sm:px-3 sm:py-1.5 sm:text-xs">
             هزینه: {formatCompactChartValue(costTotal)}
           </div>
         </div>
       </div>
 
-      <div className="min-h-[280px] flex-1 pt-3" dir="ltr">
-        <ResponsiveContainer width="100%" height="100%">
-          <RechartsLineChart data={chartData} margin={{ top: 18, right: 18, bottom: 8, left: 10 }}>
-            <CartesianGrid stroke="rgba(15,23,42,0.08)" strokeDasharray="4 10" vertical={false} />
-            <XAxis
-              dataKey="category"
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: "#475569", fontSize: 12, fontWeight: 800 }}
-              dy={10}
-            />
-            <YAxis
-              axisLine={false}
-              tickLine={false}
-              tickFormatter={(value) => formatCompactChartValue(Number(value || 0))}
-              tick={{ fill: "#94A3B8", fontSize: 11, fontWeight: 800 }}
-              width={48}
-              domain={yDomain}
-            />
-            <RechartsTooltip content={renderTooltip} cursor={{ stroke: "#206AB4", strokeDasharray: "5 7", strokeOpacity: 0.35 }} />
-            <Legend
-              verticalAlign="bottom"
-              align="center"
-              iconType="circle"
-              formatter={(value) => <span className="text-xs font-black text-slate-600">{value}</span>}
-            />
-            <Line
-              type="monotone"
-              dataKey="income"
-              name="درآمد"
-              stroke="#206AB4"
-              strokeWidth={3}
-              dot={false}
-              activeDot={false}
-              isAnimationActive={false}
-            />
-            <Line
-              type="monotone"
-              dataKey="cost"
-              name="هزینه"
-              stroke="#E05B1A"
-              strokeWidth={3}
-              dot={false}
-              activeDot={false}
-              isAnimationActive={false}
-            />
-          </RechartsLineChart>
-        </ResponsiveContainer>
+      <div className="w-full overflow-x-auto overflow-y-hidden pt-3">
+        <div className="h-[270px] min-w-[560px] sm:h-[320px] sm:min-w-0">
+          <ResponsiveContainer width="100%" height="100%">
+            <RechartsLineChart data={chartData} margin={{ top: 16, right: 12, bottom: 8, left: 4 }}>
+              <CartesianGrid stroke="rgba(15,23,42,0.08)" strokeDasharray="4 10" vertical={false} />
+              <XAxis dataKey="category" axisLine={false} tickLine={false} tick={{ fill: "#475569", fontSize: 11, fontWeight: 800 }} dy={10} />
+              <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => formatCompactChartValue(Number(value || 0))} tick={{ fill: "#94A3B8", fontSize: 10, fontWeight: 800 }} width={42} domain={yDomain} />
+              <RechartsTooltip content={renderTooltip} cursor={{ stroke: "#206AB4", strokeDasharray: "5 7", strokeOpacity: 0.35 }} />
+              <Legend verticalAlign="bottom" align="center" iconType="circle" formatter={(value) => <span className="text-xs font-black text-slate-600">{value}</span>} />
+              <Line
+                type="monotone"
+                dataKey="income"
+                name="درآمد"
+                stroke="#206AB4"
+                strokeWidth={3}
+                dot={{
+                  r: 4,
+                  fill: "#ffffff",
+                  stroke: "#206AB4",
+                  strokeWidth: 3,
+                }}
+                activeDot={{
+                  r: 6,
+                  fill: "#206AB4",
+                  stroke: "#ffffff",
+                  strokeWidth: 3,
+                }}
+                isAnimationActive={false}
+              />
+
+              <Line
+                type="monotone"
+                dataKey="cost"
+                name="هزینه"
+                stroke="#E05B1A"
+                strokeWidth={3}
+                dot={{
+                  r: 4,
+                  fill: "#ffffff",
+                  stroke: "#E05B1A",
+                  strokeWidth: 3,
+                }}
+                activeDot={{
+                  r: 6,
+                  fill: "#E05B1A",
+                  stroke: "#ffffff",
+                  strokeWidth: 3,
+                }}
+                isAnimationActive={false}
+              />
+            </RechartsLineChart>
+          </ResponsiveContainer>
+        </div>
       </div>
     </div>
   );
@@ -504,16 +517,16 @@ function ChartWithDetails({ chart = fallbackDashboard.chart }: { chart?: Dashboa
 
   return (
     <div
-      className="fleet-dashboard-card relative flex h-full w-full flex-col gap-3 overflow-visible rounded-3xl border border-white/70 bg-white/55 p-3 sm:p-4 lg:gap-4"
+      className="fleet-dashboard-card relative flex h-full w-full flex-col gap-3 overflow-visible rounded-2xl border border-white/70 bg-white/55 p-2.5 sm:rounded-3xl sm:p-4 lg:gap-4"
       dir="rtl"
     >
       <div className="flex min-h-9 w-full flex-col gap-3 border-b border-slate-100 pb-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-fit items-center justify-start gap-2">
-          <h2 className="text-xl font-black leading-[30px] text-slate-950">نمودار بر اساس تاریخ</h2>
+          <h2 className="text-base font-black leading-7 text-slate-950 sm:text-xl sm:leading-[30px]">نمودار بر اساس تاریخ</h2>
           <TooltipHint label="نمودار درآمد و هزینه را در بازه انتخابی نشان می دهد." />
         </div>
-        <div className="flex w-full flex-wrap items-center justify-start gap-2 sm:gap-3 lg:w-auto lg:flex-nowrap">
-          <div className="h-8 min-w-[126px] flex-1 sm:w-[132px] sm:flex-none">
+        <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-3 lg:w-auto lg:flex-none">
+          <div className="h-8 min-w-0">
             <ToolbarSelect
               value={startDate}
               onChange={(event) => setStartDate(event.target.value)}
@@ -527,7 +540,7 @@ function ChartWithDetails({ chart = fallbackDashboard.chart }: { chart?: Dashboa
             </ToolbarSelect>
           </div>
           <span className="rounded-full border border-white/70 bg-white/55 px-3 py-1 text-sm font-black leading-6 text-slate-600 shadow-sm backdrop-blur-sm">تا</span>
-          <div className="h-8 min-w-[126px] flex-1 sm:w-[132px] sm:flex-none">
+          <div className="h-8 min-w-0">
             <ToolbarSelect
               value={endDate}
               onChange={(event) => setEndDate(event.target.value)}
@@ -544,12 +557,12 @@ function ChartWithDetails({ chart = fallbackDashboard.chart }: { chart?: Dashboa
       </div>
 
       <div className="flex h-full min-h-0 w-full flex-col gap-3 xl:flex-row xl:items-stretch xl:justify-between xl:gap-4">
-        <div className="order-2 min-h-[250px] min-w-0 flex-1 overflow-x-auto pb-1 sm:min-h-[320px] lg:min-h-0 xl:order-2 xl:overflow-visible">
-          <div className="h-full min-w-[620px] xl:min-w-0">
+        <div className="order-2 min-h-[250px] min-w-0 flex-1 overflow-hidden pb-1 sm:min-h-[320px] lg:min-h-0 xl:order-2">
+          <div className="h-full min-w-0">
             <LineChart chart={chart} />
           </div>
         </div>
-        <div className="order-1 grid w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:order-1 xl:flex xl:w-72 xl:shrink-0 xl:grid-cols-none xl:flex-col">
+        <div className="order-1 grid w-full grid-cols-2 gap-2 sm:gap-4 xl:order-1 xl:flex xl:w-72 xl:shrink-0 xl:grid-cols-none xl:flex-col">
           {details.map((item, index) => (
             <ChartMetricCard key={item?.key || index} item={item} index={index} />
           ))}
@@ -566,7 +579,7 @@ function ScrollingText({ texts, speed = 45 }: { texts: string[]; speed?: number 
 
   return (
     <div
-      className="fleet-dashboard-card relative h-14 w-full overflow-hidden rounded-2xl border border-white/70 bg-white/55 sm:h-16"
+      className="fleet-dashboard-card relative h-11 w-full overflow-hidden rounded-xl border border-white/70 bg-white/55 sm:h-16 sm:rounded-2xl"
       dir="rtl"
     >
       <motion.div
@@ -577,18 +590,18 @@ function ScrollingText({ texts, speed = 45 }: { texts: string[]; speed?: number 
         {marqueeItems.map((text, index) => (
           <div key={`${text}-${index}`} className="flex h-full items-center py-2">
             <div
-              className={`flex h-full items-center justify-center whitespace-nowrap px-6 text-center text-sm font-black ${index % 4 === 2 ? "text-[#B69A00]" : "text-slate-700"
+              className={`flex h-full items-center justify-center whitespace-nowrap px-4 text-center text-xs font-black sm:px-6 sm:text-sm ${index % 4 === 2 ? "text-[#B69A00]" : "text-slate-700"
                 }`}
             >
               {text}
             </div>
-            <span className="h-8 w-px shrink-0 bg-slate-200" aria-hidden="true" />
+            <span className="h-6 w-px shrink-0 bg-slate-200 sm:h-8" aria-hidden="true" />
           </div>
         ))}
       </motion.div>
-      <div className="pointer-events-none absolute left-0 top-0 z-10 h-full w-20 bg-gradient-to-r from-white/85 to-transparent" />
-      <div className="absolute right-0 top-0 z-10 flex h-full w-[116px] items-center justify-center border-l border-white/70 bg-white/75 px-2.5 shadow-[-10px_0_18px_rgba(255,255,255,0.62)] backdrop-blur-sm">
-        <span className="whitespace-nowrap text-lg font-black text-slate-900">اطلاعیه ها</span>
+      <div className="pointer-events-none absolute left-0 top-0 z-10 h-full w-12 bg-gradient-to-r from-white/85 to-transparent sm:w-20" />
+      <div className="absolute right-0 top-0 z-10 flex h-full w-[88px] items-center justify-center border-l border-white/70 bg-white/75 px-2 shadow-[-10px_0_18px_rgba(255,255,255,0.62)] backdrop-blur-sm sm:w-[116px] sm:px-2.5">
+        <span className="whitespace-nowrap text-sm font-black text-slate-900 sm:text-lg">اطلاعیه ها</span>
       </div>
     </div>
   );
@@ -656,7 +669,7 @@ export default function Dashboard() {
   if (loading) return <DashboardSkeleton />;
 
   return (
-    <div className="fleet-dashboard-low-gpu relative isolate flex w-full flex-col items-start gap-3" dir="rtl">
+    <div className="fleet-dashboard-low-gpu relative isolate flex w-full flex-col items-start gap-2.5 sm:gap-3" dir="rtl">
       <div className="pointer-events-none absolute -right-20 -top-20 h-48 w-48 rounded-full bg-[#206AB4]/8 blur-xl" />
       <div className="pointer-events-none absolute -bottom-24 left-8 h-52 w-52 rounded-full bg-sky-200/25 blur-xl" />
 
@@ -664,7 +677,7 @@ export default function Dashboard() {
         <ErrorAlert message={error} />
       </div>
 
-      <div className="relative z-10 grid w-full grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-5">
+      <div className="relative z-10 grid w-full grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-5">
         {topCardsConfig.map((card) => (
           <DcardInfo
             key={card.key}
@@ -675,16 +688,15 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div className="relative z-20 grid w-full grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 2xl:grid-cols-4">
+      <div className="relative z-20 grid w-full grid-cols-1 gap-2.5 sm:gap-4 md:grid-cols-2 2xl:grid-cols-4">
         {fuelCards.map((card, index) => (
           <FuelCard key={`${card.title}-${index}`} {...card} />
         ))}
       </div>
 
-      <div className="relative z-10 flex min-h-[420px] w-full flex-1 items-stretch justify-center sm:min-h-[480px] lg:min-h-0">
+      <div className="relative z-10 flex min-h-[360px] w-full flex-1 items-stretch justify-center sm:min-h-[480px] lg:min-h-0">
         <ChartWithDetails chart={dashboardData.chart} />
       </div>
-
       <div className="relative z-20 w-full">
         <ScrollingText texts={announcements} />
       </div>
