@@ -111,9 +111,9 @@ export function DashboardAside({
 
             <div className="hidden w-full items-center justify-center lg:flex">
               <img
-                src="/ExirLogo.png"
+                src={isCollapsed ? 'ExirLogoSmall.png' : 'ExirLogo.png'}
                 alt="Exir Logo"
-                className={`${isCollapsed ? "h-10" : "h-16"} w-auto object-contain select-none transition-all duration-300`}
+                className={`h-16 w-auto object-contain select-none transition-all duration-300`}
               />
             </div>
 
