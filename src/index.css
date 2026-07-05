@@ -25,16 +25,16 @@
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   margin: 0;
   min-width: 320px;
   background: radial-gradient(circle at top, #f8fbff 0%, var(--fleet-bg) 45%);
   color: var(--fleet-text);
   line-height: 1.5;
-  direction: rtl;
-}
-
-html {
   direction: rtl;
 }
 
@@ -47,6 +47,73 @@ input,
 select,
 textarea {
   font: inherit;
+}
+
+button:not(:disabled),
+a[href],
+summary,
+label:has(input:not(:disabled)),
+[role="button"]:not([aria-disabled="true"]),
+[role="menuitem"]:not([aria-disabled="true"]),
+[role="option"]:not([aria-disabled="true"]),
+[tabindex]:not([tabindex="-1"]) {
+  cursor: pointer;
+}
+
+button,
+a[href],
+[role="button"],
+[role="menuitem"],
+[role="option"] {
+  transition:
+    transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-color 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease,
+    opacity 180ms ease;
+}
+
+button:not(:disabled):active,
+a[href]:active,
+[role="button"]:not([aria-disabled="true"]):active,
+[role="menuitem"]:not([aria-disabled="true"]):active,
+[role="option"]:not([aria-disabled="true"]):active {
+  transform: translateY(1px) scale(0.985);
+}
+
+input,
+select,
+textarea,
+.fleet-control {
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    color 180ms ease;
+}
+
+input:not(:disabled):not([type="checkbox"]):not([type="radio"]):hover,
+select:not(:disabled):hover,
+textarea:not(:disabled):hover,
+.fleet-control:hover {
+  transform: translateY(-1px);
+}
+
+input[type="checkbox"]:not(:disabled),
+input[type="radio"]:not(:disabled),
+input[type="range"]:not(:disabled),
+select:not(:disabled) {
+  cursor: pointer;
+}
+
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
 }
 
 #root {
@@ -122,6 +189,14 @@ textarea {
 
 .fleet-control:hover {
   border-color: #b7c5d7;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.07);
+}
+
+.fleet-control:focus,
+.fleet-control:focus-within {
+  box-shadow:
+    0 0 0 4px rgba(32, 106, 180, 0.1),
+    0 10px 24px rgba(32, 106, 180, 0.08);
 }
 
 .fleet-check-field {
@@ -136,6 +211,17 @@ textarea {
   padding: 12px 14px;
   text-align: right;
   color: #475569;
+  transition:
+    transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease;
+}
+
+.fleet-check-field:hover {
+  transform: translateY(-1px);
+  border-color: #b7c5d7;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
 }
 
 .fleet-check-field input {
@@ -226,6 +312,19 @@ textarea {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+
   .fleet-dashboard-marquee,
   .fleet-dashboard-skeleton::after {
     animation: none;

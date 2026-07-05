@@ -14,7 +14,6 @@ import {
   ErrorAlert,
   Field,
   Input,
-  LoadingState,
   Modal,
   PageHeader,
   PrimaryButton,
@@ -80,11 +79,40 @@ function WizardStep({ step, current, title }) {
   );
 }
 
+function UsersTableSkeleton() {
+  return (
+    <div className="w-full overflow-hidden rounded-xl border border-[#E6E6E6] bg-white">
+      <div className="min-w-[52rem] animate-pulse">
+        <div className="grid grid-cols-[1.2fr_1fr_1.4fr_1fr_1fr_.8fr_.8fr] gap-4 border-b border-[#EFEFEF] bg-[#F8FAFC] px-4 py-4">
+          {Array.from({ length: 7 }).map((_, index) => (
+            <div key={index} className="h-3 rounded-full bg-[#E5E7EB]" />
+          ))}
+        </div>
+        {Array.from({ length: 6 }).map((_, rowIndex) => (
+          <div
+            key={rowIndex}
+            className="grid grid-cols-[1.2fr_1fr_1.4fr_1fr_1fr_.8fr_.8fr] gap-4 border-b border-[#F1F5F9] px-4 py-4 last:border-b-0"
+          >
+            {Array.from({ length: 7 }).map((_, cellIndex) => (
+              <div
+                key={cellIndex}
+                className={`h-4 rounded-full bg-[#EEF2F7] ${cellIndex === 2 ? 'w-full' : cellIndex === 6 ? 'w-12' : 'w-4/5'}`}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Users() {
   const { user } = useAuth();
   const [rows, setRows] = useState([]);
+  const [parentRows, setParentRows] = useState([]);
   const [accessGroups, setAccessGroups] = useState([]);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [superadminFilter, setSuperadminFilter] = useState('');
   const [accessGroupFilter, setAccessGroupFilter] = useState('');
@@ -106,15 +134,29 @@ export default function Users() {
   const canDelete = hasPermission(user, 'users.delete');
   const canAssignSuperuser = Boolean(user?.isSuperuser);
 
-  const loadUsersAndMeta = async () => {
-    const usersResponse = await usersAPI.list();
-    setRows(normalizeCollection(usersResponse.data).filter((row) => !row.isDriver));
+  const userListParams = useMemo(() => {
+    const params = {};
+    const query = debouncedSearch.trim();
 
+    if (query) params.searchQuery = query;
+    if (accessGroupFilter) params.accessGroupId = Number(accessGroupFilter);
+    if (statusFilter) params.isActive = statusFilter === 'true';
+    if (superadminFilter) params.isSuperuser = superadminFilter === 'true';
+
+    return params;
+  }, [debouncedSearch, accessGroupFilter, statusFilter, superadminFilter]);
+
+  const loadUsers = async (params = {}) => {
+    const usersResponse = await usersAPI.list(params);
+    return normalizeCollection(usersResponse.data).filter((row) => !row.isDriver);
+  };
+
+  const loadAccessGroups = async () => {
     try {
       const accessGroupsResponse = await usersAPI.listAccessGroups({ isActive: true });
-      setAccessGroups(normalizeCollection(accessGroupsResponse.data));
+      return normalizeCollection(accessGroupsResponse.data);
     } catch {
-      setAccessGroups([]);
+      return [];
     }
   };
 
@@ -125,9 +167,16 @@ export default function Users() {
     const load = async () => {
       try {
         setLoading(true);
-        await loadUsersAndMeta();
+        const nextRows = await loadUsers(userListParams);
+        if (mounted) {
+          setRows(nextRows);
+          setError('');
+        }
       } catch (err) {
-        if (mounted) setError(extractApiError(err, 'بارگذاری کاربران انجام نشد.'));
+        if (mounted) {
+          setRows([]);
+          setError(extractApiError(err, 'بارگذاری کاربران انجام نشد.'));
+        }
       } finally {
         if (mounted) setLoading(false);
       }
@@ -137,22 +186,43 @@ export default function Users() {
     return () => {
       mounted = false;
     };
+  }, [canView, userListParams]);
+
+  useEffect(() => {
+    if (!canView) return;
+
+    let mounted = true;
+    const load = async () => {
+      const [nextAccessGroups, nextParentRows] = await Promise.all([
+        loadAccessGroups(),
+        loadUsers(),
+      ]);
+
+      if (mounted) {
+        setAccessGroups(nextAccessGroups);
+        setParentRows(nextParentRows);
+      }
+    };
+
+    load();
+    return () => {
+      mounted = false;
+    };
   }, [canView]);
 
-  const filteredRows = useMemo(() => rows.filter((row) => {
-    const query = search.trim().toLowerCase();
-    const matchesQuery = !query || [row.userName, row.fullName, row.phone, row.nationalCode]
-      .some((value) => String(value || '').toLowerCase().includes(query));
-    const matchesAccessGroup = !accessGroupFilter || String(row.accessGroupId || '') === accessGroupFilter;
-    const rowActive = row.isActive ?? row.is_active;
-    const matchesStatus = !statusFilter || String(rowActive) === statusFilter;
-    const matchesSuperadmin = !superadminFilter || String(Boolean(row.isSuperuser)) === superadminFilter;
-    return matchesQuery && matchesAccessGroup && matchesStatus && matchesSuperadmin;
-  }), [rows, search, accessGroupFilter, statusFilter, superadminFilter]);
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 400);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [search]);
+
+  const searchPending = search.trim() !== debouncedSearch.trim();
 
   const parentOptions = useMemo(
-    () => rows.filter((row) => row.id !== editingId && !row.isDriver),
-    [rows, editingId],
+    () => parentRows.filter((row) => row.id !== editingId && !row.isDriver),
+    [parentRows, editingId],
   );
   const selectedParent = useMemo(
     () => parentOptions.find((option) => String(option.id) === String(formData.parentId)),
@@ -202,8 +272,12 @@ export default function Users() {
   };
 
   const refreshUsers = async () => {
-    const response = await usersAPI.list();
-    setRows(normalizeCollection(response.data).filter((row) => !row.isDriver));
+    const [nextRows, nextParentRows] = await Promise.all([
+      loadUsers(userListParams),
+      loadUsers(),
+    ]);
+    setRows(nextRows);
+    setParentRows(nextParentRows);
   };
 
   const handleDelete = (row) => {
@@ -356,11 +430,11 @@ export default function Users() {
         </div>
       </SectionCard>
 
-      <SectionCard title="کاربران" subtitle={`${filteredRows.length} کاربر`} actions={<DataTableExportButton />}>
-        {loading ? (
-          <LoadingState/>
+      <SectionCard title="کاربران" subtitle={`${rows.length} کاربر`} actions={<DataTableExportButton />}>
+        {loading || searchPending ? (
+          <UsersTableSkeleton />
         ) : (
-          <DataTable columns={columns} rows={filteredRows} emptyTitle="کاربری یافت نشد." />
+          <DataTable columns={columns} rows={rows} emptyTitle="کاربری یافت نشد." />
         )}
       </SectionCard>
 

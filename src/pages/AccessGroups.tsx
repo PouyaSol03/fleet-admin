@@ -13,7 +13,6 @@ import {
   ErrorAlert,
   Field,
   Input,
-  LoadingState,
   Modal,
   PageHeader,
   PrimaryButton,
@@ -111,12 +110,41 @@ function WizardStep({ step, current, title }) {
   );
 }
 
+function AccessGroupsTableSkeleton() {
+  return (
+    <div className="w-full overflow-hidden rounded-xl border border-[#E6E6E6] bg-white">
+      <div className="min-w-[52rem] animate-pulse">
+        <div className="grid grid-cols-[1.2fr_1.1fr_1fr_.8fr_.8fr_.8fr_.7fr] gap-4 border-b border-[#EFEFEF] bg-[#F8FAFC] px-4 py-4">
+          {Array.from({ length: 7 }).map((_, index) => (
+            <div key={index} className="h-3 rounded-full bg-[#E5E7EB]" />
+          ))}
+        </div>
+        {Array.from({ length: 6 }).map((_, rowIndex) => (
+          <div
+            key={rowIndex}
+            className="grid grid-cols-[1.2fr_1.1fr_1fr_.8fr_.8fr_.8fr_.7fr] gap-4 border-b border-[#F1F5F9] px-4 py-4 last:border-b-0"
+          >
+            {Array.from({ length: 7 }).map((_, cellIndex) => (
+              <div
+                key={cellIndex}
+                className={`h-4 rounded-full bg-[#EEF2F7] ${cellIndex === 2 ? 'w-24' : cellIndex === 6 ? 'w-12' : 'w-4/5'}`}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function AccessGroups() {
   const { user } = useAuth();
 
   const [rows, setRows] = useState([]);
+  const [allRows, setAllRows] = useState([]);
   const [permissionCodes, setPermissionCodes] = useState([]);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState('');
   const [permissionSearch, setPermissionSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -137,13 +165,28 @@ export default function AccessGroups() {
   const canUpdate = hasPermission(user, 'access_groups.update');
   const canDelete = hasPermission(user, 'access_groups.delete');
 
-  const loadData = async () => {
-    const [groupsResponse, codesResponse] = await Promise.all([
-      usersAPI.listAccessGroups(),
-      usersAPI.permissionCodes(),
+  const groupListParams = useMemo(() => {
+    const params = {};
+    const query = debouncedSearch.trim();
+
+    if (query) params.searchQuery = query;
+    if (activeFilter) params.isActive = activeFilter === 'true';
+
+    return params;
+  }, [debouncedSearch, activeFilter]);
+
+  const loadAccessGroups = async (params = {}) => {
+    const groupsResponse = await usersAPI.listAccessGroups(params);
+    return normalizeCollection(groupsResponse.data);
+  };
+
+  const refreshAccessGroups = async () => {
+    const [nextRows, nextAllRows] = await Promise.all([
+      loadAccessGroups(groupListParams),
+      loadAccessGroups(),
     ]);
-    setRows(normalizeCollection(groupsResponse.data));
-    setPermissionCodes(codesResponse.data?.permissionCodes || []);
+    setRows(nextRows);
+    setAllRows(nextAllRows);
   };
 
   useEffect(() => {
@@ -153,9 +196,16 @@ export default function AccessGroups() {
     const load = async () => {
       try {
         setLoading(true);
-        await loadData();
+        const nextRows = await loadAccessGroups(groupListParams);
+        if (mounted) {
+          setRows(nextRows);
+          setError('');
+        }
       } catch (err) {
-        if (mounted) setError(extractApiError(err, 'بارگذاری گروه‌های دسترسی انجام نشد.'));
+        if (mounted) {
+          setRows([]);
+          setError(extractApiError(err, 'بارگذاری گروه‌های دسترسی انجام نشد.'));
+        }
       } finally {
         if (mounted) setLoading(false);
       }
@@ -165,23 +215,51 @@ export default function AccessGroups() {
     return () => {
       mounted = false;
     };
+  }, [canView, groupListParams]);
+
+  useEffect(() => {
+    if (!canView) return;
+
+    let mounted = true;
+    const load = async () => {
+      try {
+        const [nextAllRows, codesResponse] = await Promise.all([
+          loadAccessGroups(),
+          usersAPI.permissionCodes(),
+        ]);
+
+        if (mounted) {
+          setAllRows(nextAllRows);
+          setPermissionCodes(codesResponse.data?.permissionCodes || []);
+        }
+      } catch {
+        if (mounted) {
+          setAllRows([]);
+          setPermissionCodes([]);
+        }
+      }
+    };
+
+    load();
+    return () => {
+      mounted = false;
+    };
   }, [canView]);
 
-  const filteredRows = useMemo(() => {
-    return rows.filter((row) => {
-      const q = search.trim().toLowerCase();
-      const matchesQuery = !q || [row.name, row.code, row.parentName]
-        .some((value) => String(value || '').toLowerCase().includes(q));
-      const rowActive = row.isActive ?? row.is_active;
-      const matchesActive = !activeFilter || String(rowActive) === activeFilter;
-      return matchesQuery && matchesActive;
-    });
-  }, [rows, search, activeFilter]);
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 400);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [search]);
+
+  const searchPending = search.trim() !== debouncedSearch.trim();
 
   const parentOptions = useMemo(() => {
     const blockedIds = new Set([editingId]);
     const collectChildren = (parentId) => {
-      rows.forEach((row) => {
+      allRows.forEach((row) => {
         if (String(row.parentId || '') === String(parentId) && !blockedIds.has(row.id)) {
           blockedIds.add(row.id);
           collectChildren(row.id);
@@ -189,12 +267,12 @@ export default function AccessGroups() {
       });
     };
     if (editingId) collectChildren(editingId);
-    return rows.filter((row) => !blockedIds.has(row.id));
-  }, [rows, editingId]);
+    return allRows.filter((row) => !blockedIds.has(row.id));
+  }, [allRows, editingId]);
 
   const selectedParent = useMemo(
-    () => rows.find((row) => String(row.id) === String(formData.parentId)),
-    [formData.parentId, rows],
+    () => allRows.find((row) => String(row.id) === String(formData.parentId)),
+    [formData.parentId, allRows],
   );
 
   const inheritedPermissionCodes = useMemo(() => {
@@ -205,11 +283,11 @@ export default function AccessGroups() {
     while (current && !seen.has(current.id)) {
       seen.add(current.id);
       (current.permissionCodes || []).forEach((code) => inherited.add(code));
-      current = rows.find((row) => String(row.id) === String(current.parentId));
+      current = allRows.find((row) => String(row.id) === String(current.parentId));
     }
 
     return inherited;
-  }, [rows, selectedParent]);
+  }, [allRows, selectedParent]);
 
   const effectivePermissionCount = useMemo(() => {
     return new Set([...formData.permissionCodes, ...inheritedPermissionCodes]).size;
@@ -287,7 +365,7 @@ export default function AccessGroups() {
     try {
       await usersAPI.deleteAccessGroup(deleteTarget.id);
       setDeleteTarget(null);
-      await loadData();
+      await refreshAccessGroups();
     } catch (err) {
       setError(extractApiError(err, 'حذف گروه دسترسی انجام نشد.'));
     } finally {
@@ -333,7 +411,7 @@ export default function AccessGroups() {
         await usersAPI.createAccessGroup(payload);
       }
       setModalOpen(false);
-      await loadData();
+      await refreshAccessGroups();
     } catch (err) {
       setFormError(extractApiError(err, 'ذخیره گروه دسترسی انجام نشد.'));
     } finally {
@@ -404,11 +482,11 @@ export default function AccessGroups() {
         </div>
       </SectionCard>
 
-      <SectionCard title="گروه‌های دسترسی" subtitle={`${filteredRows.length} گروه`}>
-        {loading ? (
-          <LoadingState/>
+      <SectionCard title="گروه‌های دسترسی" subtitle={`${rows.length} گروه`}>
+        {loading || searchPending ? (
+          <AccessGroupsTableSkeleton />
         ) : (
-          <DataTable columns={columns} rows={filteredRows} emptyTitle="گروه دسترسی یافت نشد." />
+          <DataTable columns={columns} rows={rows} emptyTitle="گروه دسترسی یافت نشد." />
         )}
       </SectionCard>
 

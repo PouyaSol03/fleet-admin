@@ -24,7 +24,7 @@ export function Input({
       </span>
 
       <div
-        className={`flex items-center rounded-2xl border bg-white/70 px-4 transition focus-within:border-sky-500 focus-within:bg-white focus-within:ring-4 focus-within:ring-sky-100 ${
+        className={`fleet-control flex items-center rounded-2xl border bg-white/70 px-4 transition focus-within:border-sky-500 focus-within:bg-white focus-within:ring-4 focus-within:ring-sky-100 ${
           error ? "border-red-300" : "border-sky-200"
         }`}
       >
@@ -48,7 +48,7 @@ export function Input({
           <button
             type="button"
             onClick={onEndIconClick}
-            className="mr-3 flex h-12 items-center text-sky-700 transition hover:text-sky-950"
+            className="mr-3 flex h-12 cursor-pointer items-center text-sky-700 transition hover:text-sky-950"
           >
             {endIcon}
           </button>

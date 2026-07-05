@@ -9,6 +9,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import toast from "react-hot-toast";
+import { motion, useReducedMotion, type HTMLMotionProps } from "motion/react";
 import DatePickerModule from "react-multi-date-picker";
 import type { ChangedValue } from "react-multi-date-picker";
 import DateObjectModule from "react-date-object";
@@ -18,7 +19,6 @@ import gregorian_en from "react-date-object/locales/gregorian_en";
 import { HiOutlineChevronDown } from "react-icons/hi";
 import persian_fa from "react-date-object/locales/persian_fa";
 import type {
-  ButtonHTMLAttributes,
   ChangeEvent,
   CSSProperties,
   FormEvent,
@@ -51,7 +51,7 @@ type FieldProps = {
   hint?: string;
 };
 
-type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+type ButtonProps = HTMLMotionProps<"button"> & {
   children?: ReactNode;
   className?: string;
 };
@@ -114,6 +114,13 @@ const requiredDataTableColumnKeys = [
 ];
 
 const panelShadow = "2px 2px 7px 0px rgba(0, 0, 0, 0.08)";
+const springTransition = {
+  type: "spring" as const,
+  stiffness: 420,
+  damping: 30,
+};
+const fadeUpInitial = { opacity: 0, y: 10 };
+const fadeInInitial = { opacity: 0, scale: 0.98 };
 const toastToneClass: Record<ToastTone, {
   border: string;
   iconBg: string;
@@ -170,10 +177,16 @@ export function SectionCard({
   children,
   className = "",
 }: SectionCardProps) {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
-    <section
+    <motion.section
       className={`min-w-0 w-full rounded-[10px] bg-white py-4 md:p-4 ${className}`.trim()}
       style={{ boxShadow: panelShadow }}
+      initial={shouldReduceMotion ? false : fadeUpInitial}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={shouldReduceMotion ? undefined : { y: -2 }}
+      transition={springTransition}
     >
       {title || subtitle || actions ? (
         <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
@@ -188,7 +201,7 @@ export function SectionCard({
         </div>
       ) : null}
       {children}
-    </section>
+    </motion.section>
   );
 }
 
@@ -203,10 +216,16 @@ export function StatCard({
   tone?: Tone;
   helper?: ReactNode;
 }) {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
-    <div
+    <motion.div
       className="relative flex min-h-[100px] w-full items-center justify-between overflow-hidden rounded-[15px] border border-[#D9D9D9] bg-white px-4 py-2"
       style={{ boxShadow: panelShadow }}
+      initial={shouldReduceMotion ? false : fadeInInitial}
+      animate={{ opacity: 1, scale: 1 }}
+      whileHover={shouldReduceMotion ? undefined : { y: -3, scale: 1.01 }}
+      transition={springTransition}
     >
       <div
         className={`absolute -left-3 -top-4 h-[50px] w-[50px] rounded-full blur-[18px] ${metricToneClass[tone] || metricToneClass.blue}`}
@@ -216,7 +235,7 @@ export function StatCard({
         <p className="text-xs font-medium text-[#7D7D7D]">{helper || "به نسبت گزارش"}</p>
       </div>
       <span className="relative text-4xl font-normal text-black">{value}</span>
-    </div>
+    </motion.div>
   );
 }
 
@@ -254,11 +273,18 @@ export function EmptyState({
   title: string;
   description?: string;
 }) {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
-    <div className="rounded-[10px] border border-dashed border-[#D9D9D9] bg-white px-6 py-10 text-center text-[#737373]">
+    <motion.div
+      className="rounded-[10px] border border-dashed border-[#D9D9D9] bg-white px-6 py-10 text-center text-[#737373]"
+      initial={shouldReduceMotion ? false : fadeInInitial}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={springTransition}
+    >
       <p className="text-sm font-semibold text-[#011627]">{title}</p>
       {description ? <p className="mt-1 text-xs">{description}</p> : null}
-    </div>
+    </motion.div>
   );
 }
 
@@ -374,11 +400,20 @@ export function LoadingState({
   message?: string;
   className?: string;
 }) {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
-    <div
+    <motion.div
       className={`flex md:min-h-[calc(100dvh-8rem)] w-full flex-col items-center justify-center gap-2 ${className}`.trim()}
+      initial={shouldReduceMotion ? false : { opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2 }}
     >
-      <div className="relative flex h-60 w-60 items-center justify-center rounded-full">
+      <motion.div
+        className="relative flex h-60 w-60 items-center justify-center rounded-full"
+        animate={shouldReduceMotion ? undefined : { scale: [1, 1.025, 1] }}
+        transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+      >
         <div className="absolute inset-0 rounded-full border-2 border-[#EAF3FC] border-t-[#206AB4] animate-spin" />
         <div className="flex h-52 w-52 items-center justify-center rounded-full p-2">
           <img
@@ -387,12 +422,12 @@ export function LoadingState({
             className="h-full w-full object-contain"
           />
         </div>
-      </div>
+      </motion.div>
       <p className="mt-5 text-xl font-semibold text-[#011627]">{message}</p>
       {/* <div className="mt-6 h-1 w-28 overflow-hidden rounded-full bg-[#EAF3FC]">
         <div className="h-full w-1/2 rounded-full bg-[#206AB4] animate-pulse" />
       </div> */}
-    </div>
+    </motion.div>
   );
 }
 
@@ -473,6 +508,7 @@ function CustomSelect({
   const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
   const rootRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const shouldReduceMotion = useReducedMotion();
   const options = useMemo(() => getSelectOptions(props.children), [props.children]);
   const selectedValue = String(props.value ?? props.defaultValue ?? "");
   const selectedOption = options.find((option) => option.value === selectedValue);
@@ -581,12 +617,15 @@ function CustomSelect({
       </button>
 
       {open && typeof document !== "undefined" ? createPortal(
-        <div
+        <motion.div
           ref={menuRef}
           className="overflow-y-auto rounded-xl border border-[#D9D9D9] bg-white p-1 text-right shadow-lg"
           role="listbox"
           style={menuStyle}
           dir="rtl"
+          initial={shouldReduceMotion ? false : { opacity: 0, y: -6, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={springTransition}
         >
           {options.map((option) => (
             <button
@@ -607,7 +646,7 @@ function CustomSelect({
               {option.label}
             </button>
           ))}
-        </div>,
+        </motion.div>,
         document.body,
       ) : null}
     </div>
@@ -709,13 +748,18 @@ export function PrimaryButton({
   className = "",
   ...props
 }: ButtonProps) {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
-    <button
+    <motion.button
       {...props}
       className={`inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-[10px] border border-[#206AB4] bg-[#206AB4] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#15558F] disabled:cursor-not-allowed disabled:opacity-60 ${className}`.trim()}
+      whileHover={props.disabled || shouldReduceMotion ? undefined : { y: -1, boxShadow: "0 10px 22px rgba(32, 106, 180, 0.18)" }}
+      whileTap={props.disabled || shouldReduceMotion ? undefined : { scale: 0.97 }}
+      transition={springTransition}
     >
       {children}
-    </button>
+    </motion.button>
   );
 }
 
@@ -724,13 +768,18 @@ export function SecondaryButton({
   className = "",
   ...props
 }: ButtonProps) {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
-    <button
+    <motion.button
       {...props}
       className={`inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-[10px] border border-[#D9D9D9] bg-white px-3 py-2 text-sm font-semibold text-[#222222] transition hover:bg-[#EFEFEF] disabled:cursor-not-allowed disabled:opacity-60 ${className}`.trim()}
+      whileHover={props.disabled || shouldReduceMotion ? undefined : { y: -1, boxShadow: "0 10px 20px rgba(15, 23, 42, 0.08)" }}
+      whileTap={props.disabled || shouldReduceMotion ? undefined : { scale: 0.97 }}
+      transition={springTransition}
     >
       {children}
-    </button>
+    </motion.button>
   );
 }
 
@@ -739,13 +788,18 @@ export function DangerButton({
   className = "",
   ...props
 }: ButtonProps) {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
-    <button
+    <motion.button
       {...props}
-      className={`inline-flex h-10 items-center justify-center gap-2 rounded-[10px] border border-[#FFE6E6] bg-[#FFE6E6] px-3 py-2 text-sm font-semibold text-[#FA5454] transition hover:border-[#FA5454] disabled:cursor-not-allowed disabled:opacity-60 ${className}`.trim()}
+      className={`inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-[10px] border border-[#FFE6E6] bg-[#FFE6E6] px-3 py-2 text-sm font-semibold text-[#FA5454] transition hover:border-[#FA5454] disabled:cursor-not-allowed disabled:opacity-60 ${className}`.trim()}
+      whileHover={props.disabled || shouldReduceMotion ? undefined : { y: -1, boxShadow: "0 10px 20px rgba(250, 84, 84, 0.13)" }}
+      whileTap={props.disabled || shouldReduceMotion ? undefined : { scale: 0.97 }}
+      transition={springTransition}
     >
       {children}
-    </button>
+    </motion.button>
   );
 }
 
@@ -803,6 +857,7 @@ export function RowActionMenu({
   const [opensAbove, setOpensAbove] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const shouldReduceMotion = useReducedMotion();
   const visibleItems = items.filter(Boolean) as RowActionItem[];
 
   const updateMenuPosition = useCallback(() => {
@@ -877,7 +932,7 @@ export function RowActionMenu({
 
   return (
     <div ref={rootRef} className="relative flex justify-center">
-      <button
+      <motion.button
         type="button"
         onClick={(event) => {
           event.stopPropagation();
@@ -890,6 +945,9 @@ export function RowActionMenu({
         aria-label={label}
         aria-haspopup="menu"
         aria-expanded={open}
+        whileHover={shouldReduceMotion ? undefined : { y: -1 }}
+        whileTap={shouldReduceMotion ? undefined : { scale: 0.96 }}
+        transition={springTransition}
       >
         <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path
@@ -918,10 +976,10 @@ export function RowActionMenu({
             strokeLinejoin="round"
           />
         </svg>
-      </button>
+      </motion.button>
 
       {open && typeof document !== "undefined" ? createPortal(
-        <div
+        <motion.div
           ref={menuRef}
           className={`flex flex-col gap-1 border border-[#D9D9D9] bg-white/95 px-2 py-1 text-[#222222] shadow-lg backdrop-blur-sm ${
             opensAbove
@@ -931,6 +989,9 @@ export function RowActionMenu({
           role="menu"
           style={menuStyle}
           onClick={(event) => event.stopPropagation()}
+          initial={shouldReduceMotion ? false : { opacity: 0, y: opensAbove ? 6 : -6, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={springTransition}
         >
           {visibleItems.map((item) => (
             <button
@@ -952,7 +1013,7 @@ export function RowActionMenu({
               </span>
             </button>
           ))}
-        </div>,
+        </motion.div>,
         document.body,
       ) : null}
     </div>
@@ -1175,10 +1236,15 @@ export function DataTable({
 }
 
 export function DataTableExportButton() {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
-    <button
+    <motion.button
       type="button"
       className="flex h-10 items-center justify-center gap-1 rounded-[10px] border border-[#D9D9D9] bg-white px-3 py-2 text-sm font-medium text-[#222222] transition hover:bg-[#EFEFEF]"
+      whileHover={shouldReduceMotion ? undefined : { y: -1, boxShadow: "0 10px 20px rgba(15, 23, 42, 0.08)" }}
+      whileTap={shouldReduceMotion ? undefined : { scale: 0.97 }}
+      transition={springTransition}
     >
       <svg
         width="18"
@@ -1196,7 +1262,7 @@ export function DataTableExportButton() {
         />
       </svg>
       خروجی
-    </button>
+    </motion.button>
   );
 }
 
@@ -1226,13 +1292,23 @@ export function Modal({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onClose, open]);
 
+  const shouldReduceMotion = useReducedMotion();
+
   if (!open) return null;
 
   const modal = (
-    <div className="fleet-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-3 py-4 sm:px-6">
-      <div
+    <motion.div
+      className="fleet-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-3 py-4 sm:px-6"
+      initial={shouldReduceMotion ? false : { opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.18 }}
+    >
+      <motion.div
         className={`fleet-modal-panel flex max-h-[92dvh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-[#D9D9D9] bg-white shadow-2xl shadow-slate-950/20 ${panelClassName || ""}`.trim()}
         dir="rtl"
+        initial={shouldReduceMotion ? false : { opacity: 0, y: 18, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={springTransition}
       >
         <div className="fleet-modal-header flex shrink-0 items-center justify-between border-b border-[#D9D9D9] bg-white px-5 py-4 sm:px-6">
           <h3 className="min-w-0 truncate text-right text-lg font-bold text-[#011627]">{title}</h3>
@@ -1254,8 +1330,8 @@ export function Modal({
         >
           {children}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 
   return typeof document === "undefined" ? modal : createPortal(modal, document.body);
@@ -1329,6 +1405,8 @@ export function ConfirmationModal({
   onConfirm,
   onCancel,
 }: ConfirmationModalProps) {
+  const shouldReduceMotion = useReducedMotion();
+
   if (!open) return null;
 
   const defaultMessage =
@@ -1350,10 +1428,18 @@ export function ConfirmationModal({
           : "border-[#206AB4] bg-[#206AB4] text-white hover:bg-[#15558F]";
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4 py-6">
-      <div
+    <motion.div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4 py-6"
+      initial={shouldReduceMotion ? false : { opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.18 }}
+    >
+      <motion.div
         className="relative w-full max-w-[320px] rounded-[10px] border border-[#D9D9D9] bg-white px-2 pb-4 pt-8"
         dir="rtl"
+        initial={shouldReduceMotion ? false : { opacity: 0, y: 14, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={springTransition}
       >
         <div className="absolute right-2 top-2 flex h-6 w-[304px] justify-end">
           <button
@@ -1396,8 +1482,8 @@ export function ConfirmationModal({
             {cancelLabel}
           </button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 

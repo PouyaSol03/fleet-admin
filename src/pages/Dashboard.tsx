@@ -221,31 +221,42 @@ function DashboardSkeleton() {
       <div className="pointer-events-none absolute -right-20 -top-20 h-48 w-48 rounded-full bg-[#206AB4]/8 blur-xl" />
       <div className="pointer-events-none absolute -bottom-24 left-8 h-52 w-52 rounded-full bg-sky-200/20 blur-xl" />
 
-      <SkeletonBlock className="relative z-10 h-11 w-full sm:h-16" />
-
-      <div className="relative z-10 grid w-full grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-3">
-        {fallbackDashboard.fuelCards.slice(0, 3).map((card, index) => (
-          <SkeletonBlock key={`${card.title}-${index}`} className="h-[108px] sm:h-[136px]" />
+      <div className="relative z-10 grid w-full grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-5">
+        {topCardsConfig.map((card) => (
+          <SkeletonBlock key={card.key} className="h-[78px] sm:h-[96px]" />
         ))}
       </div>
 
-      <div className="fleet-dashboard-card relative z-10 grid min-h-[360px] w-full grid-cols-1 gap-3 rounded-2xl border border-white/70 bg-white/55 p-2.5 sm:min-h-[480px] sm:rounded-3xl sm:p-4 xl:grid-cols-[1fr_18rem] xl:gap-4">
-        <div className="order-2 flex min-h-[240px] flex-col gap-3 rounded-xl border border-white/75 bg-white/55 p-2.5 sm:min-h-[280px] sm:rounded-2xl sm:p-3 xl:order-1">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <SkeletonBlock className="h-9 w-52 max-w-full" />
-            <div className="flex gap-2">
-              <SkeletonBlock className="h-8 w-24" />
-              <SkeletonBlock className="h-8 w-24" />
+      <div className="relative z-20 grid w-full grid-cols-1 gap-2.5 sm:gap-4 md:grid-cols-2 2xl:grid-cols-4">
+        {fallbackDashboard.fuelCards.map((card, index) => (
+          <SkeletonBlock key={`${card.title}-${index}`} className="h-[122px] sm:h-[136px]" />
+        ))}
+      </div>
+
+      <div className="relative z-10 flex min-h-[420px] w-full flex-1 items-stretch justify-center sm:min-h-[520px] lg:min-h-0">
+        <div className="fleet-dashboard-card relative flex h-full w-full flex-col gap-3 overflow-visible rounded-2xl border border-white/70 bg-white/55 p-2.5 sm:rounded-3xl sm:p-4 lg:gap-4">
+          <div className="flex min-h-9 w-full flex-col gap-3 border-b border-slate-100 pb-4 lg:flex-row lg:items-center lg:justify-between">
+            <SkeletonBlock className="h-9 w-56 max-w-full" />
+            <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-3 lg:w-[360px]">
+              <SkeletonBlock className="h-8" />
+              <SkeletonBlock className="h-8 w-12" />
+              <SkeletonBlock className="h-8" />
             </div>
           </div>
-          <SkeletonBlock className="min-h-[220px] flex-1 sm:min-h-[250px]" />
-        </div>
-        <div className="order-1 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:order-2 xl:grid-cols-1">
-          {(fallbackDashboard.chart.details ?? []).map((detail, index) => (
-            <SkeletonBlock key={detail.key || index} className="h-[72px] sm:h-[84px]" />
-          ))}
+          <div className="flex min-h-0 flex-1 flex-col gap-3 xl:flex-row xl:items-stretch xl:justify-between xl:gap-4">
+            <div className="order-2 flex min-h-[280px] min-w-0 flex-1 overflow-hidden pb-1 sm:min-h-[340px] xl:min-h-0">
+              <SkeletonBlock className="h-full min-h-[280px] w-full sm:min-h-[340px]" />
+            </div>
+            <div className="order-1 grid w-full grid-cols-2 gap-2 sm:gap-4 xl:flex xl:w-72 xl:shrink-0 xl:grid-cols-none xl:flex-col">
+              {(fallbackDashboard.chart.details ?? []).map((detail, index) => (
+                <SkeletonBlock key={detail.key || index} className="h-[72px] sm:h-[84px] xl:flex-1" />
+              ))}
+            </div>
+          </div>
         </div>
       </div>
+
+      <SkeletonBlock className="relative z-20 h-11 w-full sm:h-16" />
     </div>
   );
 }
@@ -433,7 +444,7 @@ function LineChart({ chart }: { chart: DashboardChart }) {
   }, []);
 
   return (
-    <div className="fleet-dashboard-card flex h-full w-full flex-col overflow-hidden rounded-xl border border-white/75 bg-white/65 p-2.5 sm:rounded-2xl sm:p-3" dir="rtl">
+    <div className="fleet-dashboard-card flex w-full min-w-0 flex-col overflow-hidden rounded-xl border border-white/75 bg-white/65 p-2.5 sm:rounded-2xl sm:p-3 xl:h-full" dir="rtl">
       <div className="flex flex-col gap-2 border-b border-slate-100/80 pb-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <p className="text-sm font-black text-slate-950 sm:text-base">روند درآمد و هزینه</p>
@@ -452,8 +463,8 @@ function LineChart({ chart }: { chart: DashboardChart }) {
         </div>
       </div>
 
-      <div className="w-full overflow-x-auto overflow-y-hidden pt-3">
-        <div className="h-[270px] min-w-[560px] sm:h-[320px] sm:min-w-0">
+      <div className="h-[240px] w-full min-w-0 overflow-x-auto overflow-y-hidden pt-3 sm:h-[320px] xl:h-auto xl:min-h-[320px] xl:flex-1">
+        <div className="h-full min-w-[520px] sm:min-w-0">
           <ResponsiveContainer width="100%" height="100%">
             <RechartsLineChart data={chartData} margin={{ top: 16, right: 12, bottom: 8, left: 4 }}>
               <CartesianGrid stroke="rgba(15,23,42,0.08)" strokeDasharray="4 10" vertical={false} />
@@ -556,9 +567,9 @@ function ChartWithDetails({ chart = fallbackDashboard.chart }: { chart?: Dashboa
         </div>
       </div>
 
-      <div className="flex h-full min-h-0 w-full flex-col gap-3 xl:flex-row xl:items-stretch xl:justify-between xl:gap-4">
-        <div className="order-2 min-h-[250px] min-w-0 flex-1 overflow-hidden pb-1 sm:min-h-[320px] lg:min-h-0 xl:order-2">
-          <div className="h-full min-w-0">
+      <div className="flex min-h-0 flex-col gap-3 xl:flex-1 xl:flex-row xl:items-stretch xl:justify-between xl:gap-4">
+        <div className="order-2 flex min-w-0 overflow-hidden pb-1 xl:order-2 xl:min-h-[360px] xl:flex-1">
+          <div className="flex min-w-0 flex-1">
             <LineChart chart={chart} />
           </div>
         </div>
@@ -694,7 +705,7 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div className="relative z-10 flex min-h-[360px] w-full flex-1 items-stretch justify-center sm:min-h-[480px] lg:min-h-0">
+      <div className="relative z-10 flex w-full items-stretch justify-center lg:min-h-0 lg:flex-1">
         <ChartWithDetails chart={dashboardData.chart} />
       </div>
       <div className="relative z-20 w-full">
