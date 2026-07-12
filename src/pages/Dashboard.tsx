@@ -28,7 +28,7 @@ import { usersAPI } from "../api/users";
 import { useAuth } from "../context/AuthContext";
 import { hasPermission } from "../utils/permissions";
 import { extractApiError, formatNumber } from "../utils/formatters";
-import { AccessDenied, ErrorAlert, ToolbarSelect } from "../components/shared/UI";
+import { AccessDenied, ErrorAlert, SectionCard, ToolbarSelect } from "../components/shared/UI";
 
 type IconComponent = ComponentType<{ className?: string }>;
 
@@ -269,8 +269,8 @@ function ChartMetricCard({ item, index }: { item: ChartDetail; index: number }) 
   const unit = item?.unit || (item?.key === "income" || item?.key === "cost" ? "تومان" : "عدد");
 
   return (
-    <div
-      className="fleet-dashboard-card group relative flex min-h-[72px] w-full overflow-hidden rounded-xl border border-white/70 bg-white/60 px-3 py-2.5 transition duration-150 hover:border-white hover:bg-white/75 sm:min-h-[84px] sm:rounded-2xl sm:px-4 sm:py-3"
+    <SectionCard
+      className="fleet-dashboard-card group relative flex min-h-[72px] w-full overflow-hidden !rounded-xl border border-white/70 !bg-white/60 !px-3 !py-2.5 transition duration-150 hover:border-white hover:!bg-white/75 sm:min-h-[84px] sm:!rounded-2xl sm:!px-4 sm:!py-3"
     >
       <div className="absolute -left-8 -top-8 h-20 w-20 rounded-full bg-[#206AB4]/10 blur-lg transition duration-150 group-hover:bg-[#206AB4]/16" />
       <div className="absolute -bottom-10 right-6 h-20 w-20 rounded-full bg-sky-200/25 blur-lg" />
@@ -288,7 +288,7 @@ function ChartMetricCard({ item, index }: { item: ChartDetail; index: number }) 
           </span>
         </div>
       </div>
-    </div>
+    </SectionCard>
   );
 }
 
@@ -302,9 +302,8 @@ function DcardInfo({
   value: SummaryCard["value"];
 }) {
   return (
-    <div
-      className="fleet-dashboard-card group relative flex min-h-[78px] w-full items-center justify-between overflow-hidden rounded-xl border border-white/70 bg-white/60 px-3 py-2.5 transition duration-150 hover:border-white hover:bg-white/75 sm:min-h-[96px] sm:rounded-2xl sm:px-4 sm:py-3"
-      dir="rtl"
+    <SectionCard
+      className="fleet-dashboard-card group relative flex min-h-[78px] w-full items-center justify-between overflow-hidden !rounded-xl border border-white/70 !bg-white/60 !px-3 !py-2.5 transition duration-150 hover:border-white hover:!bg-white/75 sm:min-h-[96px] sm:!rounded-2xl sm:!px-4 sm:!py-3"
     >
       <div
         className="absolute -left-10 -top-10 h-24 w-24 rounded-full transition duration-150"
@@ -323,7 +322,7 @@ function DcardInfo({
       <div className="relative flex min-w-0 items-center justify-center pr-2 sm:pr-3">
         <span className="truncate text-[22px] font-black leading-none text-slate-950 sm:text-[30px]">{formatNumber(value)}</span>
       </div>
-    </div>
+    </SectionCard>
   );
 }
 
@@ -338,9 +337,8 @@ function FuelCard({
   const positive = normalizedPercent >= 0;
 
   return (
-    <div
-      className="fleet-dashboard-card group relative flex min-h-[122px] w-full min-w-0 flex-col items-start justify-between overflow-visible rounded-xl border border-white/70 bg-white/60 px-3 py-2.5 transition duration-150 hover:z-20 hover:border-white hover:bg-white/75 focus-within:z-20 sm:min-h-[136px] sm:rounded-2xl sm:px-4 sm:py-3"
-      dir="rtl"
+    <SectionCard
+      className="fleet-dashboard-card group relative flex min-h-[122px] w-full min-w-0 flex-col items-start justify-between overflow-visible !rounded-xl border border-white/70 !bg-white/60 !px-3 !py-2.5 transition duration-150 hover:z-20 hover:border-white hover:!bg-white/75 focus-within:z-20 sm:min-h-[136px] sm:!rounded-2xl sm:!px-4 sm:!py-3"
     >
       <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
         <div className="absolute -left-8 -top-10 h-24 w-24 rounded-full bg-[#206AB4]/10 blur-lg transition duration-150 group-hover:bg-[#206AB4]/16" />
@@ -393,7 +391,7 @@ function FuelCard({
           <BarChart3 className="h-4 w-4" strokeWidth={2.35} aria-hidden="true" />
         </button>
       </div>
-    </div>
+    </SectionCard>
   );
 }
 
@@ -444,7 +442,7 @@ function LineChart({ chart }: { chart: DashboardChart }) {
   }, []);
 
   return (
-    <div className="fleet-dashboard-card flex w-full min-w-0 flex-col overflow-hidden rounded-xl border border-white/75 bg-white/65 p-2.5 sm:rounded-2xl sm:p-3 xl:h-full" dir="rtl">
+    <SectionCard className="fleet-dashboard-card flex w-full min-w-0 flex-col overflow-hidden !rounded-xl border border-white/75 !bg-white/65 !p-2.5 sm:!rounded-2xl sm:!p-3 xl:h-full">
       <div className="flex flex-col gap-2 border-b border-slate-100/80 pb-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <p className="text-sm font-black text-slate-950 sm:text-base">روند درآمد و هزینه</p>
@@ -517,7 +515,7 @@ function LineChart({ chart }: { chart: DashboardChart }) {
           </ResponsiveContainer>
         </div>
       </div>
-    </div>
+    </SectionCard>
   );
 }
 
@@ -527,9 +525,8 @@ function ChartWithDetails({ chart = fallbackDashboard.chart }: { chart?: Dashboa
   const details = (Array.isArray(chart?.details) ? chart.details : fallbackDashboard.chart.details ?? []).slice(0, 4);
 
   return (
-    <div
-      className="fleet-dashboard-card relative flex h-full w-full flex-col gap-3 overflow-visible rounded-2xl border border-white/70 bg-white/55 p-2.5 sm:rounded-3xl sm:p-4 lg:gap-4"
-      dir="rtl"
+    <SectionCard
+      className="fleet-dashboard-card relative flex h-full w-full flex-col gap-3 overflow-visible !rounded-2xl border border-white/70 !bg-white/55 !p-2.5 sm:!rounded-3xl sm:!p-4 lg:gap-4"
     >
       <div className="flex min-h-9 w-full flex-col gap-3 border-b border-slate-100 pb-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-fit items-center justify-start gap-2">
@@ -579,7 +576,7 @@ function ChartWithDetails({ chart = fallbackDashboard.chart }: { chart?: Dashboa
           ))}
         </div>
       </div>
-    </div>
+    </SectionCard>
   );
 }
 

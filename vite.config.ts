@@ -12,8 +12,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'favicon.svg'],
       manifest: {
-        name: 'fleet-admin',
-        short_name: 'fleet-admin',
+        name: 'fleet admin',
+        short_name: 'fleet admin',
         description: 'Fleet Management Admin Panel',
         theme_color: '#ffffff',
         background_color: '#ffffff',

@@ -185,7 +185,6 @@ export function SectionCard({
       style={{ boxShadow: panelShadow }}
       initial={shouldReduceMotion ? false : fadeUpInitial}
       animate={{ opacity: 1, y: 0 }}
-      whileHover={shouldReduceMotion ? undefined : { y: -2 }}
       transition={springTransition}
     >
       {title || subtitle || actions ? (
@@ -224,7 +223,6 @@ export function StatCard({
       style={{ boxShadow: panelShadow }}
       initial={shouldReduceMotion ? false : fadeInInitial}
       animate={{ opacity: 1, scale: 1 }}
-      whileHover={shouldReduceMotion ? undefined : { y: -3, scale: 1.01 }}
       transition={springTransition}
     >
       <div
@@ -675,6 +673,8 @@ export function Field({ label, error, children, hint }: FieldProps) {
 }
 
 export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
+  const invalid = props["aria-invalid"] === true || props["aria-invalid"] === "true";
+
   if (props.type === "date" || props.type === "datetime-local") {
     const currentValue = String(props.value || "");
     const timePart = props.type === "datetime-local" && currentValue.includes("T")
@@ -724,7 +724,11 @@ export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
     <input
       {...props}
       dir={props.dir || "rtl"}
-      className={`fleet-control h-14 w-full rounded-xl border border-[#D9D9D9] bg-white px-[13px] text-right text-sm font-normal text-[#222222] outline-none transition placeholder:text-[#BFC4D5] focus:border-[#206AB4] focus:ring-4 focus:ring-[#EAF3FC] ${props.className || ""}`.trim()}
+      className={`fleet-control h-14 w-full rounded-xl border bg-white px-[13px] text-right text-sm font-normal text-[#222222] outline-none transition placeholder:text-[#BFC4D5] ${
+        invalid
+          ? "border-[#FA5454] focus:border-[#FA5454] focus:ring-4 focus:ring-[#FFE6E6]"
+          : "border-[#D9D9D9] focus:border-[#206AB4] focus:ring-4 focus:ring-[#EAF3FC]"
+      } ${props.className || ""}`.trim()}
     />
   );
 }
@@ -1299,6 +1303,9 @@ export function Modal({
   const modal = (
     <motion.div
       className="fleet-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-3 py-4 sm:px-6"
+      onPointerDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
       initial={shouldReduceMotion ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.18 }}

@@ -1,4 +1,4 @@
-﻿// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { useEffect, useMemo, useState } from 'react';
 import { usersAPI } from '../api/users';
@@ -124,6 +124,7 @@ export default function Users() {
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState(emptyForm);
   const [formError, setFormError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
@@ -235,6 +236,83 @@ export default function Users() {
 
   const updateFormField = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+    if (formError) setFormError('');
+  };
+
+  const validateAccountStep = () => {
+    const nextErrors = {};
+
+    if (!formData.userName.trim()) {
+      nextErrors.userName = 'نام کاربری الزامی است.';
+    }
+
+    if (formMode === 'create' && !formData.password.trim()) {
+      nextErrors.password = 'رمز عبور الزامی است.';
+    }
+
+    if (formData.phone.trim() && !/^09\d{9}$/.test(formData.phone.trim())) {
+      nextErrors.phone = 'شماره موبایل را به صورت 09123456789 وارد کنید.';
+    }
+
+    if (formData.nationalCode.trim() && !/^\d{10}$/.test(formData.nationalCode.trim())) {
+      nextErrors.nationalCode = 'کد ملی باید دقیقا ۱۰ رقم باشد.';
+    }
+
+    return nextErrors;
+  };
+
+  const getApiFieldErrors = (err) => {
+    const data = err?.response?.data;
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return {};
+
+    const keyMap = {
+      userName: 'userName',
+      username: 'userName',
+      user_name: 'userName',
+      password: 'password',
+      firstName: 'firstName',
+      first_name: 'firstName',
+      lastName: 'lastName',
+      last_name: 'lastName',
+      phone: 'phone',
+      mobile: 'phone',
+      nationalCode: 'nationalCode',
+      national_code: 'nationalCode',
+      parentId: 'parentId',
+      parent_id: 'parentId',
+      accessGroupId: 'accessGroupId',
+      access_group_id: 'accessGroupId',
+    };
+
+    const fallbackMessages = {
+      userName: 'این نام کاربری قابل استفاده نیست.',
+      password: 'رمز عبور معتبر نیست.',
+      firstName: 'نام واردشده معتبر نیست.',
+      lastName: 'نام خانوادگی واردشده معتبر نیست.',
+      phone: 'شماره موبایل واردشده معتبر نیست.',
+      nationalCode: 'کد ملی واردشده معتبر نیست.',
+      parentId: 'سرپرست انتخاب‌شده معتبر نیست.',
+      accessGroupId: 'گروه دسترسی انتخاب‌شده معتبر نیست.',
+    };
+
+    return Object.entries(data).reduce((result, [apiKey, value]) => {
+      const field = keyMap[apiKey];
+      if (!field) return result;
+
+      const rawMessage = Array.isArray(value) ? value[0] : value;
+      const message = typeof rawMessage === 'string' && /[\u0600-\u06FF]/.test(rawMessage)
+        ? rawMessage
+        : fallbackMessages[field];
+
+      result[field] = message;
+      return result;
+    }, {});
   };
 
   const openCreateModal = () => {
@@ -248,6 +326,7 @@ export default function Users() {
       isActive: true,
     });
     setFormError('');
+    setFieldErrors({});
     setModalOpen(true);
   };
 
@@ -268,6 +347,7 @@ export default function Users() {
       isActive: row.isActive ?? row.is_active ?? true,
     });
     setFormError('');
+    setFieldErrors({});
     setModalOpen(true);
   };
 
@@ -302,20 +382,22 @@ export default function Users() {
     setModalOpen(false);
     setWizardStep(1);
     setFormError('');
+    setFieldErrors({});
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
 
     if (wizardStep === 1) {
-      if (!formData.userName.trim()) {
-        setFormError('نام کاربری را وارد کنید.');
+      const nextErrors = validateAccountStep();
+
+      if (Object.keys(nextErrors).length > 0) {
+        setFieldErrors(nextErrors);
+        setFormError('لطفا خطاهای مشخص‌شده را اصلاح کنید.');
         return;
       }
-      if (formMode === 'create' && !formData.password.trim()) {
-        setFormError('رمز عبور را وارد کنید.');
-        return;
-      }
+
+      setFieldErrors({});
       setFormError('');
       setWizardStep(2);
       return;
@@ -349,7 +431,18 @@ export default function Users() {
       setModalOpen(false);
       await refreshUsers();
     } catch (err) {
-      setFormError(extractApiError(err, 'ذخیره کاربر انجام نشد.'));
+      const apiFieldErrors = getApiFieldErrors(err);
+      setFieldErrors(apiFieldErrors);
+
+      if (Object.keys(apiFieldErrors).length > 0) {
+        const stepOneFields = ['userName', 'password', 'firstName', 'lastName', 'phone', 'nationalCode'];
+        if (Object.keys(apiFieldErrors).some((field) => stepOneFields.includes(field))) {
+          setWizardStep(1);
+        }
+        setFormError('اطلاعات واردشده نیاز به اصلاح دارد.');
+      } else {
+        setFormError(extractApiError(err, 'ذخیره کاربر انجام نشد.'));
+      }
     } finally {
       setSubmitting(false);
     }
@@ -439,7 +532,7 @@ export default function Users() {
       </SectionCard>
 
       <Modal open={modalOpen} title={formMode === 'edit' ? 'ویرایش کاربر' : 'ایجاد کاربر'} onClose={closeModal}>
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} noValidate className="space-y-6">
           <ErrorAlert message={formError} />
 
           <div className="grid gap-3 md:grid-cols-2">
@@ -455,31 +548,43 @@ export default function Users() {
                   اطلاعات ورود و مشخصات فرد را وارد کنید. نام کاربری می‌تواند شماره موبایل یا یک نام دلخواه باشد.
                 </p>
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <Field label="نام کاربری برای ورود">
+                  <Field label="نام کاربری برای ورود" error={fieldErrors.userName}>
                     <Input
                       autoComplete="username"
                       value={formData.userName}
                       onChange={(event) => updateFormField('userName', event.target.value)}
                       placeholder="مثلا 09123456789"
-                      required
+                      aria-invalid={Boolean(fieldErrors.userName)}
                     />
                   </Field>
-                  <Field label={formMode === 'edit' ? 'رمز عبور جدید' : 'رمز عبور'} hint={formMode === 'edit' ? 'اگر نمی‌خواهید رمز تغییر کند، این قسمت را خالی بگذارید.' : ''}>
+                  <Field
+                    label={formMode === 'edit' ? 'رمز عبور جدید' : 'رمز عبور'}
+                    hint={formMode === 'edit' ? 'اگر نمی‌خواهید رمز تغییر کند، این قسمت را خالی بگذارید.' : ''}
+                    error={fieldErrors.password}
+                  >
                     <Input
                       type="password"
                       autoComplete="new-password"
                       value={formData.password}
                       onChange={(event) => updateFormField('password', event.target.value)}
-                      required={formMode === 'create'}
+                      aria-invalid={Boolean(fieldErrors.password)}
                     />
                   </Field>
-                  <Field label="نام">
-                    <Input value={formData.firstName} onChange={(event) => updateFormField('firstName', event.target.value)} />
+                  <Field label="نام" error={fieldErrors.firstName}>
+                    <Input
+                      value={formData.firstName}
+                      onChange={(event) => updateFormField('firstName', event.target.value)}
+                      aria-invalid={Boolean(fieldErrors.firstName)}
+                    />
                   </Field>
-                  <Field label="نام خانوادگی">
-                    <Input value={formData.lastName} onChange={(event) => updateFormField('lastName', event.target.value)} />
+                  <Field label="نام خانوادگی" error={fieldErrors.lastName}>
+                    <Input
+                      value={formData.lastName}
+                      onChange={(event) => updateFormField('lastName', event.target.value)}
+                      aria-invalid={Boolean(fieldErrors.lastName)}
+                    />
                   </Field>
-                  <Field label="شماره موبایل">
+                  <Field label="شماره موبایل" error={fieldErrors.phone}>
                     <Input
                       type="tel"
                       inputMode="tel"
@@ -487,9 +592,10 @@ export default function Users() {
                       value={formData.phone}
                       onChange={(event) => updateFormField('phone', event.target.value)}
                       placeholder="09123456789"
+                      aria-invalid={Boolean(fieldErrors.phone)}
                     />
                   </Field>
-                  <Field label="کد ملی">
+                  <Field label="کد ملی" error={fieldErrors.nationalCode}>
                     <Input
                       inputMode="numeric"
                       dir="ltr"
@@ -497,6 +603,7 @@ export default function Users() {
                       value={formData.nationalCode}
                       onChange={(event) => updateFormField('nationalCode', event.target.value)}
                       placeholder="0012345678"
+                      aria-invalid={Boolean(fieldErrors.nationalCode)}
                     />
                   </Field>
                 </div>
@@ -519,7 +626,7 @@ export default function Users() {
                   سرپرست مشخص می‌کند کاربر زیرمجموعه چه کسی است. گروه دسترسی مشخص می‌کند کاربر چه بخش‌هایی را می‌بیند.
                 </p>
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <Field label="سرپرست">
+                  <Field label="سرپرست" error={fieldErrors.parentId}>
                     <Select value={formData.parentId} onChange={(event) => updateFormField('parentId', event.target.value)}>
                       <option value="">ندارد</option>
                       {parentOptions.map((option) => (
@@ -530,6 +637,7 @@ export default function Users() {
                   <Field
                     label="گروه دسترسی"
                     hint={formData.isSuperuser ? 'برای مدیر کل سامانه نیازی به انتخاب گروه نیست.' : ''}
+                    error={fieldErrors.accessGroupId}
                   >
                     <Select
                       value={formData.accessGroupId}

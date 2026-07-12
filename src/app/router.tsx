@@ -9,6 +9,7 @@ import MissionCalendar from "../pages/MissionCalendar";
 import Missions from "../pages/Missions";
 import Reports from "../pages/Reports";
 import Requests from "../pages/Requests";
+import SplashTest from "../pages/SplashTest";
 import Tracking from "../pages/Tracking";
 import Unauthorized from "../pages/Unauthorized";
 import Users from "../pages/Users";
@@ -40,6 +41,10 @@ export const router = createBrowserRouter([
   {
     path: "/unauthorized",
     element: <Unauthorized />,
+  },
+  {
+    path: "/splash-test",
+    element: <SplashTest />,
   },
   {
     element: (
