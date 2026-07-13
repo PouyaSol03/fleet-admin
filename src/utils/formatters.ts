@@ -24,22 +24,41 @@ export function extractApiError(error: unknown, fallback = defaultError) {
   const data = (error as ApiError)?.response?.data;
   if (!data) return fallback;
 
-  if (typeof data === "string") return data;
+  let extracted: string | null = null;
 
-  if (typeof data === "object") {
+  if (typeof data === "string") {
+    extracted = data;
+  } else if (typeof data === "object") {
     const record = data as Record<string, unknown>;
 
-    if (typeof record.message === "string") return record.message;
-    if (typeof record.detail === "string") return record.detail;
+    if (typeof record.message === "string") {
+      extracted = record.message;
+    } else if (typeof record.detail === "string") {
+      extracted = record.detail;
+    } else {
+      const firstKey = Object.keys(record)[0];
+      if (firstKey) {
+        const firstValue = record[firstKey];
 
-    const firstKey = Object.keys(record)[0];
-    const firstValue = record[firstKey];
-
-    if (Array.isArray(firstValue) && firstValue.length) {
-      return String(firstValue[0]);
+        if (Array.isArray(firstValue) && firstValue.length) {
+          extracted = String(firstValue[0]);
+        } else if (typeof firstValue === "string") {
+          extracted = firstValue;
+        }
+      }
     }
+  }
 
-    if (typeof firstValue === "string") return firstValue;
+  if (extracted) {
+    const extractedStr = String(extracted).trim();
+    const isHtml = extractedStr.startsWith('<') || extractedStr.includes('<html');
+    const isTooLong = extractedStr.length > 150;
+    const hasPersian = /[\u0600-\u06FF]/.test(extractedStr);
+    const isDjangoError = extractedStr.includes('IntegrityError') || extractedStr.includes('Django Version') || extractedStr.includes('Python Executable') || extractedStr.includes('Traceback');
+
+    if (!isHtml && !isTooLong && hasPersian && !isDjangoError) {
+      return extractedStr;
+    }
   }
 
   return fallback;
