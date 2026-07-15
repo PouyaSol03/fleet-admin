@@ -1,4 +1,4 @@
-﻿// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { useEffect, useMemo, useState } from 'react';
 import { usersAPI } from '../api/users';
@@ -26,6 +26,7 @@ import {
   ToolbarInput,
   ToolbarSelect,
   LoadingState,
+  DataTableExportButton,
 } from '../components/shared/UI';
 
 const emptyForm = {
@@ -64,6 +65,7 @@ export default function Vehicles() {
   const [submitting, setSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   const canView = hasPermission(user, 'vehicles.view');
   const canCreate = hasPermission(user, 'vehicles.create');
@@ -103,6 +105,27 @@ export default function Vehicles() {
       mounted = false;
     };
   }, [canView]);
+
+  const handleDownload = async () => {
+    try {
+      setDownloading(true);
+      const params = {};
+      if (statusFilter) params.status = statusFilter;
+      const response = await vehiclesAPI.downloadVehicles(params);
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'vehicles_export.xlsx';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(extractApiError(err, 'دریافت فایل خروجی انجام نشد.'));
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const filteredRows = useMemo(() => rows.filter((row) => {
     const query = search.trim().toLowerCase();
@@ -240,7 +263,18 @@ export default function Vehicles() {
 
   return (
     <div className="flex w-full flex-col items-center gap-2">
-      <PageHeader title="مدیریت خودروها" description="ثبت خودرو، تخصیص راننده و نگهداری اطلاعات عملیاتی هر وسیله نقلیه" action={canCreate ? <PrimaryButton type="button" onClick={openCreateModal}>خودرو جدید</PrimaryButton> : null} />
+      <PageHeader
+        title="مدیریت خودروها"
+        description="ثبت خودرو، تخصیص راننده و نگهداری اطلاعات عملیاتی هر وسیله نقلیه"
+        action={
+          <div className="flex items-center justify-end gap-2">
+            <DataTableExportButton onClick={handleDownload} disabled={downloading} />
+            {canCreate ? (
+              <PrimaryButton type="button" onClick={openCreateModal}>خودرو جدید</PrimaryButton>
+            ) : null}
+          </div>
+        }
+      />
       <ErrorAlert message={error} />
 
       <SectionCard title="فیلترها">
@@ -257,7 +291,7 @@ export default function Vehicles() {
       </SectionCard>
 
       <SectionCard title="فهرست خودروها">
-        {loading ? <LoadingState/> : <DataTable columns={columns} rows={filteredRows} emptyTitle="خودرویی برای نمایش وجود ندارد." />}
+        {loading ? <LoadingState /> : <DataTable columns={columns} rows={filteredRows} emptyTitle="خودرویی برای نمایش وجود ندارد." />}
       </SectionCard>
 
       <Modal open={modalOpen} title={formMode === 'edit' ? 'ویرایش خودرو' : 'ثبت خودرو'} onClose={() => setModalOpen(false)}>

@@ -26,6 +26,7 @@ import {
   RowActionMenu,
   SecondaryButton,
   Select,
+  DataTableExportButton,
 } from "../components/shared/UI";
 
 const emptyForm = {
@@ -43,6 +44,11 @@ const statusLabelMap = {
   inactive: "غیرفعال",
 };
 
+import { DriverMetricCard } from "../features/drivers/components/DriverMetricCard";
+import { DriverAvatar } from "../features/drivers/components/DriverAvatar";
+import { CreateDriverModal } from "../features/drivers/components/CreateDriverModal";
+import { DriversFilters } from "../features/drivers/components/DriversFilters";
+
 function toNumber(value) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -52,366 +58,7 @@ function formatPlainDate(value) {
   return value ? String(value).replaceAll("-", "/") : "";
 }
 
-function TrendIndicator({ value }) {
-  const isPositive = Number(value) >= 0;
 
-  return (
-    <div className="flex items-center gap-2">
-      <span className={`text-base font-medium ${isPositive ? "text-[#00992E]" : "text-[#A30000]"}`}>
-        {Math.abs(Number(value) || 0)}%
-      </span>
-      <span className="text-xs font-medium text-[#222222]">به نسبت ماه قبل</span>
-    </div>
-  );
-}
-
-function DriverMetricCard({ title, value, percent }) {
-  return (
-    <div
-      className="relative flex h-[100px] w-full md:max-w-[286px] items-center justify-between overflow-hidden rounded-[15px] border border-[#D9D9D9] bg-white px-4 py-2"
-      style={{ boxShadow: "2px 2px 7px 0px rgba(0, 0, 0, 0.08)" }}
-    >
-      <div className="absolute -left-3 -top-4 h-[50px] w-[50px] rounded-full bg-[#206AB433] blur-[18px]" />
-      <div className="relative flex h-full flex-col justify-between">
-        <p className="text-2xl font-medium text-[#222222]">{title}</p>
-        <TrendIndicator value={percent} />
-      </div>
-      <span className="relative text-4xl font-normal text-black">{value}</span>
-    </div>
-  );
-}
-
-function DriverAvatar({ name }) {
-  const letter = String(name || "ر").trim().charAt(0) || "ر";
-
-  return (
-    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#EAF3FC] text-base font-bold text-[#206AB4]">
-      {letter}
-    </div>
-  );
-}
-
-function WizardStep({ step, current, title }) {
-  const active = step === current;
-  const done = step < current;
-
-  return (
-    <div className={`flex min-w-0 items-center gap-3 rounded-xl border px-4 py-3 ${active ? "border-[#206AB4] bg-[#EAF3FC]" : done ? "border-[#BFE3CA] bg-[#E8F7EF]" : "border-[#D9D9D9] bg-white"}`}>
-      <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-bold ${active ? "bg-[#206AB4] text-white" : done ? "bg-[#16803C] text-white" : "bg-[#EFEFEF] text-[#606060]"}`}>
-        {step}
-      </span>
-      <span className="truncate text-sm font-semibold text-[#222222]">{title}</span>
-    </div>
-  );
-}
-
-function DriverInfoPanel({ title, children }) {
-  return (
-    <div className="rounded-xl border border-[#D9D9D9] bg-[#FAFBFC] p-4">
-      <div className="text-sm font-bold text-[#222222]">{title}</div>
-      <div className="mt-2 text-sm leading-7 text-[#606060]">{children}</div>
-    </div>
-  );
-}
-
-function ToolbarSearchInput({ value, onChange }) {
-  return (
-    <div className="relative">
-      <HiOutlineMagnifyingGlass className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[#7D7D7D]" />
-      <input
-        type="search"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder="جستجوی کاربر"
-        className="h-11 w-full rounded-xl border border-[#D9D9D9] bg-white pr-10 pl-3 text-right text-sm outline-none transition focus:border-[#206AB4] focus:ring-4 focus:ring-[#EAF3FC]"
-      />
-    </div>
-  );
-}
-
-function getUserDriverName(user) {
-  return user?.fullName || [user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.userName || "";
-}
-
-function getUserDriverPhone(user) {
-  return user?.phone || "";
-}
-
-function CreateDriverModal({
-  open,
-  mode,
-  wizardStep,
-  setWizardStep,
-  formData,
-  driverUsers,
-  accessGroups,
-  formError,
-  submitting,
-  onClose,
-  onSubmit,
-  onChange,
-}) {
-  const title = mode === "edit" ? "ویرایش راننده" : "اضافه کردن راننده";
-  const [userSearch, setUserSearch] = useState("");
-  const selectedUser = driverUsers.find((option) => String(option.id) === String(formData.userId));
-  const selectedAccessGroup = accessGroups.find((option) => String(option.id) === String(formData.accessGroupId));
-  const selectUser = (option) => {
-    onChange("userId", String(option.id));
-    onChange("accessGroupId", "");
-    onChange("name", getUserDriverName(option));
-    onChange("phone", getUserDriverPhone(option));
-  };
-  const unlinkUser = () => {
-    onChange("userId", "");
-    onChange("accessGroupId", "");
-  };
-  const filteredUsers = useMemo(() => {
-    const query = userSearch.trim().toLowerCase();
-    const matches = driverUsers
-      .filter((option) => {
-        if (!query) return true;
-        return [option.fullName, option.userName, option.phone, option.nationalCode]
-          .some((value) => String(value || "").toLowerCase().includes(query));
-      })
-      .slice(0, 40);
-    if (selectedUser && !matches.some((option) => String(option.id) === String(selectedUser.id))) {
-      return [selectedUser, ...matches];
-    }
-    return matches;
-  }, [driverUsers, selectedUser, userSearch]);
-
-  return (
-    <Modal
-      open={open}
-      title={title}
-      onClose={onClose}
-      bodyClassName="flex flex-col overflow-hidden p-0 sm:p-0"
-      panelClassName="h-[92dvh]"
-    >
-      <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
-        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6">
-          <ErrorAlert message={formError} />
-
-          <div className="grid gap-3 md:grid-cols-2">
-            <WizardStep step={1} current={wizardStep} title="حساب و مشخصات راننده" />
-            <WizardStep step={2} current={wizardStep} title="وضعیت راننده" />
-          </div>
-
-        {wizardStep === 1 ? (
-          <div className="grid gap-5 lg:grid-cols-[1fr_18rem]">
-            <div className="space-y-5">
-              <div className="rounded-2xl border border-[#D9D9D9] bg-white p-4">
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <h4 className="text-sm font-bold text-[#222222]">حساب کاربری راننده</h4>
-                    <p className="mt-1 text-xs leading-5 text-[#737373]">
-                      اگر برای این راننده حساب کاربری ساخته‌اید، همان حساب را انتخاب کنید تا نام و موبایل خودکار ثبت شود.
-                    </p>
-                  </div>
-                  {formData.userId ? (
-                    <button
-                      type="button"
-                      onClick={unlinkUser}
-                      className="rounded-lg border border-[#D9D9D9] bg-white px-3 py-2 text-xs font-semibold text-[#A30000] transition hover:bg-[#FFE6E6]"
-                    >
-                      ثبت دستی بدون حساب
-                    </button>
-                  ) : null}
-                </div>
-
-                <div className="mt-4">
-                  <ToolbarSearchInput
-                    value={userSearch}
-                    onChange={setUserSearch}
-                  />
-                </div>
-
-                <div className="mt-3 max-h-56 overflow-y-auto rounded-xl border border-[#E8E8E8] bg-[#FAFBFC] p-2">
-                  <button
-                    type="button"
-                    onClick={unlinkUser}
-                    className={`mb-2 flex w-full items-center justify-between rounded-lg px-3 py-2 text-right text-sm transition ${!formData.userId ? "bg-[#EAF3FC] text-[#206AB4]" : "bg-white text-[#606060] hover:bg-[#EAF3FC]"}`}
-                  >
-                    <span>ثبت دستی بدون حساب کاربری</span>
-                    {!formData.userId ? <HiOutlineCheck className="h-5 w-5" /> : null}
-                  </button>
-                  {filteredUsers.map((option) => {
-                    const selected = String(option.id) === String(formData.userId);
-                    return (
-                      <button
-                        key={option.id}
-                        type="button"
-                        onClick={() => selectUser(option)}
-                        className={`mb-2 flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-right text-sm transition ${selected ? "bg-[#EAF3FC] text-[#206AB4]" : "bg-white text-[#606060] hover:bg-[#EAF3FC]"}`}
-                      >
-                        <span className="min-w-0">
-                          <span className="block truncate font-semibold">{getUserDriverName(option)}</span>
-                          <span className="block truncate text-xs text-[#737373]">
-                            {getUserDriverPhone(option) || "بدون موبایل"} · {option.userName}
-                          </span>
-                        </span>
-                        {selected ? <HiOutlineCheck className="h-5 w-5 shrink-0" /> : null}
-                      </button>
-                    );
-                  })}
-                  {!filteredUsers.length ? (
-                    <div className="px-3 py-6 text-center text-sm text-[#737373]">
-                      کاربری پیدا نشد.
-                    </div>
-                  ) : null}
-                </div>
-
-                {selectedUser ? (
-                  <div className="mt-4 rounded-xl border border-[#E8E8E8] bg-[#FAFBFC] p-3">
-                    <Field
-                      label="گروه دسترسی جدید کاربر"
-                      hint={
-                        selectedUser.accessGroupName
-                          ? `گروه قبلی ${selectedUser.accessGroupName} جایگزین می‌شود.`
-                          : "برای ورود راننده به پنل، یک گروه دسترسی انتخاب کنید."
-                      }
-                    >
-                      <Select
-                        value={formData.accessGroupId}
-                        onChange={(event) => onChange("accessGroupId", event.target.value)}
-                        required
-                      >
-                        <option value="">انتخاب گروه دسترسی</option>
-                        {accessGroups.map((option) => (
-                          <option key={option.id} value={option.id}>
-                            {option.name}
-                          </option>
-                        ))}
-                      </Select>
-                    </Field>
-                    <p className="mt-2 text-xs leading-5 text-[#737373]">
-                      بعد از ذخیره، این گروه به عنوان گروه دسترسی همین کاربر ثبت می‌شود.
-                    </p>
-                  </div>
-                ) : null}
-              </div>
-
-              <div className="rounded-2xl border border-[#D9D9D9] bg-white p-4">
-                <h4 className="text-sm font-bold text-[#222222]">مشخصات نمایش راننده</h4>
-                <p className="mt-1 text-sm leading-6 text-[#737373]">
-                  {formData.userId
-                    ? "نام و موبایل از حساب کاربری انتخاب‌شده خوانده می‌شود."
-                    : "برای راننده بدون حساب، نام و موبایل را دستی وارد کنید."}
-                </p>
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <Field label="نام راننده">
-                    <Input
-                      value={formData.name}
-                      onChange={(event) => onChange("name", event.target.value)}
-                      placeholder="مثلا علی رضایی"
-                      readOnly={Boolean(formData.userId)}
-                      required={!formData.userId}
-                    />
-                  </Field>
-                  <Field label="شماره موبایل">
-                    <Input
-                      type="tel"
-                      inputMode="tel"
-                      dir="ltr"
-                      value={formData.phone}
-                      onChange={(event) => onChange("phone", event.target.value)}
-                      placeholder="09123456789"
-                      readOnly={Boolean(formData.userId)}
-                    />
-                  </Field>
-                  <Field label="تاریخ شروع">
-                    <Input
-                      type="date"
-                      value={formData.startDate}
-                      onChange={(event) => onChange("startDate", event.target.value)}
-                      required
-                    />
-                  </Field>
-                </div>
-              </div>
-            </div>
-
-            <aside className="space-y-4">
-              <DriverInfoPanel title="راهنما">
-                راننده بدون حساب هم می‌تواند در خودروها، ماموریت‌ها و گزارش‌ها استفاده شود.
-              </DriverInfoPanel>
-              <DriverInfoPanel title="اتصال به کاربر">
-                بعدا هم می‌توانید همین راننده را ویرایش کنید و به یک حساب کاربری وصل کنید؛ سوابق قبلی او حفظ می‌شود.
-              </DriverInfoPanel>
-            </aside>
-          </div>
-        ) : (
-          <div className="grid gap-5 lg:grid-cols-[1fr_18rem]">
-            <div className="space-y-5">
-              <div className="rounded-2xl border border-[#D9D9D9] bg-white p-4">
-                <h4 className="text-sm font-bold text-[#222222]">وضعیت راننده</h4>
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <Field label="وضعیت">
-                    <Select
-                      value={formData.status}
-                      onChange={(event) => onChange("status", event.target.value)}
-                    >
-                      <option value="active">فعال</option>
-                      <option value="inactive">غیرفعال</option>
-                    </Select>
-                  </Field>
-                  <Field label="امتیاز">
-                    <Input
-                      type="number"
-                      inputMode="decimal"
-                      min="0"
-                      max="10"
-                      step="0.1"
-                      value={formData.score}
-                      onChange={(event) => onChange("score", event.target.value)}
-                      required
-                    />
-                  </Field>
-                </div>
-              </div>
-
-            </div>
-
-            <aside className="space-y-4">
-              <DriverInfoPanel title="خلاصه">
-                <div>راننده: <strong className="text-[#222222]">{formData.name || "بدون نام"}</strong></div>
-                <div>وضعیت: <strong className="text-[#222222]">{statusLabelMap[formData.status] || "-"}</strong></div>
-                <div>امتیاز: <strong className="text-[#222222]">{Number(formData.score || 0).toFixed(1)}</strong></div>
-              </DriverInfoPanel>
-              <DriverInfoPanel title="حساب کاربری">
-                {selectedUser ? (
-                  <div className="space-y-1">
-                    <div>
-                      به حساب <strong className="text-[#222222]">{selectedUser.fullName || selectedUser.userName}</strong> وصل می‌شود.
-                    </div>
-                    <div>
-                      گروه جدید: <strong className="text-[#222222]">{selectedAccessGroup?.name || "انتخاب نشده"}</strong>
-                    </div>
-                  </div>
-                ) : (
-                  <>این راننده فعلا حساب ورود جداگانه ندارد.</>
-                )}
-              </DriverInfoPanel>
-            </aside>
-          </div>
-        )}
-
-        </div>
-
-        <div className="shrink-0 border-t border-[#D9D9D9] bg-white px-5 py-4 sm:px-6">
-          <div className="flex flex-wrap justify-end gap-3">
-            <SecondaryButton type="button" onClick={wizardStep === 1 ? onClose : () => setWizardStep(1)}>
-              {wizardStep === 1 ? "انصراف" : "مرحله قبل"}
-            </SecondaryButton>
-            <PrimaryButton type="submit" disabled={submitting}>
-              {wizardStep === 1 ? "مرحله بعد" : submitting ? "در حال ذخیره..." : "ذخیره راننده"}
-            </PrimaryButton>
-          </div>
-        </div>
-      </form>
-    </Modal>
-  );
-}
 
 export default function Drivers() {
   const { user } = useAuth();
@@ -441,6 +88,7 @@ export default function Drivers() {
   const [submitting, setSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   const canView = hasPermission(user, "drivers.view");
   const canCreate = hasPermission(user, "drivers.create");
@@ -478,6 +126,27 @@ export default function Drivers() {
       mounted = false;
     };
   }, [canView]);
+
+  const handleDownload = async () => {
+    try {
+      setDownloading(true);
+      const params = {};
+      if (statusFilter) params.status = statusFilter;
+      const response = await usersAPI.downloadDrivers(params);
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'drivers_export.xlsx';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(extractApiError(err, 'دریافت فایل خروجی انجام نشد.'));
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const filteredRows = useMemo(() => {
     const minScore = toNumber(scoreFrom);
@@ -783,13 +452,7 @@ export default function Drivers() {
         </div>
 
         <div className="relative mb-4 flex flex-wrap items-center justify-start gap-3">
-          <button
-            type="button"
-            className="flex h-10 items-center justify-center gap-1 rounded-[10px] border border-[#D9D9D9] px-3 py-2 text-sm text-[#222222]"
-          >
-            <span>Export</span>
-            <HiOutlineArrowDownTray className="h-5 w-5" />
-          </button>
+          <DataTableExportButton onClick={handleDownload} disabled={downloading} />
 
           {activeFilterChips.map((chip) => (
             <button
@@ -803,263 +466,28 @@ export default function Drivers() {
             >
               <span className="text-[#7D7D7D]">{chip.label}</span>
               <span>{chip.value}</span>
-              <span className="text-[#A30000]">×</span>
             </button>
           ))}
 
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setFilterOpen((current) => !current)}
-              className={`flex h-10 items-center justify-center gap-1 rounded-[10px] border px-4 py-2 text-xs font-medium transition ${filterOpen
-                ? "border-[#D9D9D9] bg-[#206AB4] text-white"
-                : "border-[#D9D9D9] bg-white text-[#222222]"
-                }`}
-            >
-              <HiOutlineFunnel className="h-5 w-5" />
-              <span>فیلتر</span>
-            </button>
-
-            <div
-              className={`fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity duration-300 md:hidden ${filterOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-                }`}
-              onClick={() => setFilterOpen(false)}
-            />
-
-            <div
-              className={`
-      /* استایل‌های پایه موبایل (حالت مودال کشویی) */
-      fixed bottom-0 left-0 right-0 z-50 w-full rounded-t-[24px] border border-[#D9D9D9] bg-white p-6 shadow-2xl 
-      max-h-[85vh] overflow-y-auto transform transition-all duration-300 ease-out
-      
-      /* انیمیشن موبایل: مدیریت تغییر موقعیت و شفافیت */
-      ${filterOpen ? "translate-y-0 opacity-100" : "translate-y-full opacity-0 pointer-events-none"}
-      
-      /* ریست کردن استایل‌ها در دسکتاپ به حالت اولیه و بدون انیمیشن مودال */
-      md:absolute md:bottom-auto md:left-auto md:right-0 md:top-10 md:z-30 md:w-[240px] md:rounded-[10px] md:p-2 md:shadow-xl md:max-h-none 
-      md:transform-none md:transition-none md:opacity-100 md:translate-y-0 md:pointer-events-auto
-      ${filterOpen ? "md:block" : "md:hidden"}
-    `}
-            >
-              <div className="mx-auto mb-5 h-1.5 w-12 rounded-full bg-gray-300 md:hidden" />
-
-              <section className="space-y-2 pb-4">
-                <div className="flex h-6 items-center justify-between">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setStatusFilter("");
-                      setPage(1);
-                    }}
-                    className="text-xs font-normal text-[#A30000]"
-                  >
-                    حذف فیلتر
-                  </button>
-                  <h3 className="text-base font-bold text-[#222222]">وضعیت</h3>
-                </div>
-
-                <div className="flex items-center justify-between gap-4">
-                  {[
-                    { label: "غیر فعال", value: "inactive" },
-                    { label: "فعال", value: "active" },
-                  ].map((option) => {
-                    const checked = statusFilter === option.value;
-
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => {
-                          setStatusFilter(checked ? "" : option.value);
-                          setPage(1);
-                        }}
-                        className="flex h-11 md:h-8 flex-1 md:w-[104px] items-center justify-end gap-2 border border-gray-100 rounded-xl p-2 md:border-none md:p-0 text-[#7D7D7D]"
-                      >
-                        <span className="text-base font-medium">{option.label}</span>
-                        <span
-                          className={`flex h-6 w-6 items-center justify-center rounded-[4px] border ${checked ? "border-[#206AB4] text-[#206AB4]" : "border-[#D9D9D9] text-[#222222]"
-                            }`}
-                        >
-                          {checked ? <HiOutlineCheck className="h-4 w-4" /> : null}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
-
-              <div className="h-px bg-[#D9D9D9]" />
-
-              <section className="space-y-2 py-4">
-                <div className="flex h-6 items-center justify-between">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDateFrom("");
-                      setDateTo("");
-                      setPage(1);
-                    }}
-                    className={`text-xs font-normal ${dateFrom || dateTo ? "text-[#A30000]" : "text-[#D9D9D9]"}`}
-                  >
-                    حذف فیلتر
-                  </button>
-                  <h3 className="text-base font-bold text-[#222222]">تاریخ</h3>
-                </div>
-
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:block md:space-y-2">
-                  {[
-                    { label: "از", value: dateFrom, setValue: setDateFrom },
-                    { label: "تا", value: dateTo, setValue: setDateTo },
-                  ].map((item) => (
-                    <label key={item.label} className="block space-y-1 md:space-y-2">
-                      <span className="block text-right text-base font-medium text-[#7D7D7D]">{item.label}</span>
-                      <div className="flex h-11 md:h-10 overflow-hidden rounded-md border border-[#D9D9D9] bg-white">
-                        <input
-                          type="date"
-                          value={item.value}
-                          onChange={(event) => {
-                            item.setValue(event.target.value);
-                            setPage(1);
-                          }}
-                          className="h-full min-w-0 flex-1 bg-white px-2 text-left text-sm text-[#222222] outline-none"
-                        />
-                        <div className="flex h-full w-11 items-center justify-center bg-[#D9D9D9] text-[#222222]">
-                          <HiOutlineCalendarDays className="h-6 w-6" />
-                        </div>
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              </section>
-
-              <div className="h-px bg-[#D9D9D9]" />
-
-              {/* بخش امتیاز */}
-              <section className="space-y-2 py-4">
-                <div className="flex h-6 items-center justify-between">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setScoreFrom("0");
-                      setScoreTo("10");
-                      setPage(1);
-                    }}
-                    className="text-xs font-normal text-[#A30000]"
-                  >
-                    حذف فیلتر
-                  </button>
-                  <h3 className="text-base font-bold text-[#222222]">امتیاز</h3>
-                </div>
-
-                {[
-                  { label: "از", value: scoreFrom, setValue: setScoreFrom },
-                  { label: "تا", value: scoreTo, setValue: setScoreTo },
-                ].map((item) => (
-                  <label key={item.label} className="block space-y-2">
-                    <span className="block text-right text-base font-medium text-[#7D7D7D]">{item.label}</span>
-                    <div className="flex h-8 items-center gap-3">
-                      <input
-                        type="range"
-                        min="0"
-                        max="10"
-                        step="0.1"
-                        value={item.value}
-                        onChange={(event) => {
-                          item.setValue(event.target.value);
-                          setPage(1);
-                        }}
-                        className="h-2 flex-1 cursor-pointer accent-[#206AB4]"
-                      />
-                      <span className="w-8 text-right text-base font-medium text-[#7D7D7D]">
-                        {Number(item.value || 0).toFixed(1)}
-                      </span>
-                    </div>
-                  </label>
-                ))}
-              </section>
-
-              <button
-                type="button"
-                onClick={() => setFilterOpen(false)}
-                className="flex h-12 md:h-10 w-full items-center justify-center rounded-[10px] border border-[#206AB4] bg-[#206AB4] text-base font-medium text-white mt-4"
-              >
-                تایید
-              </button>
-            </div>
-          </div>
-
-          {filterOpen && actionMenuId === "__legacy-filter__" ? (
-            <div className="absolute right-0 top-12 z-20 grid w-[min(520px,calc(100vw-3rem))] gap-4 rounded-[10px] border border-[#D9D9D9] bg-white p-4 shadow-xl md:grid-cols-2">
-              <Field label="وضعیت">
-                <Select
-                  value={statusFilter}
-                  onChange={(event) => {
-                    setStatusFilter(event.target.value);
-                    setPage(1);
-                  }}
-                >
-                  <option value="">همه وضعیت ها</option>
-                  <option value="active">فعال</option>
-                  <option value="inactive">غیرفعال</option>
-                </Select>
-              </Field>
-              <Field label="امتیاز از">
-                <Input
-                  type="number"
-                  min="0"
-                  max="10"
-                  step="0.1"
-                  value={scoreFrom}
-                  onChange={(event) => {
-                    setScoreFrom(event.target.value);
-                    setPage(1);
-                  }}
-                />
-              </Field>
-              <Field label="تاریخ شروع از">
-                <Input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(event) => {
-                    setDateFrom(event.target.value);
-                    setPage(1);
-                  }}
-                />
-              </Field>
-              <Field label="تاریخ شروع تا">
-                <Input
-                  type="date"
-                  value={dateTo}
-                  onChange={(event) => {
-                    setDateTo(event.target.value);
-                    setPage(1);
-                  }}
-                />
-              </Field>
-              <Field label="امتیاز تا">
-                <Input
-                  type="number"
-                  min="0"
-                  max="10"
-                  step="0.1"
-                  value={scoreTo}
-                  onChange={(event) => {
-                    setScoreTo(event.target.value);
-                    setPage(1);
-                  }}
-                />
-              </Field>
-              <div className="flex items-end justify-end gap-2">
-                <SecondaryButton type="button" onClick={clearFilters}>
-                  پاک کردن
-                </SecondaryButton>
-                <PrimaryButton type="button" onClick={() => setFilterOpen(false)}>
-                  اعمال
-                </PrimaryButton>
-              </div>
-            </div>
-          ) : null}
+          <DriversFilters
+            filterOpen={filterOpen}
+            setFilterOpen={setFilterOpen}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            dateFrom={dateFrom}
+            setDateFrom={setDateFrom}
+            dateTo={dateTo}
+            setDateTo={setDateTo}
+            scoreFrom={scoreFrom}
+            setScoreFrom={setScoreFrom}
+            scoreTo={scoreTo}
+            setScoreTo={setScoreTo}
+            setPage={setPage}
+            actionMenuId={actionMenuId}
+            clearFilters={clearFilters}
+          />
         </div>
+
         {isMobile && middleColumns.length > 0 && (
           <div className="rounded-2xl border border-slate-200 bg-slate-50/80 py-4 md:p-4 shadow-sm mb-4">
             <div className="mb-3 flex items-center gap-2 text-slate-700">
