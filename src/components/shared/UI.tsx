@@ -503,7 +503,7 @@ function CustomSelect({
           if (!open) updateMenuPosition();
           setOpen((current) => !current);
         }}
-        className={`fleet-control flex w-full flex-row-reverse items-center justify-between gap-2 border border-[#D9D9D9] bg-white text-right font-normal text-[#222222] outline-none transition focus:border-[#206AB4] focus:ring-4 focus:ring-[#EAF3FC] disabled:cursor-not-allowed disabled:opacity-60 ${triggerClass}`}
+        className={`fleet-control flex w-full flex-reverse items-center justify-between gap-2 border border-[#D9D9D9] bg-white text-right font-normal text-[#222222] outline-none transition focus:border-[#206AB4] focus:ring-4 focus:ring-[#EAF3FC] disabled:cursor-not-allowed disabled:opacity-60 ${triggerClass}`}
         aria-haspopup="listbox"
         aria-expanded={open}
         dir="rtl"
