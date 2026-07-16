@@ -64,12 +64,24 @@ export function extractApiError(error: unknown, fallback = defaultError) {
   return fallback;
 }
 
+function parseDateValue(value: unknown) {
+  const rawValue = String(value || "").trim();
+  const dateOnlyMatch = rawValue.match(/^(\d{4})[-/](\d{2})[-/](\d{2})$/);
+
+  if (dateOnlyMatch) {
+    const [, year, month, day] = dateOnlyMatch;
+    return new Date(Number(year), Number(month) - 1, Number(day));
+  }
+
+  return new Date(rawValue);
+}
+
 export function formatDate(value: unknown, withTime = false) {
   if (!value) return "-";
 
-  const date = new Date(String(value));
+  const date = parseDateValue(value);
   if (Number.isNaN(date.getTime())) {
-    return String(value).replaceAll("-", "/");
+    return String(value);
   }
 
   return new Intl.DateTimeFormat("fa-IR-u-ca-persian-nu-latn", {

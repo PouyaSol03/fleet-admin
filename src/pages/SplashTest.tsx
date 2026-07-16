@@ -4,6 +4,8 @@ import { AlertCircle, RefreshCw, WifiOff } from "lucide-react";
 
 export type SplashState = "loading" | "error" | "success";
 
+let persistedProgress = 5;
+
 type SplashScreenProps = {
   state?: SplashState;
   progress?: number;
@@ -21,7 +23,7 @@ export default function SplashScreen({
 
   const [isOffline, setIsOffline] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [internalProgress, setInternalProgress] = useState(5);
+  const [internalProgress, setInternalProgress] = useState(persistedProgress);
   const [animationKey, setAnimationKey] = useState(0);
 
   /*
@@ -75,17 +77,20 @@ export default function SplashScreen({
       return;
     }
 
-    setInternalProgress(5);
+    setInternalProgress((current) => Math.max(current, persistedProgress));
 
     const interval = window.setInterval(() => {
       setInternalProgress((currentProgress) => {
         if (currentProgress >= 92) {
+          persistedProgress = 92;
           return 92;
         }
 
         const increase = Math.floor(Math.random() * 5) + 2;
+        const nextProgress = Math.min(currentProgress + increase, 92);
+        persistedProgress = nextProgress;
 
-        return Math.min(currentProgress + increase, 92);
+        return nextProgress;
       });
     }, 350);
 
@@ -123,6 +128,7 @@ export default function SplashScreen({
   const logoShift = isMobile ? -125 : -220;
 
   const retry = () => {
+    persistedProgress = 5;
     setInternalProgress(5);
     setAnimationKey((current) => current + 1);
     onRetry?.();

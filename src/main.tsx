@@ -7,15 +7,30 @@ import SplashScreen, { type SplashState } from "./pages/SplashTest";
 import "./index.css";
 
 const SPLASH_DURATION_MS = 3000;
+const splashStartedAt = Date.now();
+let splashFinished = false;
 
 function App() {
-  const [showSplash, setShowSplash] = useState(true);
-  const [splashState, setSplashState] = useState<SplashState>("loading");
+  const isSplashTestRoute = window.location.pathname === "/splash-test";
+  const [showSplash, setShowSplash] = useState(!splashFinished && !isSplashTestRoute);
+  const [splashState, setSplashState] = useState<SplashState>(
+    splashFinished ? "success" : "loading",
+  );
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
+    if (isSplashTestRoute || splashFinished) {
       setSplashState("success");
-    }, SPLASH_DURATION_MS);
+      setShowSplash(false);
+      return;
+    }
+
+    const elapsed = Date.now() - splashStartedAt;
+    const remaining = Math.max(0, SPLASH_DURATION_MS - elapsed);
+
+    const timer = window.setTimeout(() => {
+      splashFinished = true;
+      setSplashState("success");
+    }, remaining);
 
     return () => window.clearTimeout(timer);
   }, []);
@@ -24,7 +39,10 @@ function App() {
     return (
       <SplashScreen
         state={splashState}
-        onComplete={() => setShowSplash(false)}
+        onComplete={() => {
+          splashFinished = true;
+          setShowSplash(false);
+        }}
       />
     );
   }

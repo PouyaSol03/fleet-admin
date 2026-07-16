@@ -54,9 +54,17 @@ export default function Inspections() {
   const canUpdate = hasPermission(user, 'inspections.update');
   const canDelete = hasPermission(user, 'inspections.delete');
 
-  const loadData = async () => {
+  const inspectionListParams = useMemo(() => {
+    const params = {};
+
+    if (statusFilter) params.status = statusFilter;
+
+    return params;
+  }, [statusFilter]);
+
+  const loadData = async (params = inspectionListParams) => {
     const [inspectionsResponse, vehiclesResponse] = await Promise.all([
-      vehiclesAPI.listInspections(),
+      vehiclesAPI.listInspections(params),
       vehiclesAPI.list(),
     ]);
     setRows(normalizeCollection(inspectionsResponse.data));
@@ -80,7 +88,7 @@ export default function Inspections() {
     return () => {
       mounted = false;
     };
-  }, [canView]);
+  }, [canView, inspectionListParams]);
 
   const filteredRows = useMemo(() => rows.filter((row) => !statusFilter || row.status === statusFilter), [rows, statusFilter]);
 

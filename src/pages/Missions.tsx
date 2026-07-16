@@ -70,8 +70,16 @@ export default function Missions() {
     const canUpdate = hasPermission(user, 'missions.update');
     const canDelete = hasPermission(user, 'missions.delete');
 
-    const loadData = async () => {
-      const [mRes, dRes, uRes, vRes] = await Promise.all([missionsAPI.list(), usersAPI.listDrivers(), usersAPI.list(), vehiclesAPI.list()]);
+    const missionListParams = useMemo(() => {
+      const params = {};
+
+      if (statusFilter) params.status = statusFilter;
+
+      return params;
+    }, [statusFilter]);
+
+    const loadData = async (params = missionListParams) => {
+      const [mRes, dRes, uRes, vRes] = await Promise.all([missionsAPI.list(params), usersAPI.listDrivers(), usersAPI.list(), vehiclesAPI.list()]);
       setRows(normalizeCollection(mRes.data)); setDrivers(normalizeCollection(dRes.data)); setUsers(normalizeCollection(uRes.data)); setVehicles(normalizeCollection(vRes.data));
     };
 
@@ -85,14 +93,12 @@ export default function Missions() {
       };
       load();
       return () => { mounted = false; };
-    }, [canView]);
+    }, [canView, missionListParams]);
 
     const handleDownload = async () => {
       try {
         setDownloading(true);
-        const params = {};
-        if (statusFilter) params.status = statusFilter;
-        const response = await missionsAPI.downloadMissions(params);
+        const response = await missionsAPI.downloadMissions(missionListParams);
         const url = window.URL.createObjectURL(new Blob([response.data]));
         const link = document.createElement('a');
         link.href = url;
@@ -329,5 +335,4 @@ export default function Missions() {
       </div>
     );
   }
-
 

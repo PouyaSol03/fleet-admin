@@ -55,7 +55,7 @@ function toNumber(value) {
 }
 
 function formatPlainDate(value) {
-  return value ? String(value).replaceAll("-", "/") : "";
+  return value ? formatDate(value) : "";
 }
 
 
@@ -66,6 +66,7 @@ export default function Drivers() {
   const [driverUsers, setDriverUsers] = useState([]);
   const [accessGroups, setAccessGroups] = useState([]);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -95,9 +96,23 @@ export default function Drivers() {
   const canUpdate = hasPermission(user, "drivers.update");
   const canDelete = hasPermission(user, "drivers.delete");
 
-  const loadData = async () => {
+  const driverListParams = useMemo(() => {
+    const params = {};
+    const query = debouncedSearch.trim();
+
+    if (query) params.search = query;
+    if (statusFilter) params.status = statusFilter;
+    if (dateFrom) params.dateFrom = dateFrom;
+    if (dateTo) params.dateTo = dateTo;
+    if (scoreFrom !== "0" && scoreFrom !== "") params.scoreFrom = scoreFrom;
+    if (scoreTo !== "10" && scoreTo !== "") params.scoreTo = scoreTo;
+
+    return params;
+  }, [debouncedSearch, statusFilter, dateFrom, dateTo, scoreFrom, scoreTo]);
+
+  const loadData = async (params = driverListParams) => {
     const [driversResponse, usersResponse, accessGroupsResponse] = await Promise.all([
-      usersAPI.listDrivers(),
+      usersAPI.listDrivers(params),
       usersAPI.list(),
       usersAPI.listAccessGroups(),
     ]);
@@ -125,14 +140,25 @@ export default function Drivers() {
     return () => {
       mounted = false;
     };
-  }, [canView]);
+  }, [canView, driverListParams]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 400);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [search]);
+
+  useEffect(() => {
+    setSelectedRows([]);
+    setPage(1);
+  }, [driverListParams]);
 
   const handleDownload = async () => {
     try {
       setDownloading(true);
-      const params = {};
-      if (statusFilter) params.status = statusFilter;
-      const response = await usersAPI.downloadDrivers(params);
+      const response = await usersAPI.downloadDrivers(driverListParams);
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -558,7 +584,7 @@ export default function Drivers() {
               </tr>
             </thead>
             <tbody>
-              {loading ? (
+              {loading || search.trim() !== debouncedSearch.trim() ? (
                 <tr>
                   <td colSpan={activeColumnsCount}>
                     <LoadingState message="در حال دریافت اطلاعات..." className="min-h-[260px]" />

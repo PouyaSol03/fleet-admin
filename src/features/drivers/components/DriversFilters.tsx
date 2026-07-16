@@ -1,4 +1,4 @@
-import { HiOutlineFunnel, HiOutlineCheck, HiOutlineCalendarDays } from "react-icons/hi2";
+import { HiOutlineFunnel, HiOutlineCheck } from "react-icons/hi2";
 import { Field, Select, Input, PrimaryButton, SecondaryButton } from "../../../components/shared/UI";
 
 export function DriversFilters({
@@ -113,19 +113,16 @@ export function DriversFilters({
             ].map((item) => (
               <label key={item.label} className="block space-y-1 md:space-y-2">
                 <span className="block text-right text-base font-medium text-[#7D7D7D]">{item.label}</span>
-                <div className="flex h-11 md:h-10 overflow-hidden rounded-md border border-[#D9D9D9] bg-white">
-                  <input
+                <div className="compact-driver-date-picker">
+                  <Input
                     type="date"
                     value={item.value}
                     onChange={(event) => {
                       item.setValue(event.target.value);
                       setPage(1);
                     }}
-                    className="h-full min-w-0 flex-1 bg-white px-2 text-left text-sm text-[#222222] outline-none"
+                    placeholder={item.label}
                   />
-                  <div className="flex h-full w-11 items-center justify-center bg-[#D9D9D9] text-[#222222]">
-                    <HiOutlineCalendarDays className="h-6 w-6" />
-                  </div>
                 </div>
               </label>
             ))}

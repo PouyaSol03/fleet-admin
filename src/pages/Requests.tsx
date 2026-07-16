@@ -139,8 +139,16 @@ export default function Requests() {
   const canLoadDrivers = canReview || Boolean(user?.isSuperuser) || hasPermission(user, 'drivers.view');
   const canLoadVehicles = canReview || Boolean(user?.isSuperuser) || hasPermission(user, 'vehicles.view');
 
+  const requestListParams = useMemo(() => {
+    const params = {};
+
+    if (statusFilter) params.status = statusFilter;
+
+    return params;
+  }, [statusFilter]);
+
   const loadData = useCallback(async () => {
-    const requestsResponse = await missionsAPI.listRequests();
+    const requestsResponse = await missionsAPI.listRequests(requestListParams);
     const usersResponse = await usersAPI.list();
     setRows(normalizeCollection(requestsResponse.data));
     setUsers(normalizeCollection(usersResponse.data));
@@ -150,7 +158,7 @@ export default function Requests() {
     ]);
     setDrivers(normalizeCollection(driversResponse.data));
     setVehicles(normalizeCollection(vehiclesResponse.data));
-  }, [canLoadDrivers, canLoadVehicles]);
+  }, [canLoadDrivers, canLoadVehicles, requestListParams]);
 
   useEffect(() => {
     if (!canView) return;

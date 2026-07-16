@@ -47,6 +47,46 @@ const emptyForm = {
   lng: '',
 };
 
+const statusSearchLabel = {
+  active: 'فعال active',
+  inactive: 'غیرفعال inactive',
+  maintenance: 'در تعمیر maintenance',
+  on_mission: 'در ماموریت on mission',
+};
+
+function getVehicleSearchValues(row) {
+  return [
+    row.id,
+    row.typeId,
+    row.groupId,
+    row.driverId,
+    row.driverIds,
+    row.typeName,
+    row.groupName,
+    row.driverName,
+    row.driverNames,
+    row.model,
+    row.plateNumber,
+    row.numberOfPeople,
+    row.status,
+    statusSearchLabel[row.status],
+    row.parkingPlace,
+    row.stationPlace,
+    row.missionPlace,
+    row.firstKilometer,
+    row.currentKilometer,
+    row.gas,
+    row.imei,
+    row.traccarDeviceId,
+    row.serviceReport,
+    row.technicalServiceReport,
+    row.insuranceProvider,
+    row.insurancePolicyNumber,
+    row.insuranceExpiryDate,
+    row.replacedParts,
+  ];
+}
+
 export default function Vehicles() {
   const { user } = useAuth();
   const [rows, setRows] = useState([]);
@@ -54,6 +94,7 @@ export default function Vehicles() {
   const [groups, setGroups] = useState([]);
   const [drivers, setDrivers] = useState([]);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -72,9 +113,19 @@ export default function Vehicles() {
   const canUpdate = hasPermission(user, 'vehicles.update');
   const canDelete = hasPermission(user, 'vehicles.delete');
 
-  const loadData = async () => {
+  const vehicleListParams = useMemo(() => {
+    const params = {};
+    const query = debouncedSearch.trim();
+
+    if (query) params.search = query;
+    if (statusFilter) params.status = statusFilter;
+
+    return params;
+  }, [debouncedSearch, statusFilter]);
+
+  const loadData = async (params = vehicleListParams) => {
     const [vehiclesResponse, typesResponse, groupsResponse, driversResponse] = await Promise.all([
-      vehiclesAPI.list(),
+      vehiclesAPI.list(params),
       vehiclesAPI.listTypes(),
       vehiclesAPI.listGroups(),
       usersAPI.listDrivers(),
@@ -104,14 +155,20 @@ export default function Vehicles() {
     return () => {
       mounted = false;
     };
-  }, [canView]);
+  }, [canView, vehicleListParams]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 400);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [search]);
 
   const handleDownload = async () => {
     try {
       setDownloading(true);
-      const params = {};
-      if (statusFilter) params.status = statusFilter;
-      const response = await vehiclesAPI.downloadVehicles(params);
+      const response = await vehiclesAPI.downloadVehicles(vehicleListParams);
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -129,7 +186,17 @@ export default function Vehicles() {
 
   const filteredRows = useMemo(() => rows.filter((row) => {
     const query = search.trim().toLowerCase();
-    const matchesQuery = !query || [row.model, row.plateNumber, row.imei, row.typeName, row.groupName, row.driverName].some((value) => String(value || '').toLowerCase().includes(query));
+    const matchesQuery = !query || getVehicleSearchValues(row).some((value) => {
+      if (Array.isArray(value)) {
+        return value.some((item) => String(item || '').toLowerCase().includes(query));
+      }
+
+      if (value && typeof value === 'object') {
+        return JSON.stringify(value).toLowerCase().includes(query);
+      }
+
+      return String(value || '').toLowerCase().includes(query);
+    });
     const matchesStatus = !statusFilter || row.status === statusFilter;
     return matchesQuery && matchesStatus;
   }), [rows, search, statusFilter]);
@@ -279,7 +346,7 @@ export default function Vehicles() {
 
       <SectionCard title="فیلترها">
         <div className="grid gap-4 md:grid-cols-2">
-          <ToolbarInput placeholder="جستجو بر اساس مدل، پلاک، IMEI، گروه یا راننده" value={search} onChange={(event) => setSearch(event.target.value)} />
+          <ToolbarInput placeholder="جستجو در مدل، پلاک، IMEI، راننده، گروه، کارکرد، سوخت، بیمه و گزارش‌ها" value={search} onChange={(event) => setSearch(event.target.value)} />
           <ToolbarSelect value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
             <option value="">همه وضعیت ها</option>
             <option value="active">فعال</option>
@@ -291,7 +358,7 @@ export default function Vehicles() {
       </SectionCard>
 
       <SectionCard title="فهرست خودروها">
-        {loading ? <LoadingState /> : <DataTable columns={columns} rows={filteredRows} emptyTitle="خودرویی برای نمایش وجود ندارد." />}
+        {loading || search.trim() !== debouncedSearch.trim() ? <LoadingState /> : <DataTable columns={columns} rows={filteredRows} emptyTitle="خودرویی برای نمایش وجود ندارد." />}
       </SectionCard>
 
       <Modal open={modalOpen} title={formMode === 'edit' ? 'ویرایش خودرو' : 'ثبت خودرو'} onClose={() => setModalOpen(false)}>
