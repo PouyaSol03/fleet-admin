@@ -15,7 +15,8 @@ export const usersAPI = {
       params,
       responseType: "blob",
     }),
-  dashboardSummary: () => apiClient.get("/users/dashboard/summary/"),
+  dashboardSummary: (params?: Params) =>
+    apiClient.get("/users/dashboard/summary/", { params }),
 
   listDrivers: (params?: Params) => apiClient.get("/users/drivers/", { params }),
   getDriver: (id: number | string) => apiClient.get(`/users/drivers/${id}/`),
