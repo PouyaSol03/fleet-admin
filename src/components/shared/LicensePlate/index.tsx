@@ -117,7 +117,7 @@ export const LicensePlate = ({
           maxLength={maxLength}
           value={displayValue}
           onChange={updateDigits(field, maxLength)}
-          className="absolute inset-0 h-full w-full cursor-text appearance-none border-0 bg-transparent p-0 text-center text-transparent outline-none focus:ring-0"
+          className="absolute inset-0 w-full cursor-text appearance-none border-0 bg-transparent p-0 text-center text-transparent outline-none focus:ring-0"
           style={{
             ...plateEditableTextStyle,
             color: 'transparent',
@@ -135,7 +135,7 @@ export const LicensePlate = ({
     if (readOnly) {
       return (
         <span
-          className="flex h-full w-[54px] items-center justify-center text-center text-[28px] font-bold leading-none text-[#475569]"
+          className="flex h-full  items-center justify-center text-center text-[28px] font-bold leading-none text-[#475569]"
           style={plateTextStyle}
           dir="rtl"
         >

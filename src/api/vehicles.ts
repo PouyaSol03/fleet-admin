@@ -4,7 +4,7 @@ type Params = Record<string, unknown>;
 type Payload = Record<string, unknown>;
 
 export const vehiclesAPI = {
-  list: (params?: Params) => apiClient.get("/vehicle/vehicles/", { params }),
+  list: <T = unknown>(params?: Params) => apiClient.get<T>("/vehicle/vehicles/", { params }),
   get: (id: number | string) => apiClient.get(`/vehicle/vehicles/${id}/`),
   create: (data: Payload) => apiClient.post("/vehicle/vehicles/", data),
   update: (id: number | string, data: Payload) =>
