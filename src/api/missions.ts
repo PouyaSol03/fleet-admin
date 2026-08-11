@@ -10,6 +10,11 @@ export const missionsAPI = {
   update: (id: number | string, data: Payload) =>
     apiClient.patch(`/missions/${id}/`, data),
   delete: (id: number | string) => apiClient.delete(`/missions/${id}/`),
+  downloadMissions: (params?: Params) =>
+    apiClient.get("/missions/export/", {
+      params,
+      responseType: "blob",
+    }),
   submitManagerReport: (id: number | string, data: Payload) =>
     apiClient.post(`/missions/${id}/manager-report/`, data),
 

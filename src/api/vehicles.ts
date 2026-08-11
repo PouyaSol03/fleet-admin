@@ -10,6 +10,11 @@ export const vehiclesAPI = {
   update: (id: number | string, data: Payload) =>
     apiClient.patch(`/vehicle/vehicles/${id}/`, data),
   delete: (id: number | string) => apiClient.delete(`/vehicle/vehicles/${id}/`),
+  downloadVehicles: (params?: Params) =>
+    apiClient.get("/vehicle/vehicles/export/", {
+      params,
+      responseType: "blob",
+    }),
   listLive: () => apiClient.get("/vehicle/traccar/live/"),
   syncTraccar: () => apiClient.post("/vehicle/traccar/sync/"),
   getTraccarConfig: () => apiClient.get("/vehicle/traccar/config/"),

@@ -10,7 +10,13 @@ export const usersAPI = {
   update: (id: number | string, data: Payload) => apiClient.put(`/users/${id}/`, data),
   delete: (id: number | string) => apiClient.delete(`/users/${id}/`),
 
-  dashboardSummary: () => apiClient.get("/users/dashboard/summary/"),
+  downloadUsers: (params?: Params) =>
+    apiClient.get("/users/export/", {
+      params,
+      responseType: "blob",
+    }),
+  dashboardSummary: (params?: Params) =>
+    apiClient.get("/users/dashboard/summary/", { params }),
 
   listDrivers: (params?: Params) => apiClient.get("/users/drivers/", { params }),
   getDriver: (id: number | string) => apiClient.get(`/users/drivers/${id}/`),
@@ -18,6 +24,11 @@ export const usersAPI = {
   updateDriver: (id: number | string, data: Payload) =>
     apiClient.patch(`/users/drivers/${id}/`, data),
   deleteDriver: (id: number | string) => apiClient.delete(`/users/drivers/${id}/`),
+  downloadDrivers: (params?: Params) =>
+    apiClient.get("/users/drivers/export/", {
+      params,
+      responseType: "blob",
+    }),
 
   listAccessGroups: (params?: Params) =>
     apiClient.get("/users/access-groups/", { params }),

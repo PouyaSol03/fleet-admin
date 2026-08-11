@@ -128,6 +128,7 @@ export default function Users() {
   const [submitting, setSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   const canView = hasPermission(user, 'users.view');
   const canCreate = hasPermission(user, 'users.create');
@@ -146,6 +147,25 @@ export default function Users() {
 
     return params;
   }, [debouncedSearch, accessGroupFilter, statusFilter, superadminFilter]);
+
+  const handleDownload = async () => {
+    try {
+      setDownloading(true);
+      const response = await usersAPI.downloadUsers(userListParams);
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'users_export.xlsx';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(extractApiError(err, 'دریافت فایل خروجی انجام نشد.'));
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const loadUsers = async (params = {}) => {
     const usersResponse = await usersAPI.list(params);
@@ -523,7 +543,7 @@ export default function Users() {
         </div>
       </SectionCard>
 
-      <SectionCard title="کاربران" subtitle={`${rows.length} کاربر`} actions={<DataTableExportButton />}>
+      <SectionCard title="کاربران" subtitle={`${rows.length} کاربر`} actions={<DataTableExportButton onClick={handleDownload} disabled={downloading} />}>
         {loading || searchPending ? (
           <UsersTableSkeleton />
         ) : (

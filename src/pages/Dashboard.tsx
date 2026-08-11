@@ -1,4 +1,4 @@
-import { memo, type ComponentType, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, type ComponentType, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   BarChart3,
@@ -39,10 +39,12 @@ type SummaryCard = {
 };
 
 type FuelCardData = {
+  key?: string;
   title?: string;
   desc?: string;
   price?: number | string | null;
   percent?: number | string | null;
+  defaultValue?: string;
 };
 
 type ChartDetail = {
@@ -56,6 +58,12 @@ type DashboardChart = {
   income?: Array<number | string | null>;
   cost?: Array<number | string | null>;
   details?: ChartDetail[];
+  title?: string;
+  subtitle?: string;
+  incomeLabel?: string;
+  costLabel?: string;
+  activeKey?: string;
+  period?: string;
 };
 
 type DashboardData = {
@@ -117,6 +125,44 @@ const fuelTitleMap: Record<string, string> = {
   "Route efficiency": "بهره وری مسیر",
 };
 
+const chartTitleMap: Record<string, string> = {
+  "Financial trend": "روند درآمد و هزینه",
+  "Fuel usage": "مصرف سوخت",
+  "Fuel budget": "بودجه سوخت",
+  "Maintenance impact": "اثر تعمیرات",
+  "Route efficiency": "بهره وری مسیر",
+};
+
+const chartSubtitleMap: Record<string, string> = {
+  "Income and cost comparison in selected range": "مقایسه درآمد و هزینه در بازه انتخابی",
+  "Estimated fuel usage and fuel cost in selected range": "مصرف سوخت و هزینه تخمینی در بازه انتخابی",
+  "Estimated fuel budget and buffered budget in selected range": "بودجه سوخت و بودجه با ذخیره احتیاطی در بازه انتخابی",
+  "Inspection repair count and estimated maintenance impact": "تعداد بازرسی های نیازمند تعمیر و اثر تخمینی تعمیرات",
+  "Completed mission kilometers and mission count": "کیلومتر ماموریت های تکمیل شده و تعداد ماموریت ها",
+};
+
+const chartSeriesLabelMap: Record<string, string> = {
+  Income: "درآمد",
+  Cost: "هزینه",
+  "Fuel liters": "لیتر سوخت",
+  "Fuel cost": "هزینه سوخت",
+  "Fuel budget": "بودجه سوخت",
+  "Buffered budget": "بودجه احتیاطی",
+  "Repair count": "تعداد تعمیر",
+  "Estimated impact": "اثر تخمینی",
+  Kilometers: "کیلومتر",
+  "Done missions": "ماموریت انجام شده",
+};
+
+const periodLabelMap: Record<string, string> = {
+  daily: "روزانه",
+  weekly: "هفتگی",
+  month: "ماهیانه",
+  year: "سالیانه",
+};
+
+const fuelCardKeys = ["fuelUsage", "fuelBudget", "maintenanceImpact", "routeEfficiency"] as const;
+
 const fuelDescMap: Record<string, string> = {
   "Estimated fuel usage in selected range": "برآورد مصرف سوخت در بازه انتخابی",
   "Estimated budget by vehicle mileage": "برآورد بودجه بر اساس کارکرد خودرو",
@@ -139,6 +185,13 @@ const detailLabels: Record<string, string> = {
   income: "درآمد",
   cost: "هزینه",
   vehicleTypes: "انواع وسیله نقلیه",
+};
+
+const detailUnitMap: Record<string, string> = {
+  count: "عدد",
+  IRR: "تومان",
+  km: "کیلومتر",
+  liters: "لیتر",
 };
 
 const chartDetailConfig: Record<string, { label: string; icon: "contact" | "money" | "card" | "user" }> = {
@@ -179,6 +232,32 @@ function formatCompactChartValue(value: number) {
   if (value >= 1_000_000) return `${formatNumber(Math.round((value / 1_000_000) * 10) / 10)}M`;
   if (value >= 1_000) return `${formatNumber(Math.round((value / 1_000) * 10) / 10)}K`;
   return formatNumber(value);
+}
+
+function parseChartDate(value: unknown) {
+  const rawValue = String(value || "").trim();
+  const dateOnlyMatch = rawValue.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+  if (dateOnlyMatch) {
+    const [, year, month, day] = dateOnlyMatch;
+    return new Date(Number(year), Number(month) - 1, Number(day));
+  }
+
+  return new Date(rawValue);
+}
+
+function formatChartCategory(value: unknown, period = "month") {
+  const date = parseChartDate(value);
+  if (Number.isNaN(date.getTime())) return String(value || "");
+
+  const options: Intl.DateTimeFormatOptions =
+    period === "year"
+      ? { year: "numeric" }
+      : period === "month"
+        ? { year: "2-digit", month: "short" }
+        : { month: "2-digit", day: "2-digit" };
+
+  return new Intl.DateTimeFormat("fa-IR-u-ca-persian-nu-latn", options).format(date);
 }
 
 function ChartDetailIcon({ type }: { type: "contact" | "money" | "card" | "user" }) {
@@ -266,7 +345,7 @@ function ChartMetricCard({ item, index }: { item: ChartDetail; index: number }) 
     label: detailLabels[String(item?.key || "")] || String(item?.key || ""),
     icon: "contact" as const,
   };
-  const unit = item?.unit || (item?.key === "income" || item?.key === "cost" ? "تومان" : "عدد");
+  const unit = detailUnitMap[String(item?.unit || "")] || item?.unit || (item?.key === "income" || item?.key === "cost" ? "تومان" : "عدد");
 
   return (
     <SectionCard
@@ -331,14 +410,26 @@ function FuelCard({
   desc = "متن توضیح",
   price = 9000000,
   percent = 52,
-}: FuelCardData) {
-  const [period, setPeriod] = useState("month");
+  period = "month",
+  active = false,
+  onPeriodChange,
+  onShowChart,
+}: FuelCardData & {
+  period?: string;
+  active?: boolean;
+  onPeriodChange?: (period: string) => void;
+  onShowChart?: () => void;
+}) {
   const normalizedPercent = Number(percent || 0);
   const positive = normalizedPercent >= 0;
 
   return (
     <SectionCard
-      className="fleet-dashboard-card group relative flex min-h-[122px] w-full min-w-0 flex-col items-start justify-between overflow-visible !rounded-xl border border-white/70 !bg-white/60 !px-3 !py-2.5 transition duration-150 hover:z-20 hover:border-white hover:!bg-white/75 focus-within:z-20 sm:min-h-[136px] sm:!rounded-2xl sm:!px-4 sm:!py-3"
+      className={`fleet-dashboard-card group relative flex min-h-[122px] w-full min-w-0 flex-col items-start justify-between overflow-visible !rounded-xl border !px-3 !py-2.5 transition duration-150 hover:z-20 focus-within:z-20 sm:min-h-[136px] sm:!rounded-2xl sm:!px-4 sm:!py-3 ${
+        active
+          ? "border-[#206AB4]/35 !bg-white/80 shadow-[0_16px_34px_rgba(32,106,180,0.14)]"
+          : "border-white/70 !bg-white/60 hover:border-white hover:!bg-white/75"
+      }`}
     >
       <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
         <div className="absolute -left-8 -top-10 h-24 w-24 rounded-full bg-[#206AB4]/10 blur-lg transition duration-150 group-hover:bg-[#206AB4]/16" />
@@ -354,7 +445,7 @@ function FuelCard({
         <div className="h-7 w-[86px] shrink-0 sm:h-8 sm:w-24">
           <ToolbarSelect
             value={period}
-            onChange={(event) => setPeriod(event.target.value)}
+            onChange={(event) => onPeriodChange?.(event.target.value)}
             className="[&>button]:h-7 sm:[&>button]:h-8 [&>button]:cursor-pointer [&>button]:rounded-lg sm:[&>button]:rounded-xl [&>button]:border [&>button]:border-white/70 [&>button]:bg-white/55 [&>button]:px-2 [&>button]:text-xs sm:[&>button]:text-sm [&>button]:font-bold [&>button]:text-slate-700 [&>button]:shadow-sm [&>button]:backdrop-blur-sm [&>button_span]:whitespace-nowrap [&>button_svg]:h-4 [&>button_svg]:w-4 sm:[&>button_svg]:h-5 sm:[&>button_svg]:w-5"
           >
             <option value="daily">روزانه</option>
@@ -385,7 +476,13 @@ function FuelCard({
       <div className="relative flex w-full items-center justify-center">
         <button
           type="button"
-          className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-white/70 bg-white/55 px-3 py-1.5 text-[11px] font-black text-slate-700 shadow-sm backdrop-blur-sm transition hover:bg-[#206AB4] hover:text-white focus:outline-none focus:ring-2 focus:ring-[#206AB4]/30 sm:px-4 sm:py-2 sm:text-xs"
+          aria-pressed={active}
+          onClick={onShowChart}
+          className={`inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-black shadow-sm backdrop-blur-sm transition focus:outline-none focus:ring-2 focus:ring-[#206AB4]/30 sm:px-4 sm:py-2 sm:text-xs ${
+            active
+              ? "border-[#206AB4] bg-[#206AB4] text-white"
+              : "border-white/70 bg-white/55 text-slate-700 hover:bg-[#206AB4] hover:text-white"
+          }`}
         >
           نمایش چارت
           <BarChart3 className="h-4 w-4" strokeWidth={2.35} aria-hidden="true" />
@@ -411,16 +508,24 @@ function LineChart({ chart }: { chart: DashboardChart }) {
   const chartData = useMemo(() => {
     const chartLength = Math.max(categories.length, income.length, cost.length, 1);
     return Array.from({ length: chartLength }, (_, index) => ({
-      category: String(categories[index] || `#${index + 1}`),
+      category: categories[index] ? formatChartCategory(categories[index], chart.period) : `#${index + 1}`,
       income: Number(income[index] || 0),
       cost: Number(cost[index] || 0),
     }));
-  }, [categories, cost, income]);
+  }, [categories, chart.period, cost, income]);
 
   const incomeTotal = useMemo(() => income.reduce((sum, value) => sum + Number(value || 0), 0), [income]);
   const costTotal = useMemo(() => cost.reduce((sum, value) => sum + Number(value || 0), 0), [cost]);
   const hasRealValue = useMemo(() => chartData.some((item) => item.income > 0 || item.cost > 0), [chartData]);
   const yDomain: [number, number | "auto"] = hasRealValue ? [0, "auto"] : [0, 10];
+  const chartTitle = chartTitleMap[String(chart.title || "")] || chart.title || "روند درآمد و هزینه";
+  const chartSubtitle =
+    chartSubtitleMap[String(chart.subtitle || "")] ||
+    chart.subtitle ||
+    "مقایسه سریع وضعیت مالی در بازه انتخابی";
+  const incomeLabel =
+    chartSeriesLabelMap[String(chart.incomeLabel || "")] || chart.incomeLabel || "درآمد";
+  const costLabel = chartSeriesLabelMap[String(chart.costLabel || "")] || chart.costLabel || "هزینه";
 
   const renderTooltip = useCallback(({ active, payload, label }: { active?: boolean; payload?: ReadonlyArray<{ color?: string; name?: string | number; value?: unknown }>; label?: string | number }) => {
     if (!active || !payload?.length) return null;
@@ -445,18 +550,18 @@ function LineChart({ chart }: { chart: DashboardChart }) {
     <SectionCard className="fleet-dashboard-card flex w-full min-w-0 flex-col overflow-hidden !rounded-xl border border-white/75 !bg-white/65 !p-2.5 sm:!rounded-2xl sm:!p-3 xl:h-full">
       <div className="flex flex-col gap-2 border-b border-slate-100/80 pb-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <p className="text-sm font-black text-slate-950 sm:text-base">روند درآمد و هزینه</p>
+          <p className="text-sm font-black text-slate-950 sm:text-base">{chartTitle}</p>
           <p className="mt-1 text-[11px] font-bold text-slate-500 sm:text-xs">
-            مقایسه سریع وضعیت مالی در بازه انتخابی
+            {chartSubtitle}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
           <div className="rounded-full border border-[#206AB4]/15 bg-[#206AB4]/8 px-2.5 py-1 text-[11px] font-black text-[#206AB4] sm:px-3 sm:py-1.5 sm:text-xs">
-            درآمد: {formatCompactChartValue(incomeTotal)}
+            {incomeLabel}: {formatCompactChartValue(incomeTotal)}
           </div>
           <div className="rounded-full border border-[#E05B1A]/15 bg-[#E05B1A]/8 px-2.5 py-1 text-[11px] font-black text-[#C94D12] sm:px-3 sm:py-1.5 sm:text-xs">
-            هزینه: {formatCompactChartValue(costTotal)}
+            {costLabel}: {formatCompactChartValue(costTotal)}
           </div>
         </div>
       </div>
@@ -473,7 +578,7 @@ function LineChart({ chart }: { chart: DashboardChart }) {
               <Line
                 type="monotone"
                 dataKey="income"
-                name="درآمد"
+                name={incomeLabel}
                 stroke="#206AB4"
                 strokeWidth={3}
                 dot={{
@@ -494,7 +599,7 @@ function LineChart({ chart }: { chart: DashboardChart }) {
               <Line
                 type="monotone"
                 dataKey="cost"
-                name="هزینه"
+                name={costLabel}
                 stroke="#E05B1A"
                 strokeWidth={3}
                 dot={{
@@ -519,10 +624,17 @@ function LineChart({ chart }: { chart: DashboardChart }) {
   );
 }
 
-function ChartWithDetails({ chart = fallbackDashboard.chart }: { chart?: DashboardChart }) {
-  const [startDate, setStartDate] = useState("select");
-  const [endDate, setEndDate] = useState("select");
+function ChartWithDetails({
+  chart = fallbackDashboard.chart,
+  period = "month",
+  onPeriodChange,
+}: {
+  chart?: DashboardChart;
+  period?: string;
+  onPeriodChange?: (period: string) => void;
+}) {
   const details = (Array.isArray(chart?.details) ? chart.details : fallbackDashboard.chart.details ?? []).slice(0, 4);
+  const periodLabel = periodLabelMap[period] || periodLabelMap.month;
 
   return (
     <SectionCard
@@ -533,28 +645,16 @@ function ChartWithDetails({ chart = fallbackDashboard.chart }: { chart?: Dashboa
           <h2 className="text-base font-black leading-7 text-slate-950 sm:text-xl sm:leading-[30px]">نمودار بر اساس تاریخ</h2>
           <TooltipHint label="نمودار درآمد و هزینه را در بازه انتخابی نشان می دهد." />
         </div>
-        <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-3 lg:w-auto lg:flex-none">
-          <div className="h-8 min-w-0">
+        <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-end lg:w-auto">
+          <span className="rounded-full border border-white/70 bg-white/55 px-3 py-1 text-xs font-black leading-6 text-slate-600 shadow-sm backdrop-blur-sm sm:text-sm">
+            بازه: {periodLabel}
+          </span>
+          <div className="h-8 min-w-[140px]">
             <ToolbarSelect
-              value={startDate}
-              onChange={(event) => setStartDate(event.target.value)}
+              value={period}
+              onChange={(event) => onPeriodChange?.(event.target.value)}
               className="[&>button]:h-8 [&>button]:cursor-pointer [&>button]:rounded-xl [&>button]:border [&>button]:border-white/70 [&>button]:bg-white/55 [&>button]:px-2 [&>button]:text-sm [&>button]:font-bold [&>button]:text-slate-700 [&>button]:shadow-sm [&>button]:backdrop-blur-sm [&>button_span]:whitespace-nowrap [&>button_svg]:h-5 [&>button_svg]:w-5"
             >
-              <option value="select">انتخاب تاریخ</option>
-              <option value="daily">روزانه</option>
-              <option value="weekly">هفتگی</option>
-              <option value="month">ماهیانه</option>
-              <option value="year">سالیانه</option>
-            </ToolbarSelect>
-          </div>
-          <span className="rounded-full border border-white/70 bg-white/55 px-3 py-1 text-sm font-black leading-6 text-slate-600 shadow-sm backdrop-blur-sm">تا</span>
-          <div className="h-8 min-w-0">
-            <ToolbarSelect
-              value={endDate}
-              onChange={(event) => setEndDate(event.target.value)}
-              className="[&>button]:h-8 [&>button]:cursor-pointer [&>button]:rounded-xl [&>button]:border [&>button]:border-white/70 [&>button]:bg-white/55 [&>button]:px-2 [&>button]:text-sm [&>button]:font-bold [&>button]:text-slate-700 [&>button]:shadow-sm [&>button]:backdrop-blur-sm [&>button_span]:whitespace-nowrap [&>button_svg]:h-5 [&>button_svg]:w-5"
-            >
-              <option value="select">انتخاب تاریخ</option>
               <option value="daily">روزانه</option>
               <option value="weekly">هفتگی</option>
               <option value="month">ماهیانه</option>
@@ -620,6 +720,27 @@ export default function Dashboard() {
   const [dashboardData, setDashboardData] = useState<DashboardData>(fallbackDashboard);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [fuelPeriods, setFuelPeriods] = useState<Record<string, string>>({
+    fuelUsage: "month",
+    fuelBudget: "month",
+    maintenanceImpact: "month",
+    routeEfficiency: "month",
+  });
+  const [activeChartKey, setActiveChartKey] = useState("financial");
+  const [chartPeriod, setChartPeriod] = useState("month");
+  const chartRef = useRef<HTMLDivElement>(null);
+
+  const dashboardQueryParams = useMemo(
+    () => ({
+      chartKey: activeChartKey,
+      chartPeriod,
+      fuelUsagePeriod: fuelPeriods.fuelUsage,
+      fuelBudgetPeriod: fuelPeriods.fuelBudget,
+      maintenanceImpactPeriod: fuelPeriods.maintenanceImpact,
+      routeEfficiencyPeriod: fuelPeriods.routeEfficiency,
+    }),
+    [activeChartKey, chartPeriod, fuelPeriods],
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -627,7 +748,7 @@ export default function Dashboard() {
     const fetchDashboard = async () => {
       try {
         setLoading(true);
-        const response = await usersAPI.dashboardSummary();
+        const response = await usersAPI.dashboardSummary(dashboardQueryParams);
         if (isMounted && response?.data) {
           setDashboardData((prev) => ({
             ...prev,
@@ -650,7 +771,7 @@ export default function Dashboard() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [dashboardQueryParams]);
 
   const cards = useMemo(
     () => (Array.isArray(dashboardData?.cards) ? dashboardData.cards : fallbackDashboard.cards),
@@ -659,7 +780,13 @@ export default function Dashboard() {
 
   const fuelCards = useMemo(() => {
     const source = Array.isArray(dashboardData?.fuelCards) ? dashboardData.fuelCards : fallbackDashboard.fuelCards;
-    return fallbackDashboard.fuelCards.map((fallback, index) => localizeFuelCard(source[index] || fallback));
+    return fallbackDashboard.fuelCards.map((fallback, index) => {
+      const card = localizeFuelCard(source[index] || fallback);
+      return {
+        ...card,
+        key: card.key || fallback.key || fuelCardKeys[index] || `fuel-${index}`,
+      };
+    });
   }, [dashboardData]);
 
   const announcements = useMemo(
@@ -668,6 +795,44 @@ export default function Dashboard() {
         ? dashboardData.announcements.map(localizeAnnouncement)
         : fallbackDashboard.announcements.map(localizeAnnouncement),
     [dashboardData],
+  );
+
+  const handleFuelPeriodChange = useCallback(
+    (cardKey: string, period: string) => {
+      setFuelPeriods((prev) => ({
+        ...prev,
+        [cardKey]: period,
+      }));
+
+      if (activeChartKey === cardKey) {
+        setChartPeriod(period);
+      }
+    },
+    [activeChartKey],
+  );
+
+  const handleShowFuelChart = useCallback(
+    (cardKey: string) => {
+      const nextPeriod = fuelPeriods[cardKey] || "month";
+      setActiveChartKey(cardKey);
+      setChartPeriod(nextPeriod);
+      window.setTimeout(() => chartRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+    },
+    [fuelPeriods],
+  );
+
+  const handleChartPeriodChange = useCallback(
+    (period: string) => {
+      setChartPeriod(period);
+
+      if (activeChartKey !== "financial") {
+        setFuelPeriods((prev) => ({
+          ...prev,
+          [activeChartKey]: period,
+        }));
+      }
+    },
+    [activeChartKey],
   );
 
   if (!hasPermission(user, "dashboard.view")) {
@@ -697,13 +862,24 @@ export default function Dashboard() {
       </div>
 
       <div className="relative z-20 grid w-full grid-cols-1 gap-2.5 sm:gap-4 md:grid-cols-2 2xl:grid-cols-4">
-        {fuelCards.map((card, index) => (
-          <FuelCard key={`${card.title}-${index}`} {...card} />
-        ))}
+        {fuelCards.map((card, index) => {
+          const cardKey = card.key || fuelCardKeys[index] || `fuel-${index}`;
+          const { key: _cardKey, ...cardProps } = card;
+          return (
+            <FuelCard
+              key={`${cardKey}-${card.title}`}
+              {...cardProps}
+              period={fuelPeriods[cardKey] || card.defaultValue || "month"}
+              active={activeChartKey === cardKey}
+              onPeriodChange={(period) => handleFuelPeriodChange(cardKey, period)}
+              onShowChart={() => handleShowFuelChart(cardKey)}
+            />
+          );
+        })}
       </div>
 
-      <div className="relative z-10 flex w-full items-stretch justify-center lg:min-h-0 lg:flex-1">
-        <ChartWithDetails chart={dashboardData.chart} />
+      <div ref={chartRef} className="relative z-10 flex w-full items-stretch justify-center lg:min-h-0 lg:flex-1">
+        <ChartWithDetails chart={dashboardData.chart} period={chartPeriod} onPeriodChange={handleChartPeriodChange} />
       </div>
       <div className="relative z-20 w-full">
         <ScrollingText texts={announcements} />

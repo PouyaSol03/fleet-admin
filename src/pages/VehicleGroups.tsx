@@ -29,6 +29,7 @@ export default function VehicleGroups() {
   const { user } = useAuth();
   const [rows, setRows] = useState([]);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
@@ -44,8 +45,17 @@ export default function VehicleGroups() {
   const canUpdate = hasPermission(user, 'vehicle_groups.update');
   const canDelete = hasPermission(user, 'vehicle_groups.delete');
 
-  const loadData = async () => {
-    const response = await vehiclesAPI.listGroups();
+  const groupListParams = useMemo(() => {
+    const params = {};
+    const query = debouncedSearch.trim();
+
+    if (query) params.search = query;
+
+    return params;
+  }, [debouncedSearch]);
+
+  const loadData = async (params = groupListParams) => {
+    const response = await vehiclesAPI.listGroups(params);
     setRows(normalizeCollection(response.data));
   };
 
@@ -66,7 +76,15 @@ export default function VehicleGroups() {
     return () => {
       mounted = false;
     };
-  }, [canView]);
+  }, [canView, groupListParams]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 400);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [search]);
 
   const filteredRows = useMemo(() => rows.filter((row) => [row.name, row.description].some((value) => String(value || '').toLowerCase().includes(search.toLowerCase()))), [rows, search]);
 
@@ -148,7 +166,7 @@ export default function VehicleGroups() {
         <ToolbarInput placeholder="جستجو بر اساس نام یا توضیحات" value={search} onChange={(event) => setSearch(event.target.value)} />
       </SectionCard>
       <SectionCard title="فهرست گروه ها">
-        {loading ? <LoadingState/> : <DataTable columns={columns} rows={filteredRows} emptyTitle="گروهی برای نمایش وجود ندارد." />}
+        {loading || search.trim() !== debouncedSearch.trim() ? <LoadingState/> : <DataTable columns={columns} rows={filteredRows} emptyTitle="گروهی برای نمایش وجود ندارد." />}
       </SectionCard>
       <Modal open={modalOpen} title={editingId ? 'ویرایش گروه' : 'ایجاد گروه'} onClose={() => setModalOpen(false)}>
         <form onSubmit={handleSubmit} className="space-y-5">

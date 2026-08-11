@@ -230,6 +230,33 @@ textarea:disabled,
   accent-color: #206ab4;
 }
 
+.compact-driver-date-picker .rmdp-container {
+  width: 100%;
+}
+
+.compact-driver-date-picker .fleet-control {
+  height: 44px;
+  border-radius: 6px;
+  padding-right: 44px;
+  font-size: 14px;
+}
+
+.compact-driver-date-picker > div > span {
+  height: 42px;
+  width: 40px;
+  border-radius: 0 6px 6px 0;
+}
+
+@media (min-width: 768px) {
+  .compact-driver-date-picker .fleet-control {
+    height: 40px;
+  }
+
+  .compact-driver-date-picker > div > span {
+    height: 38px;
+  }
+}
+
 @media (max-width: 640px) {
   .fleet-modal-panel {
     max-height: 96dvh;
