@@ -24,6 +24,7 @@ export default function SplashScreen({
   const [isOffline, setIsOffline] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [internalProgress, setInternalProgress] = useState(persistedProgress);
+  const [showWelcome, setShowWelcome] = useState(false);
   const [animationKey, setAnimationKey] = useState(0);
 
   /*
@@ -86,13 +87,13 @@ export default function SplashScreen({
           return 92;
         }
 
-        const increase = Math.floor(Math.random() * 5) + 2;
+        const increase = Math.floor(Math.random() * 5) + 5;
         const nextProgress = Math.min(currentProgress + increase, 92);
         persistedProgress = nextProgress;
 
         return nextProgress;
       });
-    }, 350);
+    }, 120);
 
     return () => {
       window.clearInterval(interval);
@@ -100,29 +101,97 @@ export default function SplashScreen({
   }, [progress, state, isOffline, animationKey]);
 
   /*
-   * Complete splash when the application becomes ready.
+   * "success" means the app is ready, not that the visual progress is done.
+   * Finish the remaining progress smoothly instead of jumping straight to 100%.
    */
   useEffect(() => {
-    if (state !== "success" || isOffline) {
+    if (state !== "success" || isOffline || progress !== undefined) {
+      return;
+    }
+
+    const startProgress = Math.min(Math.max(persistedProgress, 0), 100);
+
+    if (startProgress >= 100) {
+      return;
+    }
+
+    const startedAt = performance.now();
+    const duration = shouldReduceMotion ? 100 : 420;
+    let frameId = 0;
+
+    const finishProgress = (now: number) => {
+      const elapsed = now - startedAt;
+      const ratio = Math.min(elapsed / duration, 1);
+      const easedRatio = 1 - Math.pow(1 - ratio, 3);
+      const nextProgress = startProgress + (100 - startProgress) * easedRatio;
+
+      persistedProgress = nextProgress;
+      setInternalProgress(nextProgress);
+
+      if (ratio < 1) {
+        frameId = window.requestAnimationFrame(finishProgress);
+      } else {
+        persistedProgress = 100;
+        setInternalProgress(100);
+      }
+    };
+
+    frameId = window.requestAnimationFrame(finishProgress);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [state, isOffline, progress, shouldReduceMotion]);
+
+  const displayedProgress = Math.min(
+    Math.max(progress ?? internalProgress, 0),
+    100,
+  );
+
+  /*
+   * Keep the full 100% bar visible briefly, then replace it with the welcome text.
+   */
+  useEffect(() => {
+    if (
+      state !== "success" ||
+      isOffline ||
+      displayedProgress < 100 ||
+      showWelcome
+    ) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setShowWelcome(true);
+    }, shouldReduceMotion ? 40 : 140);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [
+    state,
+    isOffline,
+    displayedProgress,
+    showWelcome,
+    shouldReduceMotion,
+  ]);
+
+  /*
+   * Leave the splash only after the welcome state has actually been shown.
+   */
+  useEffect(() => {
+    if (!showWelcome || isOffline) {
       return;
     }
 
     const timer = window.setTimeout(() => {
       onComplete?.();
-    }, shouldReduceMotion ? 100 : 650);
+    }, shouldReduceMotion ? 100 : 450);
 
     return () => {
       window.clearTimeout(timer);
     };
-  }, [state, isOffline, onComplete, shouldReduceMotion]);
-
-  const displayedProgress =
-    state === "success"
-      ? 100
-      : Math.min(
-          Math.max(progress ?? internalProgress, 0),
-          100,
-        );
+  }, [showWelcome, isOffline, onComplete, shouldReduceMotion]);
 
   const hasProblem = isOffline || state === "error";
   const logoShift = isMobile ? -125 : -220;
@@ -130,6 +199,7 @@ export default function SplashScreen({
   const retry = () => {
     persistedProgress = 5;
     setInternalProgress(5);
+    setShowWelcome(false);
     setAnimationKey((current) => current + 1);
     onRetry?.();
   };
@@ -158,7 +228,8 @@ export default function SplashScreen({
           opacity: 1,
         }}
         transition={{
-          duration: 0.25,
+          duration: shouldReduceMotion ? 0 : 0.25,
+          ease: "easeOut",
         }}
       >
         {/* Logo animation stage */}
@@ -190,14 +261,14 @@ export default function SplashScreen({
                   }
                 : {
                     opacity: [0, 1, 1, 1, 0],
-                    scale: [0.65, 1, 1.28, 1, 1],
+                    scale: [0.78, 1, 1.16, 1, 1],
                     x: [0, 0, 0, logoShift, logoShift],
                   }
             }
             transition={{
-              duration: 2.65,
-              times: [0, 0.16, 0.4, 0.68, 1],
-              ease: [0.22, 1, 0.36, 1],
+              duration: 1.2,
+              times: [0, 0.13, 0.28, 0.66, 1],
+              ease: "easeInOut",
             }}
           />
 
@@ -218,13 +289,14 @@ export default function SplashScreen({
             }}
             transition={{
               opacity: {
-                duration: 0.12,
-                delay: shouldReduceMotion ? 0 : 1.72,
+                duration: shouldReduceMotion ? 0 : 0.22,
+                delay: shouldReduceMotion ? 0 : 0.5,
+                ease: "easeOut",
               },
               clipPath: {
-                duration: shouldReduceMotion ? 0 : 1.05,
-                delay: shouldReduceMotion ? 0 : 1.72,
-                ease: [0.22, 1, 0.36, 1],
+                duration: shouldReduceMotion ? 0 : 0.56,
+                delay: shouldReduceMotion ? 0 : 0.5,
+                ease: [0.16, 1, 0.3, 1],
               },
             }}
           >
@@ -252,8 +324,9 @@ export default function SplashScreen({
             y: 0,
           }}
           transition={{
-            duration: 0.35,
-            delay: shouldReduceMotion ? 0 : 2.65,
+            duration: shouldReduceMotion ? 0 : 0.3,
+            delay: shouldReduceMotion ? 0 : 0.9,
+            ease: "easeOut",
           }}
         >
           <AnimatePresence mode="wait">
@@ -277,31 +350,49 @@ export default function SplashScreen({
                   duration: 0.2,
                 }}
               >
-                <div className="mb-3 flex items-center justify-between">
-                  <span className="text-sm font-bold text-slate-600">
-                    {state === "success"
-                      ? "آماده ورود"
-                      : "در حال آماده‌سازی..."}
-                  </span>
+                <AnimatePresence mode="wait">
+                  {showWelcome ? (
+                    <motion.p
+                      key="welcome"
+                      className="text-center text-xl font-black text-[#1C39BB]"
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      خوش آمدید
+                    </motion.p>
+                  ) : (
+                    <motion.div
+                      key="progress"
+                      className="w-full"
+                      initial={{ opacity: 1 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: 0.18 }}
+                    >
+                      <div className="mb-3 flex justify-end">
+                        <span className="text-sm font-black tabular-nums text-[#1C39BB]">
+                          {Math.round(displayedProgress)}%
+                        </span>
+                      </div>
 
-                  <span className="text-sm font-black tabular-nums text-[#1C39BB]">
-                    {Math.round(displayedProgress)}%
-                  </span>
-                </div>
-
-                {/* Progress bar */}
-                <div className="h-2.5 w-full overflow-hidden rounded-full bg-[#1C39BB]/10">
-                  <div
-                    className="h-full origin-left rounded-full bg-[#1C39BB]"
-                    style={{
-                      transform: `scaleX(${
-                        displayedProgress / 100
-                      })`,
-                      transition:
-                        "transform 300ms cubic-bezier(0.22, 1, 0.36, 1)",
-                    }}
-                  />
-                </div>
+                      {/* Progress fills from right to left. */}
+                      <div className="h-2.5 w-full overflow-hidden rounded-full bg-[#1C39BB]/10">
+                        <div
+                          className="h-full origin-right rounded-full bg-[#1C39BB]"
+                          style={{
+                            transform: `scaleX(${
+                              displayedProgress / 100
+                            })`,
+                            transition:
+                              "transform 220ms cubic-bezier(0.22, 1, 0.36, 1)",
+                          }}
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.div>
             ) : (
               <motion.div
@@ -320,7 +411,7 @@ export default function SplashScreen({
                   scale: 0.96,
                 }}
                 transition={{
-                  duration: 0.25,
+                  duration: 0.15,
                 }}
               >
                 <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1C39BB]/10 text-[#1C39BB]">
