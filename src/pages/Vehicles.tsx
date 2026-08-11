@@ -6,8 +6,13 @@ import { vehiclesAPI } from '../api/vehicles';
 import { useAuth } from '../context/AuthContext';
 import { hasPermission } from '../utils/permissions';
 import { extractApiError, formatNumber, normalizeCollection } from '../utils/formatters';
-import { formatPlateForStorage } from '../utils/iranPlate';
-import { IranPlateDisplay, IranPlateInput } from '../components/shared/IranPlate';
+import {
+  formatNumberPlate,
+  formatPlateForStorage,
+  parseNumberPlate,
+  PLATE_ALPHABETS,
+} from '../utils/licensePlate';
+import LicensePlateWithData, { LicensePlate } from '../components/shared/LicensePlate';
 import {
   AccessDenied,
   Badge,
@@ -25,7 +30,6 @@ import {
   SectionCard,
   ToolbarInput,
   ToolbarSelect,
-  LoadingState,
   DataTableExportButton,
 } from '../components/shared/UI';
 
@@ -85,6 +89,34 @@ function getVehicleSearchValues(row) {
     row.insuranceExpiryDate,
     row.replacedParts,
   ];
+}
+
+
+function VehiclesTableSkeleton() {
+  return (
+    <div className="w-full overflow-hidden rounded-xl border border-[#E6E6E6] bg-white">
+      <div className="min-w-[64rem] animate-pulse">
+        <div className="grid grid-cols-[1.1fr_1.6fr_1.1fr_1fr_1fr_1.2fr_1fr_1fr_.9fr_.7fr] gap-4 border-b border-[#EFEFEF] bg-[#F8FAFC] px-4 py-4">
+          {Array.from({ length: 10 }).map((_, index) => (
+            <div key={index} className="h-3 rounded-full bg-[#E5E7EB]" />
+          ))}
+        </div>
+        {Array.from({ length: 6 }).map((_, rowIndex) => (
+          <div
+            key={rowIndex}
+            className="grid grid-cols-[1.1fr_1.6fr_1.1fr_1fr_1fr_1.2fr_1fr_1fr_.9fr_.7fr] items-center gap-4 border-b border-[#F1F5F9] px-4 py-4 last:border-b-0"
+          >
+            {Array.from({ length: 10 }).map((_, cellIndex) => (
+              <div
+                key={cellIndex}
+                className={`${cellIndex === 1 ? 'h-10 w-full rounded-md' : 'h-4 rounded-full'} bg-[#EEF2F7] ${cellIndex === 9 ? 'w-12' : cellIndex === 1 ? '' : 'w-4/5'}`}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export default function Vehicles() {
@@ -304,9 +336,27 @@ export default function Vehicles() {
     on_mission: 'در ماموریت',
   };
 
+  const parsedFormPlate = parseNumberPlate(formData.plateNumber) || {};
+  const formPlateAlphabet = parsedFormPlate.alphabet || PLATE_ALPHABETS[0] || '';
+  const tableLoading = loading || search.trim() !== debouncedSearch.trim();
+
+  const updateFormPlate = (nextPart) => {
+    const current = parseNumberPlate(formData.plateNumber) || {};
+    const nextPlate = {
+      ...current,
+      alphabet: current.alphabet || formPlateAlphabet,
+      ...nextPart,
+    };
+
+    setFormData((prev) => ({
+      ...prev,
+      plateNumber: formatNumberPlate(nextPlate),
+    }));
+  };
+
   const columns = [
     { key: 'model', title: 'مدل' },
-    { key: 'plateNumber', title: 'پلاک', render: (value) => <IranPlateDisplay value={value} /> },
+    { key: 'plateNumber', title: 'پلاک', render: (value) => <LicensePlateWithData numberplate={value} readOnly /> },
     { key: 'imei', title: 'IMEI' },
     { key: 'typeName', title: 'نوع' },
     { key: 'groupName', title: 'گروه' },
@@ -358,7 +408,7 @@ export default function Vehicles() {
       </SectionCard>
 
       <SectionCard title="فهرست خودروها">
-        {loading || search.trim() !== debouncedSearch.trim() ? <LoadingState /> : <DataTable columns={columns} rows={filteredRows} emptyTitle="خودرویی برای نمایش وجود ندارد." />}
+        {tableLoading ? <VehiclesTableSkeleton /> : <DataTable columns={columns} rows={filteredRows} emptyTitle="خودرویی برای نمایش وجود ندارد." />}
       </SectionCard>
 
       <Modal open={modalOpen} title={formMode === 'edit' ? 'ویرایش خودرو' : 'ثبت خودرو'} onClose={() => setModalOpen(false)}>
@@ -369,7 +419,13 @@ export default function Vehicles() {
               <Input value={formData.model} onChange={(event) => setFormData((prev) => ({ ...prev, model: event.target.value }))} required />
             </Field>
             <Field label="پلاک">
-              <IranPlateInput value={formData.plateNumber} onChange={(plateNumber) => setFormData((prev) => ({ ...prev, plateNumber }))} />
+              <LicensePlate
+                part1={parsedFormPlate.part1 || ''}
+                part2={parsedFormPlate.part2 || ''}
+                alphabet={formPlateAlphabet}
+                regionCode={parsedFormPlate.regionCode || ''}
+                onChange={updateFormPlate}
+              />
             </Field>
             <Field label="نوع خودرو">
               <Select value={formData.typeId} onChange={(event) => setFormData((prev) => ({ ...prev, typeId: event.target.value }))}>
