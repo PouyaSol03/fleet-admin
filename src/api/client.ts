@@ -87,7 +87,10 @@ async function request<T>(
   if (!response.ok) {
     if (response.status === 401) {
       clearAuthTokens();
-      window.location.href = "/login";
+
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
     }
 
     const error = new Error("API request failed") as ApiError;
