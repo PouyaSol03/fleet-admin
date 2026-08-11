@@ -4,6 +4,12 @@ import { FiPhone, FiUserCheck } from "react-icons/fi";
 import { RiLockPasswordLine } from "react-icons/ri";
 import { useNavigate } from "react-router";
 import { authAPI } from "../../api/auth";
+import { clearAuthTokens } from "../../api/client";
+import { getAuthenticatedLandingPath } from "../../app/authRoutes";
+import {
+  clearProfileSession,
+  loadCurrentProfile,
+} from "../../auth/profileSession";
 import { ErrorAlert } from "../../components/shared/UI";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
@@ -114,7 +120,17 @@ export function LoginPage() {
         localStorage.setItem("refresh", data.refresh);
       }
 
-      navigate("/dashboard", { replace: true });
+      clearProfileSession();
+      const profile = await loadCurrentProfile({ force: true });
+
+      if (profile?.isDriver) {
+        clearAuthTokens();
+        clearProfileSession();
+        navigate("/unauthorized", { replace: true });
+        return;
+      }
+
+      navigate(getAuthenticatedLandingPath(profile), { replace: true });
     } catch (err: unknown) {
       setErrors(err as LoginErrors);
       setApiError(

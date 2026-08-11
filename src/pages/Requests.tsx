@@ -6,7 +6,7 @@ import { reportsAPI } from '../api/reports';
 import { usersAPI } from '../api/users';
 import { vehiclesAPI } from '../api/vehicles';
 import { useAuth } from '../context/AuthContext';
-import { hasPermission } from '../utils/permissions';
+import { hasPermission, isSuperAdmin } from '../utils/permissions';
 import { extractApiError, formatDate, normalizeCollection, toBooleanLabel } from '../utils/formatters';
 import { formatPlateForDisplay } from '../utils/iranPlate';
 import {
@@ -134,10 +134,10 @@ export default function Requests() {
   const canCreate = hasPermission(user, 'mission_requests.create');
   const canUpdate = hasPermission(user, 'mission_requests.update');
   const canReview =
-    Boolean(user?.isSuperuser) ||
+    isSuperAdmin(user) ||
     (hasPermission(user, 'missions.create') && hasPermission(user, 'mission_requests.update'));
-  const canLoadDrivers = canReview || Boolean(user?.isSuperuser) || hasPermission(user, 'drivers.view');
-  const canLoadVehicles = canReview || Boolean(user?.isSuperuser) || hasPermission(user, 'vehicles.view');
+  const canLoadDrivers = canReview || isSuperAdmin(user) || hasPermission(user, 'drivers.view');
+  const canLoadVehicles = canReview || isSuperAdmin(user) || hasPermission(user, 'vehicles.view');
 
   const requestListParams = useMemo(() => {
     const params = {};

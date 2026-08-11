@@ -716,7 +716,7 @@ function ScrollingText({ texts, speed = 45 }: { texts: string[]; speed?: number 
 }
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, profileLoading } = useAuth();
   const [dashboardData, setDashboardData] = useState<DashboardData>(fallbackDashboard);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -729,6 +729,7 @@ export default function Dashboard() {
   const [activeChartKey, setActiveChartKey] = useState("financial");
   const [chartPeriod, setChartPeriod] = useState("month");
   const chartRef = useRef<HTMLDivElement>(null);
+  const canViewDashboard = hasPermission(user, "dashboard.view");
 
   const dashboardQueryParams = useMemo(
     () => ({
@@ -746,6 +747,8 @@ export default function Dashboard() {
     let isMounted = true;
 
     const fetchDashboard = async () => {
+      if (profileLoading || !canViewDashboard) return;
+
       try {
         setLoading(true);
         const response = await usersAPI.dashboardSummary(dashboardQueryParams);
@@ -771,7 +774,7 @@ export default function Dashboard() {
     return () => {
       isMounted = false;
     };
-  }, [dashboardQueryParams]);
+  }, [dashboardQueryParams, profileLoading, canViewDashboard]);
 
   const cards = useMemo(
     () => (Array.isArray(dashboardData?.cards) ? dashboardData.cards : fallbackDashboard.cards),
@@ -835,7 +838,9 @@ export default function Dashboard() {
     [activeChartKey],
   );
 
-  if (!hasPermission(user, "dashboard.view")) {
+  if (profileLoading) return <DashboardSkeleton />;
+
+  if (!canViewDashboard) {
     return <AccessDenied />;
   }
 

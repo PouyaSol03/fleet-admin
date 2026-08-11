@@ -8,11 +8,17 @@ import {
 import { authAPI } from "../api/auth";
 import { API_BASE_URL, clearAuthTokens, getAccessToken } from "../api/client";
 import { notificationsAPI } from "../api/notifications";
+import {
+  clearProfileSession,
+  getCachedProfile,
+  loadCurrentProfile,
+} from "../auth/profileSession";
 import { DashboardAside } from "../components/dashboardlayout/DashboardAside";
 import { DashboardHeader } from "../components/dashboardlayout/DashboardHeader";
 import { LoadingState } from "../components/shared/UI";
 import { AuthContext, type AuthUser } from "../context/AuthContext";
 import { extractApiError, normalizeCollection } from "../utils/formatters";
+import { isSuperAdmin } from "../utils/permissions";
 
 type Notification = {
   id: number | string;
@@ -118,9 +124,10 @@ function NoPermissionsState({
 }
 
 export function DashboardLayout() {
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const initialProfile = getCachedProfile();
+  const [user, setUser] = useState<AuthUser | null>(initialProfile);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialProfile);
   const [refreshingProfile, setRefreshingProfile] = useState(false);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
   const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
@@ -132,7 +139,7 @@ export function DashboardLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const canUseProtectedFeatures = Boolean(
-    user?.isSuperuser || (user?.permissions?.length ?? 0) > 0,
+    isSuperAdmin(user) || (user?.permissions?.length ?? 0) > 0,
   );
 
   const loadNotifications = useCallback(
@@ -154,18 +161,29 @@ export function DashboardLayout() {
   );
 
   useEffect(() => {
+    if (user) {
+      setLoading(false);
+      return undefined;
+    }
+
+    if (!getAccessToken()) {
+      setLoading(false);
+      navigate("/login", { replace: true });
+      return undefined;
+    }
+
     let mounted = true;
 
-    async function loadProfile() {
+    async function hydrateProfile() {
       try {
         setLoading(true);
-        const response = await authAPI.getProfile();
-        const profile = response.data as AuthUser;
+        const profile = await loadCurrentProfile();
 
         if (!mounted) return;
 
         if (profile?.isDriver) {
           clearAuthTokens();
+          clearProfileSession();
           navigate("/unauthorized", { replace: true });
           return;
         }
@@ -175,6 +193,7 @@ export function DashboardLayout() {
       } catch {
         if (mounted) {
           clearAuthTokens();
+          clearProfileSession();
           navigate("/login", { replace: true });
         }
       } finally {
@@ -182,12 +201,12 @@ export function DashboardLayout() {
       }
     }
 
-    loadProfile();
+    void hydrateProfile();
 
     return () => {
       mounted = false;
     };
-  }, [navigate]);
+  }, [navigate, user]);
 
   useEffect(() => {
     if (!canUseProtectedFeatures) return undefined;
@@ -272,11 +291,11 @@ export function DashboardLayout() {
     setRefreshingProfile(true);
 
     try {
-      const response = await authAPI.getProfile();
-      const profile = response.data as AuthUser;
+      const profile = await loadCurrentProfile({ force: true });
 
       if (profile?.isDriver) {
         clearAuthTokens();
+        clearProfileSession();
         navigate("/unauthorized", { replace: true });
         return;
       }
@@ -285,6 +304,7 @@ export function DashboardLayout() {
       setNotificationError("");
     } catch {
       clearAuthTokens();
+      clearProfileSession();
       navigate("/login", { replace: true });
     } finally {
       setRefreshingProfile(false);
@@ -307,6 +327,7 @@ export function DashboardLayout() {
       socketRef.current?.close();
       socketRef.current = null;
       clearAuthTokens();
+      clearProfileSession();
       setUser(null);
       setNotifications([]);
       setSidebarOpen(false);
@@ -314,10 +335,15 @@ export function DashboardLayout() {
     }
   }
 
-  const contextValue = useMemo(() => ({ user, setUser }), [user]);
+  const contextValue = useMemo(
+    () => ({ user, setUser, profileLoading: loading }),
+    [user, loading],
+  );
   const visiblePermissions = user?.permissions || [];
   const hasNoPermissions = Boolean(user && !canUseProtectedFeatures);
   const unreadCount = notifications.filter((item) => !item.isRead).length;
+  const isDashboardRoute = location.pathname === "/dashboard";
+  const isTrackingRoute = location.pathname === "/tracking";
   const fullBleedMain = location.pathname === "/vehicle-map" || location.pathname === "/missions-calendar";
 
   if (!loading && !user) {
@@ -359,11 +385,11 @@ export function DashboardLayout() {
             onToggleSidebar={() => setSidebarOpen((current) => !current)}
           />
           <main className={`flex h-[calc(100vh-5rem)] min-h-0 bg-[#FAFBFC] ${fullBleedMain ? "p-0" : "p-6"}`}>
-            {loading ? (
+            {loading && !isDashboardRoute ? (
               <div className="flex min-h-0 w-full">
                 <LoadingState message="در حال آماده سازی داشبورد..." />
               </div>
-            ) : hasNoPermissions ? (
+            ) : hasNoPermissions && !isTrackingRoute ? (
               <NoPermissionsState
                 user={user}
                 refreshing={refreshingProfile}

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usersAPI } from '../api/users';
 import { useAuth } from '../context/AuthContext';
-import { hasPermission } from '../utils/permissions';
+import { hasPermission, isSuperAdmin } from '../utils/permissions';
 import { extractApiError, normalizeCollection } from '../utils/formatters';
 import {
   AccessDenied,
@@ -134,7 +134,7 @@ export default function Users() {
   const canCreate = hasPermission(user, 'users.create');
   const canUpdate = hasPermission(user, 'users.update');
   const canDelete = hasPermission(user, 'users.delete');
-  const canAssignSuperuser = Boolean(user?.isSuperuser);
+  const canAssignSuperuser = isSuperAdmin(user);
 
   const userListParams = useMemo(() => {
     const params = {};

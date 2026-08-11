@@ -445,7 +445,7 @@ export default function Vehicles() {
                 {drivers.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
               </Select>
             </Field>
-            <Field label="IMEI" hint="شناسه GPS در Traccar">
+            <Field label="IMEI" hint="شناسه GPS در">
               <Input value={formData.imei} onChange={(event) => setFormData((prev) => ({ ...prev, imei: event.target.value }))} />
             </Field>
             <Field label="ظرفیت">

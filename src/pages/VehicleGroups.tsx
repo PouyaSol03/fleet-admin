@@ -1,4 +1,4 @@
-﻿// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { useEffect, useMemo, useState } from 'react';
 import { vehiclesAPI } from '../api/vehicles';
@@ -12,7 +12,6 @@ import {
   ErrorAlert,
   Field,
   Input,
-  LoadingState,
   Modal,
   PageHeader,
   PrimaryButton,
@@ -24,6 +23,34 @@ import {
 } from '../components/shared/UI';
 
 const emptyForm = { name: '', description: '' };
+
+
+function VehicleGroupsTableSkeleton() {
+  return (
+    <div
+      className="w-full overflow-hidden rounded-xl border border-[#E6E6E6] bg-white"
+      aria-hidden="true"
+    >
+      <div className="min-w-[42rem] animate-pulse">
+        <div className="grid grid-cols-[1fr_2fr_.55fr] gap-4 border-b border-[#EFEFEF] bg-[#F8FAFC] px-4 py-4">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div key={index} className="h-3 w-4/5 rounded-full bg-[#E5E7EB]" />
+          ))}
+        </div>
+        {Array.from({ length: 6 }).map((_, rowIndex) => (
+          <div
+            key={rowIndex}
+            className="grid grid-cols-[1fr_2fr_.55fr] items-center gap-4 border-b border-[#F1F5F9] px-4 py-4 last:border-b-0"
+          >
+            <div className="h-4 w-3/4 rounded-full bg-[#EEF2F7]" />
+            <div className="h-4 w-5/6 rounded-full bg-[#EEF2F7]" />
+            <div className="h-8 w-9 justify-self-center rounded-lg bg-[#EEF2F7]" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function VehicleGroups() {
   const { user } = useAuth();
@@ -166,7 +193,7 @@ export default function VehicleGroups() {
         <ToolbarInput placeholder="جستجو بر اساس نام یا توضیحات" value={search} onChange={(event) => setSearch(event.target.value)} />
       </SectionCard>
       <SectionCard title="فهرست گروه ها">
-        {loading || search.trim() !== debouncedSearch.trim() ? <LoadingState/> : <DataTable columns={columns} rows={filteredRows} emptyTitle="گروهی برای نمایش وجود ندارد." />}
+        {loading || search.trim() !== debouncedSearch.trim() ? <VehicleGroupsTableSkeleton /> : <DataTable columns={columns} rows={filteredRows} emptyTitle="گروهی برای نمایش وجود ندارد." />}
       </SectionCard>
       <Modal open={modalOpen} title={editingId ? 'ویرایش گروه' : 'ایجاد گروه'} onClose={() => setModalOpen(false)}>
         <form onSubmit={handleSubmit} className="space-y-5">

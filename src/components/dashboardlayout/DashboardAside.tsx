@@ -20,12 +20,14 @@ import {
 } from "react-icons/hi2";
 import type { AuthUser } from "../../context/AuthContext";
 import { getProfileDetails } from "../../utils/formatters";
+import { isSuperAdmin } from "../../utils/permissions";
 
 type MenuItem = {
   to: string;
   label: string;
   icon: ComponentType<{ className?: string }>;
   permission: string;
+  superadminOnly?: boolean;
 };
 
 const menuItems: MenuItem[] = [
@@ -34,7 +36,7 @@ const menuItems: MenuItem[] = [
   { to: "/access-groups", label: "گروه دسترسی", icon: HiOutlineKey, permission: "access_groups.view" },
   { to: "/drivers", label: "رانندگان", icon: HiOutlineUserGroup, permission: "drivers.view" },
   { to: "/vehicles", label: "خودروها", icon: HiOutlineTruck, permission: "vehicles.view" },
-  { to: "/tracking", label: "ردیابی خودروها", icon: HiOutlineMap, permission: "map.view" },
+  { to: "/tracking", label: "ردیابی خودروها", icon: HiOutlineMap, permission: "map.view", superadminOnly: true },
   { to: "/vehicle-map", label: "نقشه خودروها", icon: HiOutlineGlobeAsiaAustralia, permission: "map.view" },
   { to: "/vehicle-groups", label: "گروه خودرو", icon: HiOutlineShieldCheck, permission: "vehicle_groups.view" },
   { to: "/vehicle-types", label: "نوع خودرو", icon: HiOutlineWrenchScrewdriver, permission: "vehicle_types.view" },
@@ -66,9 +68,11 @@ export function DashboardAside({
   onLogout,
   isLoggingOut = false,
 }: DashboardAsideProps) {
-  const visibleMenuItems = user?.isSuperuser
-    ? menuItems
-    : menuItems.filter((item) => permissions.includes(item.permission));
+  const superAdmin = isSuperAdmin(user);
+  const visibleMenuItems = menuItems.filter((item) => {
+    if (item.superadminOnly) return superAdmin;
+    return superAdmin || permissions.includes(item.permission);
+  });
 
   const { displayName, avatarLetter, jalaliDate } = getProfileDetails(user);
 

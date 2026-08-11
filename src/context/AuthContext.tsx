@@ -12,16 +12,19 @@ export type AuthUser = {
   parentId?: number | null;
   userType?: string;
   userTypeLabel?: string;
+  authority?: string[];
 };
 
 type AuthContextValue = {
   user: AuthUser | null;
   setUser: (user: AuthUser | null) => void;
+  profileLoading: boolean;
 };
 
 export const AuthContext = createContext<AuthContextValue>({
   user: null,
   setUser: () => undefined,
+  profileLoading: false,
 });
 
 export function useAuth() {

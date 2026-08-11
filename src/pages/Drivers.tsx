@@ -20,7 +20,6 @@ import {
   ErrorAlert,
   Field,
   Input,
-  LoadingState,
   Modal,
   PrimaryButton,
   RowActionMenu,
@@ -58,7 +57,46 @@ function formatPlainDate(value) {
   return value ? formatDate(value) : "";
 }
 
+function DriverMetricSkeletons() {
+  return (
+    <>
+      {Array.from({ length: 2 }).map((_, index) => (
+        <div
+          key={index}
+          className="h-[116px] w-full max-w-[286px] animate-pulse rounded-[10px] bg-white p-4 shadow-[2px_2px_7px_rgba(0,0,0,0.08)]"
+        >
+          <div className="h-4 w-24 rounded-full bg-[#E5E7EB]" />
+          <div className="mt-5 h-7 w-16 rounded-full bg-[#EEF2F7]" />
+          <div className="mt-4 h-3 w-28 rounded-full bg-[#F1F5F9]" />
+        </div>
+      ))}
+    </>
+  );
+}
 
+function DriversRowsSkeleton({ colSpan }) {
+  return (
+    <tr>
+      <td colSpan={colSpan} className="p-0">
+        <div className="min-w-[58rem] animate-pulse">
+          {Array.from({ length: 7 }).map((_, rowIndex) => (
+            <div
+              key={rowIndex}
+              className="grid grid-cols-[.45fr_.7fr_.8fr_1.35fr_1.15fr_.9fr_1fr_1fr_.85fr_.65fr] items-center gap-4 border-b border-[#F1F5F9] px-4 py-4 last:border-b-0"
+            >
+              {Array.from({ length: 10 }).map((_, cellIndex) => (
+                <div
+                  key={cellIndex}
+                  className={`${cellIndex === 3 ? 'h-8 w-full rounded-lg' : 'h-4 rounded-full'} bg-[#EEF2F7] ${cellIndex === 9 ? 'w-10' : cellIndex === 3 ? '' : 'w-4/5'}`}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      </td>
+    </tr>
+  );
+}
 
 export default function Drivers() {
   const { user } = useAuth();
@@ -427,6 +465,7 @@ export default function Drivers() {
     if (!isMobile) count += 1;
     return count;
   }, [visibleKeys, isMobile, canUpdate, canDelete]);
+  const tableLoading = loading || search.trim() !== debouncedSearch.trim();
 
   if (!canView) return <AccessDenied />;
 
@@ -443,8 +482,14 @@ export default function Drivers() {
       <ErrorAlert message={error} onDismiss={() => setError("")} />
 
       <div className="grid w-full grid-cols-1 justify-items-end gap-4 md:grid-cols-2 xl:grid-cols-[286px_286px_1fr]">
-        <DriverMetricCard title="تعداد راننده" value={rows.length} percent={activePercent} />
-        <DriverMetricCard title="میانگین امتیاز" value={averageScore} percent={inactivePercent} />
+        {loading ? (
+          <DriverMetricSkeletons />
+        ) : (
+          <>
+            <DriverMetricCard title="تعداد راننده" value={rows.length} percent={activePercent} />
+            <DriverMetricCard title="میانگین امتیاز" value={averageScore} percent={inactivePercent} />
+          </>
+        )}
       </div>
 
       <div
@@ -584,15 +629,11 @@ export default function Drivers() {
               </tr>
             </thead>
             <tbody>
-              {loading || search.trim() !== debouncedSearch.trim() ? (
-                <tr>
-                  <td colSpan={activeColumnsCount}>
-                    <LoadingState message="در حال دریافت اطلاعات..." className="min-h-[260px]" />
-                  </td>
-                </tr>
+              {tableLoading ? (
+                <DriversRowsSkeleton colSpan={activeColumnsCount} />
               ) : null}
 
-              {!loading && !pagedRows.length ? (
+              {!tableLoading && !pagedRows.length ? (
                 <tr>
                   <td colSpan={activeColumnsCount} className="px-4 py-8 text-center text-[#737373]">
                     راننده ای برای نمایش وجود ندارد.
@@ -600,7 +641,7 @@ export default function Drivers() {
                 </tr>
               ) : null}
 
-              {!loading
+              {!tableLoading
                 ? pagedRows.map((row, rowIndex) => {
                   const isSelected = selectedRows.includes(row.id);
                   const displayName = row.name || row.fullName || "-";

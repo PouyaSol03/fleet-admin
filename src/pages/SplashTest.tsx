@@ -194,7 +194,7 @@ export default function SplashScreen({
   }, [showWelcome, isOffline, onComplete, shouldReduceMotion]);
 
   const hasProblem = isOffline || state === "error";
-  const logoShift = isMobile ? -125 : -220;
+  const logoShift = isMobile ? -125 : -235;
 
   const retry = () => {
     persistedProgress = 5;
@@ -261,13 +261,15 @@ export default function SplashScreen({
                   }
                 : {
                     opacity: [0, 1, 1, 1, 0],
-                    scale: [0.78, 1, 1.16, 1, 1],
+                    scale: [0.78, 1, 1.46, 1.46, 1.46],
                     x: [0, 0, 0, logoShift, logoShift],
                   }
             }
             transition={{
-              duration: 1.2,
-              times: [0, 0.13, 0.28, 0.66, 1],
+              duration: 1.12,
+              // Finish the move first, hold briefly at the destination, then
+              // fade only while the full logo begins its final handoff.
+              times: [0, 0.14, 0.27, 0.7, 1],
               ease: "easeInOut",
             }}
           />
@@ -289,13 +291,15 @@ export default function SplashScreen({
             }}
             transition={{
               opacity: {
-                duration: shouldReduceMotion ? 0 : 0.22,
-                delay: shouldReduceMotion ? 0 : 0.5,
+                duration: shouldReduceMotion ? 0 : 0.14,
+                // Start only at the very end of the small-logo animation.
+                // The tiny overlap prevents a blank-frame flash.
+                delay: shouldReduceMotion ? 0 : 0.9,
                 ease: "easeOut",
               },
               clipPath: {
-                duration: shouldReduceMotion ? 0 : 0.56,
-                delay: shouldReduceMotion ? 0 : 0.5,
+                duration: shouldReduceMotion ? 0 : 0.3,
+                delay: shouldReduceMotion ? 0 : 0.88,
                 ease: [0.16, 1, 0.3, 1],
               },
             }}
@@ -324,8 +328,8 @@ export default function SplashScreen({
             y: 0,
           }}
           transition={{
-            duration: shouldReduceMotion ? 0 : 0.3,
-            delay: shouldReduceMotion ? 0 : 0.9,
+            duration: shouldReduceMotion ? 0 : 0.28,
+            delay: shouldReduceMotion ? 0 : 1.08,
             ease: "easeOut",
           }}
         >
