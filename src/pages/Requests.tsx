@@ -27,8 +27,31 @@ import {
   SectionCard,
   Textarea,
   ToolbarSelect,
-  LoadingState,
 } from '../components/shared/UI';
+
+function RequestsTableSkeleton() {
+  return (
+    <div className="w-full overflow-hidden rounded-xl border border-[#E6E6E6] bg-white" aria-hidden="true">
+      <div className="min-w-[102rem] animate-pulse">
+        <div className="grid grid-cols-[1.2fr_1fr_1.4fr_1.4fr_1.4fr_1.1fr_1.1fr_.9fr_.9fr_1fr_.65fr_.9fr_.75fr] gap-4 border-b border-[#EFEFEF] bg-[#F8FAFC] px-4 py-4">
+          {Array.from({ length: 13 }).map((_, index) => (
+            <div key={index} className="h-3 w-4/5 rounded-full bg-[#E5E7EB]" />
+          ))}
+        </div>
+        {Array.from({ length: 6 }).map((_, rowIndex) => (
+          <div key={rowIndex} className="grid grid-cols-[1.2fr_1fr_1.4fr_1.4fr_1.4fr_1.1fr_1.1fr_.9fr_.9fr_1fr_.65fr_.9fr_.75fr] items-center gap-4 border-b border-[#F1F5F9] px-4 py-4 last:border-b-0">
+            {Array.from({ length: 13 }).map((_, cellIndex) => (
+              <div
+                key={cellIndex}
+                className={`${cellIndex === 11 ? 'h-7 w-20 rounded-lg' : cellIndex === 12 ? 'h-8 w-16 rounded-lg' : 'h-4 w-4/5 rounded-full'} bg-[#EEF2F7] ${cellIndex === 12 ? 'justify-self-center' : ''}`}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const emptyForm = {
   title: '',
@@ -454,7 +477,7 @@ export default function Requests() {
         </ToolbarSelect>
       </SectionCard>
       <SectionCard title="فهرست درخواست ها">
-        {loading ? <LoadingState/> : <DataTable columns={columns} rows={filteredRows} emptyTitle="درخواستی ثبت نشده است." />}
+        {loading ? <RequestsTableSkeleton /> : <DataTable columns={columns} rows={filteredRows} emptyTitle="درخواستی ثبت نشده است." />}
       </SectionCard>
 
       <ModalForm

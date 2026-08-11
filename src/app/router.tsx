@@ -15,6 +15,7 @@ import Unauthorized from "../pages/Unauthorized";
 import Users from "../pages/Users";
 import VehicleGroups from "../pages/VehicleGroups";
 import VehicleMap from "../pages/VehicleMap";
+import VehicleReports from "../pages/VehicleReports";
 import Vehicles from "../pages/Vehicles";
 import VehicleTypes from "../pages/VehicleTypes";
 import { LoginPage } from "../pages/auth/LoginPage";
@@ -80,6 +81,10 @@ export const router = createBrowserRouter([
       {
         path: "/vehicle-map",
         element: <VehicleMap />,
+      },
+      {
+        path: "/vehicle-reports",
+        element: <VehicleReports />,
       },
       {
         path: "/vehicle-groups",

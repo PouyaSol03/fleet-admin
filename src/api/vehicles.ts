@@ -16,6 +16,8 @@ export const vehiclesAPI = {
       responseType: "blob",
     }),
   listLive: () => apiClient.get("/vehicle/traccar/live/"),
+  getTraccarReportSummary: (params: Params) =>
+    apiClient.get("/vehicle/traccar/reports/summary/", { params }),
   syncTraccar: () => apiClient.post("/vehicle/traccar/sync/"),
   getTraccarConfig: () => apiClient.get("/vehicle/traccar/config/"),
   updateTraccarConfig: (data: Payload) =>

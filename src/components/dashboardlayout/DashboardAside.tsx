@@ -38,6 +38,7 @@ const menuItems: MenuItem[] = [
   { to: "/vehicles", label: "خودروها", icon: HiOutlineTruck, permission: "vehicles.view" },
   { to: "/tracking", label: "ردیابی خودروها", icon: HiOutlineMap, permission: "map.view", superadminOnly: true },
   { to: "/vehicle-map", label: "نقشه خودروها", icon: HiOutlineGlobeAsiaAustralia, permission: "map.view" },
+  { to: "/vehicle-reports", label: "گزارشات", icon: HiOutlineChartBar, permission: "reports.operational.view" },
   { to: "/vehicle-groups", label: "گروه خودرو", icon: HiOutlineShieldCheck, permission: "vehicle_groups.view" },
   { to: "/vehicle-types", label: "نوع خودرو", icon: HiOutlineWrenchScrewdriver, permission: "vehicle_types.view" },
   { to: "/inspections", label: "بازرسی ها", icon: HiOutlineClipboardDocumentList, permission: "inspections.view" },

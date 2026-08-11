@@ -22,8 +22,31 @@ import {
   SectionCard,
   Textarea,
   ToolbarSelect,
-  LoadingState,
 } from '../components/shared/UI';
+
+function InspectionsTableSkeleton() {
+  return (
+    <div className="w-full overflow-hidden rounded-xl border border-[#E6E6E6] bg-white" aria-hidden="true">
+      <div className="min-w-[54rem] animate-pulse">
+        <div className="grid grid-cols-[1.2fr_1fr_1fr_1fr_.9fr_.55fr] gap-4 border-b border-[#EFEFEF] bg-[#F8FAFC] px-4 py-4">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div key={index} className="h-3 w-4/5 rounded-full bg-[#E5E7EB]" />
+          ))}
+        </div>
+        {Array.from({ length: 6 }).map((_, rowIndex) => (
+          <div key={rowIndex} className="grid grid-cols-[1.2fr_1fr_1fr_1fr_.9fr_.55fr] items-center gap-4 border-b border-[#F1F5F9] px-4 py-4 last:border-b-0">
+            {Array.from({ length: 6 }).map((_, cellIndex) => (
+              <div
+                key={cellIndex}
+                className={`${cellIndex === 4 ? 'h-7 w-20 rounded-lg' : cellIndex === 5 ? 'h-8 w-9 rounded-lg' : 'h-4 w-4/5 rounded-full'} bg-[#EEF2F7] ${cellIndex === 5 ? 'justify-self-center' : ''}`}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const emptyForm = {
   vehicleId: '',
@@ -207,7 +230,7 @@ export default function Inspections() {
         </ToolbarSelect>
       </SectionCard>
       <SectionCard title="فهرست بازرسی ها">
-        {loading ? <LoadingState/> : <DataTable columns={columns} rows={filteredRows} emptyTitle="بازرسی ثبت نشده است." />}
+        {loading ? <InspectionsTableSkeleton /> : <DataTable columns={columns} rows={filteredRows} emptyTitle="بازرسی ثبت نشده است." />}
       </SectionCard>
       <Modal open={modalOpen} title={editingId ? 'ویرایش بازرسی' : 'ثبت بازرسی'} onClose={() => setModalOpen(false)}>
         <form onSubmit={handleSubmit} className="space-y-5">

@@ -15,7 +15,6 @@ import {
   ErrorAlert,
   Field,
   Input,
-  LoadingState,
   Modal,
   PageHeader,
   PrimaryButton,
@@ -61,6 +60,107 @@ const severityLabel = {
   high: 'زیاد',
   critical: 'بحرانی',
 };
+
+function ReportsTableSkeleton({ columns = 6, minWidth = '54rem', rows = 5 }) {
+  const gridTemplateColumns = `repeat(${columns}, minmax(0, 1fr))`;
+  return (
+    <div className="w-full overflow-hidden rounded-xl border border-[#E6E6E6] bg-white" aria-hidden="true">
+      <div className="animate-pulse" style={{ minWidth }}>
+        <div className="grid gap-4 border-b border-[#EFEFEF] bg-[#F8FAFC] px-4 py-4" style={{ gridTemplateColumns }}>
+          {Array.from({ length: columns }).map((_, index) => (
+            <div key={index} className="h-3 w-4/5 rounded-full bg-[#E5E7EB]" />
+          ))}
+        </div>
+        {Array.from({ length: rows }).map((_, rowIndex) => (
+          <div key={rowIndex} className="grid items-center gap-4 border-b border-[#F1F5F9] px-4 py-4 last:border-b-0" style={{ gridTemplateColumns }}>
+            {Array.from({ length: columns }).map((_, cellIndex) => (
+              <div key={cellIndex} className={`h-4 rounded-full bg-[#EEF2F7] ${cellIndex === columns - 1 ? 'w-3/5' : 'w-4/5'}`} />
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ReportsStatSkeleton({ count = 4 }) {
+  return (
+    <div className="grid w-full gap-4 md:grid-cols-2 xl:grid-cols-4" aria-hidden="true">
+      {Array.from({ length: count }).map((_, index) => (
+        <div key={index} className="min-h-[100px] animate-pulse rounded-[15px] border border-[#D9D9D9] bg-white px-4 py-4 shadow-[2px_2px_7px_rgba(0,0,0,0.08)]">
+          <div className="flex h-full items-center justify-between gap-6">
+            <div className="flex flex-1 flex-col gap-4">
+              <div className="h-5 w-28 rounded-full bg-[#E5E7EB]" />
+              <div className="h-3 w-20 rounded-full bg-[#F1F5F9]" />
+            </div>
+            <div className="h-9 w-12 rounded-lg bg-[#EEF2F7]" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ReportsPageSkeleton() {
+  return (
+    <div className="flex w-full flex-col gap-4" aria-hidden="true">
+      <ReportsStatSkeleton />
+
+      <div className="grid w-full gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+        <section className="w-full animate-pulse">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="h-5 w-28 rounded-full bg-[#E5E7EB]" />
+            <div className="h-6 w-14 rounded-lg bg-[#EEF2F7]" />
+          </div>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-1">
+            {Array.from({ length: 2 }).map((_, index) => (
+              <div key={index} className="flex min-h-[100px] items-center justify-between rounded-[15px] border border-[#D9D9D9] bg-white px-4 py-3">
+                <div className="space-y-4">
+                  <div className="h-6 w-28 rounded-full bg-[#E5E7EB]" />
+                  <div className="h-3 w-24 rounded-full bg-[#EEF2F7]" />
+                </div>
+                <div className="space-y-3">
+                  <div className="h-9 w-12 rounded-lg bg-[#E5E7EB]" />
+                  <div className="h-3 w-10 rounded-full bg-[#EEF2F7]" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="w-full">
+          <div className="mb-3 flex animate-pulse items-center justify-between">
+            <div className="h-5 w-24 rounded-full bg-[#E5E7EB]" />
+            <div className="h-3 w-24 rounded-full bg-[#EEF2F7]" />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2" aria-hidden="true">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div key={index} className="min-h-[100px] animate-pulse rounded-[15px] border border-[#D9D9D9] bg-white px-4 py-4 shadow-[2px_2px_7px_rgba(0,0,0,0.08)]">
+                <div className="flex h-full items-center justify-between gap-5">
+                  <div className="space-y-4">
+                    <div className="h-5 w-20 rounded-full bg-[#E5E7EB]" />
+                    <div className="h-3 w-16 rounded-full bg-[#F1F5F9]" />
+                  </div>
+                  <div className="h-9 w-10 rounded-lg bg-[#EEF2F7]" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+
+      <SectionCard title="جمع بندی ماموریت ها">
+        <ReportsTableSkeleton columns={6} minWidth="54rem" />
+      </SectionCard>
+      <SectionCard title="گزارش‌های تخلف در انتظار بررسی">
+        <ReportsTableSkeleton columns={8} minWidth="72rem" />
+      </SectionCard>
+      <SectionCard title="لیست تخلفات ثبت شده">
+        <ReportsTableSkeleton columns={7} minWidth="62rem" />
+      </SectionCard>
+    </div>
+  );
+}
 
 function RiskDriverCard({ row }) {
   return (
@@ -367,7 +467,7 @@ export default function Reports() {
         </div>
       </SectionCard>
 
-      {loading ? <LoadingState/> : (
+      {loading ? <ReportsPageSkeleton /> : (
         <>
           <div className="grid w-full gap-4 md:grid-cols-2 xl:grid-cols-4">
             <StatCard label="کل ماموریت ها" value={formatNumber(summary?.totalMissions)} tone="blue" helper="در بازه گزارش" />

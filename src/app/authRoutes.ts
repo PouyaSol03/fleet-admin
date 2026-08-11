@@ -15,6 +15,7 @@ const protectedRoutePermissions: ProtectedRoutePermission[] = [
   { path: "/vehicles", permission: "vehicles.view" },
   { path: "/tracking", permission: "map.view", superadminOnly: true },
   { path: "/vehicle-map", permission: "map.view" },
+  { path: "/vehicle-reports", permission: "reports.operational.view" },
   { path: "/vehicle-groups", permission: "vehicle_groups.view" },
   { path: "/vehicle-types", permission: "vehicle_types.view" },
   { path: "/inspections", permission: "inspections.view" },
