@@ -283,7 +283,7 @@ export function CreateDriverModal({
 
         </div>
 
-        <div className="shrink-0 border-t border-[#D9D9D9] bg-white px-5 py-4 sm:px-6">
+        <div className="shrink-0 border-t border-[#D9D9D9] bg-white px-6 py-5 sm:px-8">
           <div className="flex flex-wrap justify-end gap-3">
             <SecondaryButton type="button" onClick={wizardStep === 1 ? onClose : () => setWizardStep(1)}>
               {wizardStep === 1 ? "انصراف" : "مرحله قبل"}

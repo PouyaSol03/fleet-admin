@@ -11,6 +11,7 @@ import {
   SecondaryButton,
 } from '../shared/UI';
 import { formatPlateForDisplay } from '../../utils/iranPlate';
+import LicensePlateWithData from '../shared/LicensePlate';
 
 const statusLabel = {
   planned: 'برنامه‌ریزی شده',
@@ -198,7 +199,7 @@ export default function MissionForm({
 
           <div className="mt-3 grid gap-2">
             <CompactValue label="راننده" value={selectedDriver?.name} />
-            <CompactValue label="خودرو" value={selectedVehicle ? getVehicleLabel(selectedVehicle) : ''} />
+            <CompactValue label="خودرو" value={selectedVehicle?.model || ''} />
             <CompactValue label="مسافران" value={selectedPassengers.length ? `${selectedPassengers.length} نفر` : ''} />
             <CompactValue label="هزینه اولیه" value={formatRial(formData.firstCost)} />
           </div>
@@ -271,9 +272,18 @@ export default function MissionForm({
                       ))}
                     </Select>
                     {formData.driverId && selectedVehicle ? (
-                      <span className="text-xs font-bold text-emerald-600">
-                        {getVehicleLabel(selectedVehicle)}
-                      </span>
+                      <div className="mt-2 flex flex-col items-start gap-2 rounded-xl border border-slate-200 bg-slate-50/70 p-3" dir="rtl">
+                        <span className="text-xs font-bold text-slate-600">
+                          {selectedVehicle.model || 'خودرو انتخاب‌شده'}
+                        </span>
+                        {selectedVehicle.plateNumber ? (
+                          <div className="max-w-full" dir="ltr">
+                            <LicensePlateWithData numberplate={selectedVehicle.plateNumber} readOnly />
+                          </div>
+                        ) : (
+                          <span className="text-xs font-bold text-slate-400">پلاک ثبت نشده است.</span>
+                        )}
+                      </div>
                     ) : null}
                     {formData.driverId && driverVehicles.length === 0 ? (
                       <span className="text-xs font-bold text-red-500">برای این راننده خودرویی ثبت نشده است.</span>
@@ -437,7 +447,7 @@ export default function MissionForm({
         </section>
       </div>
 
-      <div className="flex shrink-0 flex-wrap justify-end gap-3 border-t border-slate-100 bg-white px-5 py-4 sm:px-6">
+      <div className="flex shrink-0 flex-wrap justify-end gap-3 border-t border-slate-100 bg-white px-6 py-5 sm:px-8">
         <SecondaryButton type="button" onClick={onCancel}>انصراف</SecondaryButton>
         {currentTabIndex > 0 ? (
           <SecondaryButton type="button" onClick={goBack}>مرحله قبل</SecondaryButton>

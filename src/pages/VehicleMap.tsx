@@ -1,11 +1,11 @@
-﻿// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { vehiclesAPI } from '../api/vehicles';
 import { useAuth } from '../context/AuthContext';
 import { hasPermission } from '../utils/permissions';
 import { extractApiError, formatNumber, normalizeCollection } from '../utils/formatters';
-import { formatPlateForDisplay } from '../utils/iranPlate';
+import LicensePlateWithData from '../components/shared/LicensePlate';
 import {
   AccessDenied,
   ErrorAlert,
@@ -39,6 +39,47 @@ function tileYToLat(tileY, zoom) {
 
 function formatTileUrl(z, x, y) {
   return TILE_URL.replace('{z}', z).replace('{x}', x).replace('{y}', y);
+}
+
+function buildMapTiles(center, zoom, viewport) {
+  const centerTileX = lonToTileX(center.lng, zoom);
+  const centerTileY = latToTileY(center.lat, zoom);
+  const centerPixelX = centerTileX * TILE_SIZE;
+  const centerPixelY = centerTileY * TILE_SIZE;
+  const halfWidth = viewport.width / 2;
+  const halfHeight = viewport.height / 2;
+
+  // Keep a generous tile buffer so rotation/panning never exposes the map background.
+  const bufferTiles = 4;
+  const startTileX = Math.floor((centerPixelX - halfWidth) / TILE_SIZE) - bufferTiles;
+  const endTileX = Math.floor((centerPixelX + halfWidth) / TILE_SIZE) + bufferTiles;
+  const startTileY = Math.floor((centerPixelY - halfHeight) / TILE_SIZE) - bufferTiles;
+  const endTileY = Math.floor((centerPixelY + halfHeight) / TILE_SIZE) + bufferTiles;
+  const maxTile = (2 ** zoom) - 1;
+  const tiles = [];
+
+  for (let tileX = startTileX; tileX <= endTileX; tileX += 1) {
+    for (let tileY = startTileY; tileY <= endTileY; tileY += 1) {
+      if (tileY < 0 || tileY > maxTile) continue;
+      const normalizedTileX = ((tileX % (maxTile + 1)) + (maxTile + 1)) % (maxTile + 1);
+      tiles.push({
+        key: `${zoom}-${tileX}-${tileY}`,
+        left: tileX * TILE_SIZE - centerPixelX + halfWidth,
+        top: tileY * TILE_SIZE - centerPixelY + halfHeight,
+        src: formatTileUrl(zoom, normalizedTileX, tileY),
+      });
+    }
+  }
+
+  return {
+    tiles,
+    centerTileX,
+    centerTileY,
+    centerPixelX,
+    centerPixelY,
+    halfWidth,
+    halfHeight,
+  };
 }
 
 function computeDynamicView(rows, viewportWidth, viewportHeight) {
@@ -135,10 +176,29 @@ function VehicleIcon() {
   );
 }
 
+function CompactLicensePlate({ numberplate, scale = 0.58 }) {
+  const width = 250 * scale;
+  const height = 72 * scale;
+
+  return (
+    <div
+      className="relative shrink-0 overflow-hidden"
+      style={{ width, height }}
+      dir="ltr"
+    >
+      <div
+        className="absolute left-0 top-0 origin-top-left"
+        style={{ transform: `scale(${scale})`, width: 250 }}
+      >
+        <LicensePlateWithData numberplate={numberplate} readOnly />
+      </div>
+    </div>
+  );
+}
+
 function VehicleListItem({ row, isSelected, onSelect }) {
   const status = vehicleStatus(row);
   const speed = Number(row.traccarSpeedKmh || 0);
-  const plateNumber = formatPlateForDisplay(row.plateNumber) || 'بدون پلاک';
 
   return (
     <div
@@ -159,9 +219,7 @@ function VehicleListItem({ row, isSelected, onSelect }) {
       </div>
 
       <div className="flex items-center justify-between mt-1">
-        <span className="font-semibold text-xs px-2.5 py-1 bg-slate-100 rounded-xl text-slate-700 tracking-wide" dir="ltr">
-          {plateNumber}
-        </span>
+        <CompactLicensePlate numberplate={row.plateNumber} scale={0.54} />
         <div className="flex items-baseline gap-0.5">
           <span className="font-bold text-sm text-slate-800" dir="ltr">{formatNumber(speed)}</span>
           <span className="text-[10px] text-slate-400 font-medium">km/h</span>
@@ -174,7 +232,6 @@ function VehicleListItem({ row, isSelected, onSelect }) {
 function VehicleMarker({ row, left, top, isSelected, rotation }) {
   const status = vehicleStatus(row);
   const speed = Number(row.traccarSpeedKmh || 0);
-  const plateNumber = formatPlateForDisplay(row.plateNumber) || '-';
 
   return (
     <div
@@ -220,7 +277,9 @@ function VehicleMarker({ row, left, top, isSelected, rotation }) {
           <div className="grid grid-cols-2 gap-2 px-4 py-3">
             <div className="min-w-0 rounded-xl bg-slate-50 px-3 py-2">
               <div className="text-[11px] font-medium text-slate-400">پلاک</div>
-              <div className="mt-1 truncate text-xs font-bold text-slate-800" dir="ltr">{plateNumber}</div>
+              <div className="mt-1 flex justify-start overflow-hidden">
+                <CompactLicensePlate numberplate={row.plateNumber} scale={0.48} />
+              </div>
             </div>
             <div className="min-w-0 rounded-xl bg-slate-50 px-3 py-2">
               <div className="text-[11px] font-medium text-slate-400">سرعت</div>
@@ -255,6 +314,19 @@ export default function VehicleMap() {
   const dragRef = useRef(null);
   const animationRef = useRef(null);
   const debounceTimeoutRef = useRef(null);
+  const zoomTransitionRef = useRef(0);
+  const zoomAnimationRef = useRef(null);
+  const isZoomAnimatingRef = useRef(false);
+  const pendingZoomResetRef = useRef(false);
+  const zoomLayerRef = useRef(null);
+  const tileLoadRef = useRef({ id: 0, total: 0, loaded: new Set() });
+  const wheelThrottleRef = useRef(0);
+  const tileCrossfadeTimeoutRef = useRef(null);
+  const queuedWheelZoomRef = useRef(null);
+  const requestedZoomRef = useRef(DEFAULT_ZOOM);
+  const zoomValueRef = useRef(DEFAULT_ZOOM);
+  const centerValueRef = useRef(DEFAULT_CENTER);
+  const previousTileLayerRef = useRef(null);
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -266,10 +338,25 @@ export default function VehicleMap() {
   const [selectedVehicleId, setSelectedVehicleId] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [rotation, setRotation] = useState(0);
+  const [previousTileLayer, setPreviousTileLayer] = useState(null);
+  const [incomingTilesReady, setIncomingTilesReady] = useState(true);
 
   const activePointers = useRef(new Map());
 
   const canView = hasPermission(user, 'map.view');
+
+  useEffect(() => {
+    zoomValueRef.current = zoom;
+    requestedZoomRef.current = zoom;
+  }, [zoom]);
+
+  useEffect(() => {
+    centerValueRef.current = center;
+  }, [center]);
+
+  useEffect(() => {
+    previousTileLayerRef.current = previousTileLayer;
+  }, [previousTileLayer]);
 
   const animateRotation = (targetRotation) => {
     if (animationRef.current) cancelAnimationFrame(animationRef.current);
@@ -340,6 +427,9 @@ export default function VehicleMap() {
           const currentHeight = mapRef.current ? mapRef.current.getBoundingClientRect().height : DEFAULT_VIEWPORT.height;
 
           const view = computeDynamicView(validImeiRows, currentWidth, currentHeight);
+          centerValueRef.current = view.center;
+          zoomValueRef.current = view.zoom;
+          requestedZoomRef.current = view.zoom;
           setCenter(view.center);
           setZoom(view.zoom);
           setError('');
@@ -363,39 +453,279 @@ export default function VehicleMap() {
     };
   }, [center, zoom, rotation]);
 
+  useEffect(() => () => {
+    if (zoomAnimationRef.current) cancelAnimationFrame(zoomAnimationRef.current);
+    if (tileCrossfadeTimeoutRef.current) clearTimeout(tileCrossfadeTimeoutRef.current);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!pendingZoomResetRef.current || !zoomLayerRef.current) return;
+
+    // The React commit now contains the new integer zoom/center. Reset the
+    // temporary visual transform before the browser paints so the last frame of
+    // the animation and the first frame of the new tile level are identical.
+    zoomLayerRef.current.style.transition = 'none';
+    zoomLayerRef.current.style.transform = 'translate3d(0px, 0px, 0px) scale(1)';
+    pendingZoomResetRef.current = false;
+  }, [zoom, center]);
+
   if (!canView) return <AccessDenied />;
   if (loading) return <LoadingState />;
 
   const filteredRows = rows.filter(row => statusFilter === 'all' || row.status === statusFilter);
   const markerRows = filteredRows.filter((row) => row.location?.lat != null && row.location?.lng != null);
-  const centerTileX = lonToTileX(center.lng, zoom);
-  const centerTileY = latToTileY(center.lat, zoom);
-  const centerPixelX = centerTileX * TILE_SIZE;
-  const centerPixelY = centerTileY * TILE_SIZE;
-  const halfWidth = viewport.width / 2;
-  const halfHeight = viewport.height / 2;
+  const mapView = buildMapTiles(center, zoom, viewport);
+  const mapTiles = mapView.tiles;
+  const { centerTileX, centerTileY, centerPixelX, centerPixelY, halfWidth, halfHeight } = mapView;
 
-  // بافر به ۴ تایل افزایش پیدا کرد تا در هنگام جابجایی در زوایای مختلف، پس‌زمینه سفید ظاهر نشود
-  const bufferTiles = 4;
-  const startTileX = Math.floor((centerPixelX - halfWidth) / TILE_SIZE) - bufferTiles;
-  const endTileX = Math.floor((centerPixelX + halfWidth) / TILE_SIZE) + bufferTiles;
-  const startTileY = Math.floor((centerPixelY - halfHeight) / TILE_SIZE) - bufferTiles;
-  const endTileY = Math.floor((centerPixelY + halfHeight) / TILE_SIZE) + bufferTiles;
-  const maxTile = (2 ** zoom) - 1;
-  const mapTiles = [];
+  const finishTileLoad = (tileKey, transitionId) => {
+    const tracker = tileLoadRef.current;
+    if (!transitionId || tracker.id !== transitionId || tracker.loaded.has(tileKey)) return;
 
-  for (let tileX = startTileX; tileX <= endTileX; tileX += 1) {
-    for (let tileY = startTileY; tileY <= endTileY; tileY += 1) {
-      if (tileY < 0 || tileY > maxTile) continue;
-      const normalizedTileX = ((tileX % (maxTile + 1)) + (maxTile + 1)) % (maxTile + 1);
-      mapTiles.push({
-        key: `${zoom}-${tileX}-${tileY}`,
-        left: tileX * TILE_SIZE - centerPixelX + halfWidth,
-        top: tileY * TILE_SIZE - centerPixelY + halfHeight,
-        src: formatTileUrl(zoom, normalizedTileX, tileY),
-      });
+    tracker.loaded.add(tileKey);
+    if (tracker.loaded.size >= tracker.total) {
+      // Keep showing the scaled previous zoom until the entire incoming tile
+      // level is ready. Then crossfade the sharp tiles over the soft old layer
+      // as one surface, instead of letting individual tiles pop in.
+      setIncomingTilesReady(true);
+
+      if (tileCrossfadeTimeoutRef.current) clearTimeout(tileCrossfadeTimeoutRef.current);
+      tileCrossfadeTimeoutRef.current = setTimeout(() => {
+        previousTileLayerRef.current = null;
+        setPreviousTileLayer(null);
+        tileCrossfadeTimeoutRef.current = null;
+      }, 190);
     }
-  }
+  };
+
+  const startZoomTransition = (nextZoom, nextCenter = centerValueRef.current) => {
+    const currentZoom = zoomValueRef.current;
+    const currentCenter = centerValueRef.current;
+    const clampedZoom = Math.max(3, Math.min(19, nextZoom));
+
+    if (clampedZoom === currentZoom || isZoomAnimatingRef.current) return false;
+
+    const currentCenterPixelX = lonToTileX(currentCenter.lng, currentZoom) * TILE_SIZE;
+    const currentCenterPixelY = latToTileY(currentCenter.lat, currentZoom) * TILE_SIZE;
+    const zoomDelta = clampedZoom - currentZoom;
+    const targetScale = 2 ** zoomDelta;
+    const targetCenterPixelXAtCurrentZoom = lonToTileX(nextCenter.lng, currentZoom) * TILE_SIZE;
+    const targetCenterPixelYAtCurrentZoom = latToTileY(nextCenter.lat, currentZoom) * TILE_SIZE;
+    const centerDeltaX = targetCenterPixelXAtCurrentZoom - currentCenterPixelX;
+    const centerDeltaY = targetCenterPixelYAtCurrentZoom - currentCenterPixelY;
+    const targetTranslateX = -centerDeltaX * targetScale;
+    const targetTranslateY = -centerDeltaY * targetScale;
+
+    const transitionId = zoomTransitionRef.current + 1;
+    zoomTransitionRef.current = transitionId;
+    isZoomAnimatingRef.current = true;
+
+    // Preload the destination immediately, but never lock another wheel step on it.
+    // If the user scrolls again, the next transition can begin as soon as this short
+    // visual animation ends, even when these tiles are still in flight.
+    const nextTiles = buildMapTiles(nextCenter, clampedZoom, viewport).tiles;
+    nextTiles.forEach((tile) => {
+      const image = new Image();
+      image.src = tile.src;
+    });
+
+    if (zoomAnimationRef.current) cancelAnimationFrame(zoomAnimationRef.current);
+
+    const duration = 220;
+    const startTime = performance.now();
+
+    const animateZoom = (now) => {
+      const rawProgress = Math.min((now - startTime) / duration, 1);
+      const progress = rawProgress * rawProgress * (3 - 2 * rawProgress);
+      const scale = 2 ** (zoomDelta * progress);
+      const scaleProgress = targetScale === 1
+        ? progress
+        : (scale - 1) / (targetScale - 1);
+      const translateX = targetTranslateX * scaleProgress;
+      const translateY = targetTranslateY * scaleProgress;
+
+      if (zoomLayerRef.current) {
+        zoomLayerRef.current.style.transform = `translate3d(${translateX}px, ${translateY}px, 0px) scale(${scale})`;
+      }
+
+      if (rawProgress < 1) {
+        zoomAnimationRef.current = requestAnimationFrame(animateZoom);
+        return;
+      }
+
+      const existingPrevious = previousTileLayerRef.current;
+      const fallbackTiles = existingPrevious?.tiles?.length
+        ? existingPrevious.tiles
+        : mapTiles;
+
+      // If the previous sharp level is still fetching, keep the already-visible
+      // blurred layer and compose this new zoom on top of its existing transform.
+      // This lets rapid wheel gestures continue without ever waiting for fetch.
+      const existingTransform = existingPrevious?.transform || {
+        translateX: 0,
+        translateY: 0,
+        scale: 1,
+      };
+      const fallbackTransform = existingPrevious
+        ? {
+            translateX: targetTranslateX + targetScale * existingTransform.translateX,
+            translateY: targetTranslateY + targetScale * existingTransform.translateY,
+            scale: targetScale * existingTransform.scale,
+          }
+        : {
+            translateX: targetTranslateX,
+            translateY: targetTranslateY,
+            scale: targetScale,
+          };
+
+      if (tileCrossfadeTimeoutRef.current) {
+        clearTimeout(tileCrossfadeTimeoutRef.current);
+        tileCrossfadeTimeoutRef.current = null;
+      }
+
+      setIncomingTilesReady(false);
+      const nextPreviousLayer = {
+        id: transitionId,
+        tiles: fallbackTiles,
+        transform: fallbackTransform,
+      };
+      previousTileLayerRef.current = nextPreviousLayer;
+      setPreviousTileLayer(nextPreviousLayer);
+
+      tileLoadRef.current = {
+        id: transitionId,
+        total: nextTiles.length,
+        loaded: new Set(),
+      };
+
+      pendingZoomResetRef.current = true;
+      centerValueRef.current = nextCenter;
+      zoomValueRef.current = clampedZoom;
+      setCenter(nextCenter);
+      setZoom(clampedZoom);
+      isZoomAnimatingRef.current = false;
+      zoomAnimationRef.current = null;
+
+      if (nextTiles.length === 0) {
+        setIncomingTilesReady(true);
+        previousTileLayerRef.current = null;
+        setPreviousTileLayer(null);
+      }
+
+      // Do not wait for the destination tile fetch. If more wheel input arrived
+      // during this animation, immediately continue toward the latest requested zoom.
+      requestAnimationFrame(() => {
+        const queued = queuedWheelZoomRef.current;
+        if (!queued) return;
+        if (queued.targetZoom === zoomValueRef.current) {
+          queuedWheelZoomRef.current = null;
+          return;
+        }
+
+        const direction = queued.targetZoom > zoomValueRef.current ? 1 : -1;
+        const stepZoom = zoomValueRef.current + direction;
+        const baseCenter = centerValueRef.current;
+        const baseZoom = zoomValueRef.current;
+        const element = mapRef.current;
+        let stepCenter = baseCenter;
+
+        if (element && Number.isFinite(queued.clientX) && Number.isFinite(queued.clientY)) {
+          const rect = element.getBoundingClientRect();
+          const screenDeltaX = queued.clientX - rect.left - rect.width / 2;
+          const screenDeltaY = queued.clientY - rect.top - rect.height / 2;
+          const rad = (rotation * Math.PI) / 180;
+          const mapDeltaX = screenDeltaX * Math.cos(rad) + screenDeltaY * Math.sin(rad);
+          const mapDeltaY = -screenDeltaX * Math.sin(rad) + screenDeltaY * Math.cos(rad);
+          const baseCenterTileX = lonToTileX(baseCenter.lng, baseZoom);
+          const baseCenterTileY = latToTileY(baseCenter.lat, baseZoom);
+          const pointerTileX = baseCenterTileX + mapDeltaX / TILE_SIZE;
+          const pointerTileY = baseCenterTileY + mapDeltaY / TILE_SIZE;
+          const pointerLng = tileXToLon(pointerTileX, baseZoom);
+          const pointerLat = tileYToLat(pointerTileY, baseZoom);
+          const nextPointerPixelX = lonToTileX(pointerLng, stepZoom) * TILE_SIZE;
+          const nextPointerPixelY = latToTileY(pointerLat, stepZoom) * TILE_SIZE;
+          const nextCenterPixelX = nextPointerPixelX - mapDeltaX;
+          const nextCenterPixelY = nextPointerPixelY - mapDeltaY;
+          stepCenter = {
+            lat: tileYToLat(nextCenterPixelY / TILE_SIZE, stepZoom),
+            lng: tileXToLon(nextCenterPixelX / TILE_SIZE, stepZoom),
+          };
+        }
+
+        if (stepZoom === queued.targetZoom) queuedWheelZoomRef.current = null;
+        startZoomTransition(stepZoom, stepCenter);
+      });
+    };
+
+    zoomAnimationRef.current = requestAnimationFrame(animateZoom);
+    return true;
+  };
+
+  const handleWheel = (event) => {
+    event.preventDefault();
+
+    const now = performance.now();
+    if (now - wheelThrottleRef.current < 70) return;
+    wheelThrottleRef.current = now;
+
+    const direction = event.deltaY < 0 ? 1 : -1;
+    const baseRequestedZoom = queuedWheelZoomRef.current?.targetZoom ?? requestedZoomRef.current ?? zoomValueRef.current;
+    const requestedZoom = Math.max(3, Math.min(19, baseRequestedZoom + direction));
+    requestedZoomRef.current = requestedZoom;
+
+    if (requestedZoom === zoomValueRef.current && !isZoomAnimatingRef.current) {
+      queuedWheelZoomRef.current = null;
+      return;
+    }
+
+    queuedWheelZoomRef.current = {
+      targetZoom: requestedZoom,
+      clientX: event.clientX,
+      clientY: event.clientY,
+    };
+
+    // While a short visual zoom animation is active we only retarget the latest
+    // desired level. The completion callback above continues immediately. Crucially,
+    // tile fetching/crossfading never blocks this path.
+    if (isZoomAnimatingRef.current) return;
+
+    const currentZoom = zoomValueRef.current;
+    if (requestedZoom === currentZoom) {
+      queuedWheelZoomRef.current = null;
+      return;
+    }
+
+    const stepZoom = currentZoom + (requestedZoom > currentZoom ? 1 : -1);
+    const element = mapRef.current;
+    const baseCenter = centerValueRef.current;
+    let nextCenter = baseCenter;
+
+    if (element) {
+      const rect = element.getBoundingClientRect();
+      const screenDeltaX = event.clientX - rect.left - rect.width / 2;
+      const screenDeltaY = event.clientY - rect.top - rect.height / 2;
+      const rad = (rotation * Math.PI) / 180;
+      const mapDeltaX = screenDeltaX * Math.cos(rad) + screenDeltaY * Math.sin(rad);
+      const mapDeltaY = -screenDeltaX * Math.sin(rad) + screenDeltaY * Math.cos(rad);
+      const baseCenterTileX = lonToTileX(baseCenter.lng, currentZoom);
+      const baseCenterTileY = latToTileY(baseCenter.lat, currentZoom);
+      const pointerTileX = baseCenterTileX + mapDeltaX / TILE_SIZE;
+      const pointerTileY = baseCenterTileY + mapDeltaY / TILE_SIZE;
+      const pointerLng = tileXToLon(pointerTileX, currentZoom);
+      const pointerLat = tileYToLat(pointerTileY, currentZoom);
+      const nextPointerPixelX = lonToTileX(pointerLng, stepZoom) * TILE_SIZE;
+      const nextPointerPixelY = latToTileY(pointerLat, stepZoom) * TILE_SIZE;
+      const nextCenterPixelX = nextPointerPixelX - mapDeltaX;
+      const nextCenterPixelY = nextPointerPixelY - mapDeltaY;
+      nextCenter = {
+        lat: tileYToLat(nextCenterPixelY / TILE_SIZE, stepZoom),
+        lng: tileXToLon(nextCenterPixelX / TILE_SIZE, stepZoom),
+      };
+    }
+
+    if (stepZoom === requestedZoom) queuedWheelZoomRef.current = null;
+    startZoomTransition(stepZoom, nextCenter);
+  };
 
   // رویداد فشردن دکمه موس یا لمس صفحه
   const handlePointerDown = (event) => {
@@ -513,8 +843,16 @@ export default function VehicleMap() {
   const handleSelectVehicle = (vehicle) => {
     setSelectedVehicleId(vehicle.id);
     if (vehicle.location?.lat && vehicle.location?.lng) {
-      panTo(Number(vehicle.location.lat), Number(vehicle.location.lng));
-      setZoom(16);
+      const targetCenter = {
+        lat: Number(vehicle.location.lat),
+        lng: Number(vehicle.location.lng),
+      };
+
+      if (zoom !== 16 && !previousTileLayer && !isZoomAnimatingRef.current) {
+        startZoomTransition(16, targetCenter);
+      } else {
+        panTo(targetCenter.lat, targetCenter.lng);
+      }
       setIsBottomSheetOpen(false);
     }
   };
@@ -524,6 +862,9 @@ export default function VehicleMap() {
     const currentHeight = mapRef.current ? mapRef.current.getBoundingClientRect().height : DEFAULT_VIEWPORT.height;
 
     const view = computeDynamicView(filteredRows, currentWidth, currentHeight);
+    centerValueRef.current = view.center;
+    zoomValueRef.current = view.zoom;
+    requestedZoomRef.current = view.zoom;
     setCenter(view.center);
     setZoom(view.zoom);
     setIsBottomSheetOpen(true);
@@ -546,6 +887,7 @@ export default function VehicleMap() {
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerUp}
+        onWheel={handleWheel}
         onContextMenu={(e) => e.preventDefault()} // جلوگیری از باز شدن منوی کلیک راست پیش‌فرض بر روی نقشه
       >
         <div
@@ -553,34 +895,86 @@ export default function VehicleMap() {
           className="absolute inset-0 origin-center"
           style={{ transform: `rotate(${rotation}deg)` }}
         >
-          {mapTiles.map((tile) => (
-            <img
-              key={tile.key}
-              src={tile.src}
-              alt=""
-              draggable="false"
-              className="absolute h-64 w-64 max-w-none select-none transition-opacity duration-300"
-              style={{ left: tile.left, top: tile.top }}
-            />
-          ))}
+          <div
+            ref={zoomLayerRef}
+            className="absolute inset-0 origin-center will-change-transform"
+            style={{ transform: 'translate3d(0px, 0px, 0px) scale(1)' }}
+          >
+            {previousTileLayer?.tiles?.length > 0 && (
+              <div
+                className="pointer-events-none absolute inset-0 origin-center will-change-transform"
+                style={{
+                  transform: previousTileLayer.transform
+                    ? `translate3d(${previousTileLayer.transform.translateX}px, ${previousTileLayer.transform.translateY}px, 0px) scale(${previousTileLayer.transform.scale})`
+                    : 'none',
+                  opacity: incomingTilesReady ? 0 : 1,
+                  filter: 'blur(0.55px)',
+                  transition: 'opacity 180ms ease-out',
+                  backfaceVisibility: 'hidden',
+                }}
+                aria-hidden="true"
+              >
+                {previousTileLayer.tiles.map((tile) => (
+                  <img
+                    key={`previous-${previousTileLayer.id}-${tile.key}`}
+                    src={tile.src}
+                    alt=""
+                    draggable="false"
+                    className="pointer-events-none absolute h-64 w-64 max-w-none select-none"
+                    style={{ left: tile.left, top: tile.top }}
+                  />
+                ))}
+              </div>
+            )}
 
-          {markerRows.map((row) => {
-            const pointPixelX = lonToTileX(Number(row.location.lng), zoom) * TILE_SIZE;
-            const pointPixelY = latToTileY(Number(row.location.lat), zoom) * TILE_SIZE;
-            const left = pointPixelX - centerPixelX + halfWidth;
-            const top = pointPixelY - centerPixelY + halfHeight;
+            <div
+              className="absolute inset-0"
+              style={{
+                opacity: previousTileLayer ? (incomingTilesReady ? 1 : 0) : 1,
+                transition: previousTileLayer ? 'opacity 180ms ease-out' : 'none',
+              }}
+            >
+              {mapTiles.map((tile) => {
+                const transitionId = zoomTransitionRef.current;
+                return (
+                  <img
+                    key={tile.key}
+                    src={tile.src}
+                    alt=""
+                    draggable="false"
+                    loading="eager"
+                    decoding="async"
+                    className="absolute h-64 w-64 max-w-none select-none"
+                    style={{ left: tile.left, top: tile.top }}
+                    onLoad={() => finishTileLoad(tile.key, transitionId)}
+                    onError={(event) => {
+                      // Never show the browser's broken-image icon over the map.
+                      event.currentTarget.style.visibility = 'hidden';
+                      finishTileLoad(tile.key, transitionId);
+                    }}
+                  />
+                );
+              })}
+            </div>
 
-            return (
-              <VehicleMarker
-                key={row.id}
-                row={row}
-                left={left}
-                top={top}
-                isSelected={selectedVehicleId === row.id}
-                rotation={rotation}
-              />
-            );
-          })}
+            {markerRows.map((row) => {
+              const pointPixelX = lonToTileX(Number(row.location.lng), zoom) * TILE_SIZE;
+              const pointPixelY = latToTileY(Number(row.location.lat), zoom) * TILE_SIZE;
+              const left = pointPixelX - centerPixelX + halfWidth;
+              const top = pointPixelY - centerPixelY + halfHeight;
+
+              return (
+                <VehicleMarker
+                  key={row.id}
+                  row={row}
+                  left={left}
+                  top={top}
+                  isSelected={selectedVehicleId === row.id}
+                  rotation={rotation}
+                />
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -626,14 +1020,14 @@ export default function VehicleMap() {
       <div className="absolute left-6 top-6 z-20 flex flex-col gap-2.5">
         <button
           type="button"
-          onClick={() => setZoom((current) => Math.min(current + 1, 19))}
+          onClick={() => startZoomTransition(zoom + 1, center)}
           className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-2xl bg-white/95 text-xl font-semibold text-slate-800 shadow-lg border border-slate-100/70 hover:bg-slate-50 hover:text-blue-600 active:scale-95 transition-all outline-none"
         >
           +
         </button>
         <button
           type="button"
-          onClick={() => setZoom((current) => Math.max(current - 1, 3))}
+          onClick={() => startZoomTransition(zoom - 1, center)}
           className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-2xl bg-white/95 text-xl font-semibold text-slate-800 shadow-lg border border-slate-100/70 hover:bg-slate-50 hover:text-blue-600 active:scale-95 transition-all outline-none"
         >
           −

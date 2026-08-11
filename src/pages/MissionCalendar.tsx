@@ -1,4 +1,4 @@
-﻿// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { useEffect, useMemo, useRef, useState } from 'react';
 import FullCalendar from '@fullcalendar/react';
@@ -134,20 +134,29 @@ export default function MissionCalendar() {
     return map;
   }, [missions]);
 
+  const vehicleById = useMemo(() => {
+    const map = new Map();
+    vehicles.forEach((vehicle) => map.set(String(vehicle.id), vehicle));
+    return map;
+  }, [vehicles]);
+
   const events = useMemo(() => {
-    const baseEvents = missions.map((mission) => ({
-      id: String(mission.id),
-      title: mission.title || `ماموریت #${mission.id}`,
-      start: formatDateOnly(mission.startDate),
-      end: mission.endDate ? shiftDate(formatDateOnly(mission.endDate), 1) : undefined,
-      allDay: true,
-      extendedProps: {
-        status: mission.status,
-        driverName: mission.driverName || 'بدون راننده',
-        vehicleModel: mission.vehicleModel || 'بدون خودرو',
-        isGhost: false,
-      },
-    }));
+    const baseEvents = missions.map((mission) => {
+      const vehicle = vehicleById.get(String(mission.vehicleId ?? ''));
+      return {
+        id: String(mission.id),
+        title: mission.title || `ماموریت #${mission.id}`,
+        start: formatDateOnly(mission.startDate),
+        end: mission.endDate ? shiftDate(formatDateOnly(mission.endDate), 1) : undefined,
+        allDay: true,
+        extendedProps: {
+          status: mission.status,
+          driverName: mission.driverName || 'بدون راننده',
+          vehicleModel: mission.vehicleModel || vehicle?.model || 'بدون خودرو',
+          isGhost: false,
+        },
+      };
+    });
 
     if (!copySource || targetDates.length === 0) return baseEvents;
 
@@ -161,13 +170,13 @@ export default function MissionCalendar() {
       extendedProps: {
         status: copySource.status || 'planned', 
         driverName: copySource.driverName || 'بدون راننده',
-        vehicleModel: copySource.vehicleModel || 'بدون خودرو',
+        vehicleModel: copySource.vehicleModel || vehicleById.get(String(copySource.vehicleId ?? ''))?.model || 'بدون خودرو',
         isGhost: true,
       },
     }));
 
     return [...baseEvents, ...ghostEvents];
-  }, [missions, copySource, targetDates]);
+  }, [missions, copySource, targetDates, vehicleById]);
 
   const loadMissions = async (startDate, endDate) => {
     const response = await missionsAPI.list({

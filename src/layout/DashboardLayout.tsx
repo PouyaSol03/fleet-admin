@@ -384,7 +384,7 @@ export function DashboardLayout() {
             onMarkAllRead={handleMarkAllRead}
             onToggleSidebar={() => setSidebarOpen((current) => !current)}
           />
-          <main className={`flex h-[calc(100vh-5rem)] min-h-0 bg-[#FAFBFC] ${fullBleedMain ? "p-0" : "p-6"}`}>
+          <main className={`flex h-[calc(100vh-5rem)] min-h-0 bg-[#FAFBFC] ${fullBleedMain ? "p-0" : "p-6"} ${isDashboardRoute ? "lg:overflow-hidden" : ""}`}>
             {loading && !isDashboardRoute ? (
               <div className="flex min-h-0 w-full">
                 <LoadingState message="در حال آماده سازی داشبورد..." />

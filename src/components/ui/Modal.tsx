@@ -123,7 +123,7 @@ export function ModalForm({
         >
           {children}
         </div>
-        <div className="flex shrink-0 justify-end gap-3 border-t border-[#EFEFEF] bg-white px-5 py-4 sm:px-6">
+        <div className="flex shrink-0 justify-end gap-3 border-t border-[#EFEFEF] bg-white px-6 py-5 sm:px-8">
           {footer || (
             <>
               <SecondaryButton type="button" onClick={onClose} disabled={submitting}>
@@ -195,13 +195,13 @@ export function ConfirmationModal({
       transition={{ duration: 0.18 }}
     >
       <motion.div
-        className="relative w-full max-w-[320px] rounded-[10px] border border-[#D9D9D9] bg-white px-2 pb-4 pt-8"
+        className="relative w-full max-w-[360px] rounded-[12px] border border-[#D9D9D9] bg-white px-5 pb-5 pt-10 sm:px-6 sm:pb-6"
         dir="rtl"
         initial={shouldReduceMotion ? false : { opacity: 0, y: 14, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={springTransition}
       >
-        <div className="absolute right-2 top-2 flex h-6 w-[304px] justify-end">
+        <div className="absolute right-4 top-4 flex h-7 justify-end">
           <button
             type="button"
             onClick={onCancel}
@@ -224,12 +224,12 @@ export function ConfirmationModal({
           {message || defaultMessage}
         </div>
 
-        <div className="mt-4 flex h-10 items-center justify-center gap-4">
+        <div className="mt-5 flex items-center justify-center gap-3">
           <button
             type="button"
             onClick={onConfirm}
             disabled={loading}
-            className={`flex h-10 w-[140px] items-center justify-center rounded-[10px] border px-3 text-base font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${confirmClass}`}
+            className={`flex h-10 min-w-0 flex-1 items-center justify-center rounded-[10px] border px-3 text-base font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${confirmClass}`}
           >
             {loading ? "در حال انجام..." : confirmLabel}
           </button>
@@ -237,7 +237,7 @@ export function ConfirmationModal({
             type="button"
             onClick={onCancel}
             disabled={loading}
-            className="flex h-10 w-[140px] items-center justify-center rounded-[10px] border border-[#A30000] bg-white px-3 text-base font-medium text-[#A30000] transition hover:bg-[#FFF6F6] disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex h-10 min-w-0 flex-1 items-center justify-center rounded-[10px] border border-[#A30000] bg-white px-3 text-base font-medium text-[#A30000] transition hover:bg-[#FFF6F6] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {cancelLabel}
           </button>

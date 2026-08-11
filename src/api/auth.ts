@@ -26,6 +26,6 @@ export const authAPI = {
     }),
   getBootstrapStatus: () => apiClient.get("/users/bootstrap-status/"),
   getProfile: () =>
-    apiClient.get("/users/me/"),
+    apiClient.get("/users/me/", { redirectOnUnauthorized: false }),
   logout: (refresh: string) => apiClient.post("/users/sign-out/", { refresh }),
 };
