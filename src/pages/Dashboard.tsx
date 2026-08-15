@@ -670,7 +670,7 @@ function ChartWithDetails({
             <LineChart chart={chart} />
           </div>
         </div>
-        <div className="order-1 grid w-full grid-cols-2 gap-2 sm:gap-4 lg:order-1 lg:w-[20rem] lg:shrink-0 lg:grid-cols-2 xl:w-[22rem]">
+        <div className="order-1 grid w-full grid-cols-1 gap-2 sm:gap-4 lg:order-1 lg:w-[20rem] lg:shrink-0 lg:grid-cols-1 lg:grid-rows-4 xl:w-[22rem]">
           {details.map((item, index) => (
             <ChartMetricCard key={item?.key || index} item={item} index={index} />
           ))}
