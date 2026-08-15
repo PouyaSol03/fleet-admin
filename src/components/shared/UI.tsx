@@ -900,8 +900,8 @@ export function RowActionMenu({
           ref={menuRef}
           className={`flex flex-col gap-1 border border-[#D9D9D9] bg-white/95 px-2 py-1 text-[#222222] shadow-lg backdrop-blur-sm ${
             opensAbove
-              ? "rounded-tl-[10px] rounded-tr-[10px] rounded-bl-[10px] before:absolute before:-bottom-[7px] before:left-4 before:h-3 before:w-3 before:rotate-45 before:border-b before:border-r before:border-[#D9D9D9] before:bg-white/95"
-              : "rounded-tl-[10px] rounded-bl-[10px] rounded-br-[10px] before:absolute before:-top-[7px] before:left-4 before:h-3 before:w-3 before:rotate-45 before:border-l before:border-t before:border-[#D9D9D9] before:bg-white/95"
+              ? "rounded-tl-[10px] rounded-tr-[10px] rounded-bl-[10px] before:absolute before:-bottom-[7px] before:left-[40%] before:-translate-x-1/2 before:h-3 before:w-3 before:rotate-45 before:border-b before:border-r before:border-[#D9D9D9] before:bg-white/95"
+              : "rounded-tl-[10px] rounded-bl-[10px] rounded-br-[10px] before:absolute before:-top-[7px] before:left-[40%] before:-translate-x-1/2 before:h-3 before:w-3 before:rotate-45 before:border-l before:border-t before:border-[#D9D9D9] before:bg-white/95"
           }`}
           role="menu"
           style={menuStyle}
