@@ -3,8 +3,9 @@ import { isSuperAdmin } from "../utils/permissions";
 
 type ProtectedRoutePermission = {
   path: string;
-  permission: string;
+  permission?: string;
   superadminOnly?: boolean;
+  allAuthenticated?: boolean;
 };
 
 const protectedRoutePermissions: ProtectedRoutePermission[] = [
@@ -13,7 +14,7 @@ const protectedRoutePermissions: ProtectedRoutePermission[] = [
   { path: "/access-groups", permission: "access_groups.view" },
   { path: "/drivers", permission: "drivers.view" },
   { path: "/vehicles", permission: "vehicles.view" },
-  { path: "/tracking", permission: "map.view", superadminOnly: true },
+  { path: "/tracking", allAuthenticated: true },
   { path: "/vehicle-map", permission: "map.view" },
   { path: "/vehicle-reports", permission: "reports.operational.view" },
   { path: "/vehicle-groups", permission: "vehicle_groups.view" },
@@ -32,8 +33,10 @@ export function getAuthenticatedLandingPath(profile: AuthUser) {
 
   const permissions = new Set(profile.permissions || []);
   const firstAllowedRoute = protectedRoutePermissions.find(
-    ({ permission, superadminOnly }) =>
-      !superadminOnly && permissions.has(permission),
+    ({ permission, superadminOnly, allAuthenticated }) =>
+      !superadminOnly &&
+      !allAuthenticated &&
+      Boolean(permission && permissions.has(permission)),
   );
 
   // DashboardLayout owns the dedicated "no permissions" state.
@@ -66,13 +69,14 @@ export function getValidatedAuthenticatedPath(
     return landingPath;
   }
 
-  if (route.superadminOnly) {
-    // Keep a manually requested superadmin-only page mounted so that the page
-    // can show its own access-denied state without making any protected API calls.
+  if (route.superadminOnly || route.allAuthenticated) {
     return requestedPath;
   }
 
-  if (isSuperAdmin(profile) || profile.permissions?.includes(route.permission)) {
+  if (
+    isSuperAdmin(profile) ||
+    Boolean(route.permission && profile.permissions?.includes(route.permission))
+  ) {
     return requestedPath;
   }
 

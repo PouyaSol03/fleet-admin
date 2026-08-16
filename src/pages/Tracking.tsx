@@ -1,6 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { vehiclesAPI } from '../api/vehicles';
 import { useAuth } from '../context/AuthContext';
 import { isSuperAdmin } from '../utils/permissions';
@@ -120,6 +121,7 @@ function TrackingPageSkeleton() {
 
 export default function Tracking() {
   const { user, profileLoading } = useAuth();
+  const navigate = useNavigate();
   const [rows, setRows] = useState([]);
   const [config, setConfig] = useState(emptyConfig);
   const [loading, setLoading] = useState(true);
@@ -129,9 +131,9 @@ export default function Tracking() {
   const [success, setSuccess] = useState('');
   const [configOpen, setConfigOpen] = useState(false);
 
-  const canView = isSuperAdmin(user);
+  const canView = Boolean(user);
   const canSync = canView;
-  const canConfigure = canView;
+  const canConfigure = isSuperAdmin(user);
 
   const loadLive = useCallback(async () => {
     const response = await vehiclesAPI.listLive();
@@ -188,6 +190,8 @@ export default function Tracking() {
 
   const handleSaveConfig = async (event) => {
     event.preventDefault();
+    if (!canConfigure) return;
+
     try {
       setSavingConfig(true);
       setSuccess('');
@@ -233,13 +237,16 @@ export default function Tracking() {
     {
       key: 'location',
       title: 'موقعیت',
-      render: (value) => {
+      render: (value, row) => {
         if (value?.lat == null || value?.lng == null) return '-';
-        const href = `https://www.google.com/maps?q=${value.lat},${value.lng}`;
         return (
-          <a href={href} target="_blank" rel="noreferrer" className="font-semibold text-blue-600 underline decoration-dotted underline-offset-2">
+          <button
+            type="button"
+            onClick={() => navigate(`/vehicle-map?vehicleId=${encodeURIComponent(String(row.id))}`)}
+            className="font-semibold text-blue-600 underline decoration-dotted underline-offset-2"
+          >
             {value.lat}, {value.lng}
-          </a>
+          </button>
         );
       },
     },
@@ -283,33 +290,35 @@ export default function Tracking() {
         )}
       </SectionCard>
 
-      <Modal open={configOpen} title="تنظیمات" onClose={() => setConfigOpen(false)}>
-        <form onSubmit={handleSaveConfig} className="space-y-5">
-          <div className="grid gap-5 md:grid-cols-2">
-            <Field label="API URL">
-              <Input value={config.api_url} onChange={(event) => setConfig((prev) => ({ ...prev, api_url: event.target.value }))} placeholder="https://traccar.example.com" />
-            </Field>
-            <Field label="نام کاربری">
-              <Input value={config.username} onChange={(event) => setConfig((prev) => ({ ...prev, username: event.target.value }))} />
-            </Field>
-            <Field label="رمز عبور">
-              <Input type="password" value={config.password} onChange={(event) => setConfig((prev) => ({ ...prev, password: event.target.value }))} />
-            </Field>
-            <label className="fleet-check-field text-sm font-medium">
-              <input
-                type="checkbox"
-                checked={config.is_active}
-                onChange={(event) => setConfig((prev) => ({ ...prev, is_active: event.target.checked }))}
-              />
-              فعال بودن اتصال
-            </label>
-          </div>
-          <div className="flex flex-wrap justify-end gap-3">
-            <SecondaryButton type="button" onClick={() => setConfigOpen(false)}>انصراف</SecondaryButton>
-            <PrimaryButton type="submit" disabled={savingConfig}>{savingConfig ? 'در حال ذخیره...' : 'ذخیره تنظیمات'}</PrimaryButton>
-          </div>
-        </form>
-      </Modal>
+      {canConfigure ? (
+        <Modal open={configOpen} title="تنظیمات" onClose={() => setConfigOpen(false)}>
+          <form onSubmit={handleSaveConfig} className="space-y-5">
+            <div className="grid gap-5 md:grid-cols-2">
+              <Field label="API URL">
+                <Input value={config.api_url} onChange={(event) => setConfig((prev) => ({ ...prev, api_url: event.target.value }))} placeholder="https://traccar.example.com" />
+              </Field>
+              <Field label="نام کاربری">
+                <Input value={config.username} onChange={(event) => setConfig((prev) => ({ ...prev, username: event.target.value }))} />
+              </Field>
+              <Field label="رمز عبور">
+                <Input type="password" value={config.password} onChange={(event) => setConfig((prev) => ({ ...prev, password: event.target.value }))} />
+              </Field>
+              <label className="fleet-check-field text-sm font-medium">
+                <input
+                  type="checkbox"
+                  checked={config.is_active}
+                  onChange={(event) => setConfig((prev) => ({ ...prev, is_active: event.target.checked }))}
+                />
+                فعال بودن اتصال
+              </label>
+            </div>
+            <div className="flex flex-wrap justify-end gap-3">
+              <SecondaryButton type="button" onClick={() => setConfigOpen(false)}>انصراف</SecondaryButton>
+              <PrimaryButton type="submit" disabled={savingConfig}>{savingConfig ? 'در حال ذخیره...' : 'ذخیره تنظیمات'}</PrimaryButton>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
     </div>
   );
 }

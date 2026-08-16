@@ -26,8 +26,9 @@ type MenuItem = {
   to: string;
   label: string;
   icon: ComponentType<{ className?: string }>;
-  permission: string;
+  permission?: string;
   superadminOnly?: boolean;
+  allAuthenticated?: boolean;
 };
 
 const menuItems: MenuItem[] = [
@@ -36,7 +37,7 @@ const menuItems: MenuItem[] = [
   { to: "/access-groups", label: "گروه دسترسی", icon: HiOutlineKey, permission: "access_groups.view" },
   { to: "/drivers", label: "رانندگان", icon: HiOutlineUserGroup, permission: "drivers.view" },
   { to: "/vehicles", label: "خودروها", icon: HiOutlineTruck, permission: "vehicles.view" },
-  { to: "/tracking", label: "ردیابی خودروها", icon: HiOutlineMap, permission: "map.view", superadminOnly: true },
+  { to: "/tracking", label: "ردیابی خودروها", icon: HiOutlineMap, allAuthenticated: true },
   { to: "/vehicle-map", label: "نقشه خودروها", icon: HiOutlineGlobeAsiaAustralia, permission: "map.view" },
   { to: "/vehicle-reports", label: "گزارشات", icon: HiOutlineChartBar, permission: "reports.operational.view" },
   { to: "/vehicle-groups", label: "گروه خودرو", icon: HiOutlineShieldCheck, permission: "vehicle_groups.view" },
@@ -72,7 +73,8 @@ export function DashboardAside({
   const superAdmin = isSuperAdmin(user);
   const visibleMenuItems = menuItems.filter((item) => {
     if (item.superadminOnly) return superAdmin;
-    return superAdmin || permissions.includes(item.permission);
+    if (item.allAuthenticated) return Boolean(user);
+    return superAdmin || Boolean(item.permission && permissions.includes(item.permission));
   });
 
   const { displayName, avatarLetter, jalaliDate } = getProfileDetails(user);

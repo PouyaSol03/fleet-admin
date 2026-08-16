@@ -1,6 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router';
 import { vehiclesAPI } from '../api/vehicles';
 import { useAuth } from '../context/AuthContext';
 import { hasPermission } from '../utils/permissions';
@@ -309,6 +310,8 @@ function VehicleMarker({ row, left, top, isSelected, rotation }) {
 
 export default function VehicleMap() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const requestedVehicleId = searchParams.get('vehicleId');
   const mapRef = useRef(null);
   const canvasRef = useRef(null);
   const dragRef = useRef(null);
@@ -425,13 +428,28 @@ export default function VehicleMap() {
 
           const currentWidth = mapRef.current ? mapRef.current.getBoundingClientRect().width : DEFAULT_VIEWPORT.width;
           const currentHeight = mapRef.current ? mapRef.current.getBoundingClientRect().height : DEFAULT_VIEWPORT.height;
+          const requestedVehicle = requestedVehicleId
+            ? validImeiRows.find((row) => String(row.id) === requestedVehicleId)
+            : null;
+          const requestedVehicleHasLocation = requestedVehicle?.location?.lat != null
+            && requestedVehicle?.location?.lng != null;
 
-          const view = computeDynamicView(validImeiRows, currentWidth, currentHeight);
+          const view = requestedVehicleHasLocation
+            ? {
+                center: {
+                  lat: Number(requestedVehicle.location.lat),
+                  lng: Number(requestedVehicle.location.lng),
+                },
+                zoom: 16,
+              }
+            : computeDynamicView(validImeiRows, currentWidth, currentHeight);
+
           centerValueRef.current = view.center;
           zoomValueRef.current = view.zoom;
           requestedZoomRef.current = view.zoom;
           setCenter(view.center);
           setZoom(view.zoom);
+          setSelectedVehicleId(requestedVehicle?.id ?? null);
           setError('');
         }
       } catch (err) {
@@ -442,7 +460,7 @@ export default function VehicleMap() {
     };
     load();
     return () => { mounted = false; };
-  }, [canView]);
+  }, [canView, requestedVehicleId]);
 
   useEffect(() => {
     if (canvasRef.current) {
